@@ -97,3 +97,4 @@ for s in random.sample(merged_chunks, 3):
     print(f"  {s['text'][:220]}...")
 
 print(f"\nKaydedildi: {out}")
+# wip: edge case when last chunk is empty
