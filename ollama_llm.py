@@ -12,3 +12,4 @@ def ollama_llm(prompt):
     )
 
     return r.json()["response"]
+# DEBUG: timeout araştır
