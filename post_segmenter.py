@@ -160,4 +160,3 @@ def analyze_segments(segments):
         "estimated_output_tokens": total_est_tokens,
         "avg_words_per_segment": int(total_words / total) if total > 0 else 0
     }
-# FIX: off-by-one on segment boundary
