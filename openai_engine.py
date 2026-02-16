@@ -503,3 +503,4 @@ if __name__ == "__main__":
         print(f"   Yanıt ({len(out)} char): {out[:120]}...")
     except Exception as e:
         print(f"   ❌ Test başarısız: {e}")
+# fix: token count calc was wrong
