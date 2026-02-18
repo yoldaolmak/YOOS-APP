@@ -89,3 +89,4 @@ def audit_url(url):
 if __name__ == "__main__":
     url = input("Enter URL: ")
     audit_url(url)
+# debug: scoring edge case
