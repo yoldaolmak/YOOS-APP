@@ -78,4 +78,3 @@ if __name__ == "__main__":
     else:
         print("Görsel bulunamadı")
 
-# fix: rate limit 429 handling
