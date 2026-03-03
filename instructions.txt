@@ -1,0 +1,1 @@
+editor.py'de revise_where_post fonksiyonunu baştan yaz

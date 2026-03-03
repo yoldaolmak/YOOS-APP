@@ -1,0 +1,818 @@
+{
+  "_meta": {
+    "version": "3.0",
+    "site": "yoldaolmak.com",
+    "author": "Kemal Kaya",
+    "updated": "2026-02",
+    "description": "Yoldaolmak.com Yayın Anayasası. 7 içerik tipini, hub mimarisini, anlatı kurallarını ve SEO yapısını makine-okuyabilir formatta tanımlar.",
+    "content_types": [
+      "Destination_Guide",
+      "Destination_Places",
+      "Destination_HowToGet",
+      "Destination_Food_Nightlife",
+      "Singular_Place",
+      "Travel_Guide_Educational",
+      "Blog_Personal"
+    ]
+  },
+
+  "_architecture": {
+    "model": "Hub_and_Spoke",
+    "description": "Her destinasyon için Destination_Guide merkez (hub) içeriktir. Diğer 3 destinasyon tipi (Places, HowToGet, Food_Nightlife) alt içerik (spoke) olarak hub'a bağlanır. Singular_Place içerikleri hub'a ve ilgili Places içeriğine bağlanır. Travel_Guide ve Blog içerikleri kendi ekseninde durur, ancak destinasyon içeriklerine bağ kurar.",
+    "hub_content_type": "Destination_Guide",
+    "spoke_content_types": ["Destination_Places", "Destination_HowToGet", "Destination_Food_Nightlife"],
+    "leaf_content_types": ["Singular_Place"],
+    "standalone_types": ["Travel_Guide_Educational", "Blog_Personal"],
+    "internal_link_rules": {
+      "spoke_to_hub": "ZORUNLU — her spoke içeriği hub'a min 1 link içerir, tercihen ilk 100 kelimede",
+      "hub_to_spoke": "ZORUNLU — hub içeriği tüm spoke içeriklerine link verir, ilgili bölümde",
+      "leaf_to_spoke": "ZORUNLU — Singular_Place içeriği ilgili Places içeriğine link verir",
+      "leaf_to_hub": "ÖNERİLİR — Singular_Place içeriği hub'a da link verebilir",
+      "density_per_1000_words": "2-4 iç link"
+    }
+  },
+
+  "_voice": {
+    "author": "Kemal Kaya",
+    "tone": "Samimi, dürüst, eleştirel ama yapıcı. Arkadaşça sohbet — turistik broşür değil.",
+    "register": "Sade ama derinlikli. Karmaşık cümlelerden kaçınır, anlam yükler.",
+    "perspective": "1. tekil şahıs egemen. 'Ben gittiğimde', 'fark ettim', 'tavsiyem şu' kullanılır.",
+    "character_pillars": [
+      "14 yıllık profesyonel hayatı bırakıp dünyayı gezen biri",
+      "Romantizme kapılmaz, gerçekçi değerlendirme yapar",
+      "Karşılaştırmacı: şehirleri, dönemleri, fiyatları birbiriyle kıyaslar",
+      "Beklenti yönetimi yapar: hayal kırıklığını önceden önler",
+      "Kişisel anekdot zorunlu ama hikaye anlatımı bilginin önüne geçmez"
+    ],
+    "forbidden_vocabulary": [
+      "muhteşem", "harika", "mükemmel", "inanılmaz",
+      "nefes kesici", "eşsiz", "büyüleyici", "görkemli",
+      "unutulmaz", "rüya gibi", "cennet", "masalsı",
+      "ziyaretçilerini bekliyor", "hayatınızın tatili",
+      "bir açık hava müzesi", "her köşe başında tarih",
+      "zaman durmuş gibi", "dünya size ait",
+      "kesinlikle görülmeli", "adeta", "sanki"
+    ],
+    "required_voice_markers": {
+      "first_person_min": 5,
+      "dated_anecdote_min": 1,
+      "direct_address_min": 3,
+      "passive_voice_max_ratio": 0.15
+    }
+  },
+
+  "_scoring_weights": {
+    "authority": 0.40,
+    "narrative": 0.35,
+    "critical": 0.25,
+    "publish_floor": 82
+  },
+
+  "_forbidden_auto_fail": [
+    "forbidden_vocabulary_count >= 3",
+    "dated_personal_anecdote == 0",
+    "word_count < word_floor",
+    "required_sections_missing >= 2",
+    "comparative_positioning_absent == true",
+    "expectation_management_absent == true",
+    "sourced_price_ratio < 0.40 AND price_count > 3"
+  ],
+
+  "content_types": {
+
+    "Destination_Guide": {
+      "_description": "Hub içerik. Destinasyonun omurgası. Tüm alt içeriklerin bağlandığı merkez sayfa.",
+      "_search_intent": "Destinasyon araştırması — karar aşamasındaki gezgin",
+      "_hub_role": "HUB — tüm spoke içeriklerine link verir",
+      "_url_pattern": "/[destinasyon]-gezi-rehberi.html",
+      "_example": "https://yoldaolmak.com/kayseri-gezi-rehberi.html",
+      "word_floor": 3500,
+      "word_target": 5000,
+      "word_ceiling": 7000,
+
+      "title_format": {
+        "pattern": "[Destinasyon] Gezi Rehberi [Yıl]: [Özgün Tagline]",
+        "max_chars": 65,
+        "example": "Kayseri Gezi Rehberi 2026: Selçuklu Mirası ve Erciyes'in Gölgesinde",
+        "rules": [
+          "Yıl zorunlu",
+          "Tagline şehrin karakterini özetler, klişe olmaz",
+          "Tagline turistik broşür sloganı değil, editorial yorum olur"
+        ]
+      },
+
+      "opening_paragraph": {
+        "type": "ATMOSFER_ÖNCE_BİLGİ_SONRA",
+        "rule": "İlk paragraf şehrin karakterini, ruhunu, hissini tanımlar. Bilgi ikinci paragraftan başlar.",
+        "length": "80-120 kelime",
+        "must_contain": [
+          "Şehrin kimliğini tanımlayan spesifik bir gözlem veya imge",
+          "Jenerik sıfat yok — ölçülebilir veya somut niteleme",
+          "Dağ/deniz/coğrafya varsa şehirle ilişkisi kurulur"
+        ],
+        "must_not_contain": [
+          "forbidden_vocabulary'den herhangi bir kelime",
+          "Wikipedia tarzı coğrafi koordinat bilgisi",
+          "Gezginleri davet eden kliş ifadeler"
+        ],
+        "observed_pattern": "Kayseri örneğinde: coğrafi konum + şehrin karakter tespiti + geçiş hissi + tarihsel katman. İlk cümle atmosfer, ikinci cümle bağlam."
+      },
+
+      "h_structure": {
+        "H1": {
+          "count": 1,
+          "format": "[Destinasyon] Gezi Rehberi: [Tagline]",
+          "note": "Title ile aynı veya çok yakın olabilir"
+        },
+        "H2_required": [
+          "[Destinasyon] Gezi Rehberi: Katman Katman [Yer Adı]",
+          "[Destinasyon] Tarihine Kısa Bakış",
+          "[Destinasyon]'da Gezilecek Yerler",
+          "[Destinasyon]'da Ne Yenir, Ne İçilir",
+          "[Destinasyon]'a Nasıl Gidilir",
+          "[Destinasyon]'da Nerede Kalınır",
+          "[Destinasyon] Gezi Planı",
+          "Sık Sorulan Sorular"
+        ],
+        "H2_count": "8-12",
+        "H3_count": "10-20",
+        "H3_usage": "H2 altında mekân adları, ulaşım seçenekleri, konaklama bölgeleri gibi alt başlıklar"
+      },
+
+      "required_sections": [
+        {
+          "id": "identity",
+          "h2_name": "[Destinasyon] Gezi Rehberi: Katman Katman [Yer]",
+          "min_words": 200,
+          "rules": [
+            "Şehrin/bölgenin kimlik tespiti yapılır — ne tür bir yer?",
+            "En az 1 karşılaştırmalı referans zorunlu (başka bir destinasyonla kıyaslama)",
+            "Nüfus/alan gibi bilgiler varsa kaynaklı olmalı",
+            "Kişisel gözlem: 'Ben gördüm/hissettim' formatında en az 1"
+          ]
+        },
+        {
+          "id": "history",
+          "h2_name": "[Destinasyon] Tarihine Kısa Bakış",
+          "min_words": 150,
+          "rules": [
+            "Spesifik tarihler kullanılır — 'yüzyıllar önce' değil '1243'",
+            "Neden-sonuç ilişkisi kurulur: 'X oldu, bu yüzden bugün Y var'",
+            "Bugünkü hayatla bağ zorunlu — tarih için tarih değil"
+          ]
+        },
+        {
+          "id": "places",
+          "h2_name": "[Destinasyon]'da Gezilecek Yerler",
+          "min_words": 400,
+          "per_place_min_words": 60,
+          "place_count": "5-10",
+          "each_place_must_contain": [
+            "Mekânın ne olduğu (1 cümle tanım)",
+            "Kişisel gözlem veya spesifik detay",
+            "Pratik bilgi: giriş ücreti veya süre tahmini veya kalabalık uyarısı",
+            "Alt içeriğe link: Destination_Places veya Singular_Place sayfasına"
+          ],
+          "link_rule": "Gezilecek Yerler H2'si içinde Destination_Places sayfasına 'daha fazlası için' linki zorunlu"
+        },
+        {
+          "id": "food",
+          "h2_name": "[Destinasyon]'da Ne Yenir, Ne İçilir",
+          "min_words": 200,
+          "rules": [
+            "Yerel yemekler listelenirken kişisel deneyim olmalı",
+            "En az 1 mekân önerisi, fiyat aralığıyla birlikte",
+            "Turist tuzağı veya 'kaçın' tavsiyesi varsa bonus",
+            "Food/Nightlife alt sayfasına link zorunlu"
+          ]
+        },
+        {
+          "id": "transport",
+          "h2_name": "[Destinasyon]'a Nasıl Gidilir",
+          "min_words": 150,
+          "rules": [
+            "Uçak + otobüs + araba seçenekleri karşılaştırmalı",
+            "Süre ve fiyat aralığı belirtilir",
+            "Şehir içi ulaşım da dahil edilir",
+            "HowToGet alt sayfasına link zorunlu"
+          ]
+        },
+        {
+          "id": "accommodation",
+          "h2_name": "[Destinasyon]'da Nerede Kalınır",
+          "min_words": 150,
+          "rules": [
+            "En az 3 bütçe seviyesi: ekonomik / orta / üst",
+            "Semte göre konum tavsiyesi",
+            "Fiyat aralıkları tarihli olmalı"
+          ]
+        },
+        {
+          "id": "itinerary",
+          "h2_name": "[Destinasyon] Gezi Planı",
+          "min_words": 200,
+          "variants_required": ["1 günlük", "2-3 günlük"],
+          "rules": [
+            "Anlatı formatında, madde listesi değil",
+            "Sabah / öğle / akşam ritmi kurulur",
+            "Nerede yenir, nerede durulur bilgisi entegre edilir",
+            "HowToGet sayfasına link tekrar verilebilir"
+          ]
+        },
+        {
+          "id": "faq",
+          "h2_name": "Sık Sorulan Sorular",
+          "min_qa_count": 6,
+          "required_topics": ["en iyi dönem", "kaç gün", "ulaşım", "bütçe", "nerede kalınır"],
+          "schema": "FAQPage markup zorunlu"
+        }
+      ],
+
+      "internal_links": {
+        "min_total": 6,
+        "required_destinations": [
+          "Destination_Places sayfası",
+          "Destination_HowToGet sayfası",
+          "Destination_Food_Nightlife sayfası",
+          "En az 1 Singular_Place sayfası"
+        ]
+      },
+
+      "seo": {
+        "schema_required": ["TravelGuide", "FAQPage"],
+        "toc_required": true,
+        "meta_description_length": "140-160",
+        "year_in_title": true
+      },
+
+      "depth_requirements": {
+        "comparative_references_min": 3,
+        "personal_experience_markers_min": 3,
+        "sourced_prices_ratio": 0.8,
+        "tourist_trap_warnings_min": 1,
+        "year_anchored_anecdote_min": 1
+      }
+    },
+
+    "Destination_Places": {
+      "_description": "Spoke içerik. Destinasyondaki gezilecek yerlerin detaylı rehberi.",
+      "_search_intent": "Aktivite planlama — 'X'de ne var, nereye gideyim?'",
+      "_hub_role": "SPOKE — hub'a bağlanır",
+      "_url_pattern": "/[destinasyon]-gezilecek-yerler.html",
+      "_example": "https://yoldaolmak.com/kayseri-gezilecek-yerler.html",
+      "word_floor": 2500,
+      "word_target": 3500,
+
+      "title_format": {
+        "pattern": "[Destinasyon]'da Gezilecek Yerler [Yıl]: [Bölge/Konu Odak]",
+        "example": "Kayseri'de Gezilecek Yerler 2026: Tarih, Doğa ve Lezzet Durakları"
+      },
+
+      "opening_paragraph": {
+        "type": "DESTINASYON_ANCHOR_ÖNCE",
+        "rule": "İlk cümlede destinasyon adı anchor link olarak hub sayfasına bağlanır. Ardından şehrin gezilecek yerleri açısından karakteri anlatılır.",
+        "observed_pattern": "Kayseri örneği: '[Kayseri](hub-link)'ye geldiğinde rotanı belirleyen ilk şey X oluyor.' — destinasyon adı ilk anchor, ardından atmosfer.",
+        "must_contain": [
+          "Hub sayfasına ilk 50 kelimede anchor link",
+          "Şehrin 'gezilecek yer' perspektifinden karakteri"
+        ]
+      },
+
+      "h_structure": {
+        "H1": {
+          "count": 1,
+          "format": "[Destinasyon]'da Gezilecek Yerler: [Odak]"
+        },
+        "H2_pattern": "TEMATIK veya COĞRAFI",
+        "H2_options": [
+          "Tarihi Merkezde Gezilecek Yerler",
+          "Doğa ve Çevre Gezilecek Yerler",
+          "Müzeler ve Kültürel Mekânlar",
+          "Çarşı ve Alışveriş",
+          "Merkez Dışı Günübirlik Rotalar"
+        ],
+        "H3_usage": "Her mekân için ayrı H3 başlığı — mekânın adı",
+        "H2_count": "4-8",
+        "H3_count": "8-20"
+      },
+
+      "per_place_entry": {
+        "min_words": 80,
+        "must_contain": [
+          "Mekânın ne olduğu — 1 tanımlayıcı cümle",
+          "Kişisel gözlem veya kıyaslama",
+          "Pratik bilgi: giriş ücreti / açılış saati / ulaşım",
+          "Kalabalık / en iyi ziyaret zamanı uyarısı"
+        ],
+        "singular_place_link": "Mekânın kendi Singular_Place sayfası varsa oraya link verilir"
+      },
+
+      "required_sections": [
+        "Giriş paragrafı (hub linki ile)",
+        "Tematik veya coğrafi H2 grupları",
+        "Her mekân H3 altında",
+        "Öneri ve Kaçınılacaklar özet bölümü",
+        "Ana Destinasyon Rehberi'ne dönüş linki"
+      ],
+
+      "narrative_balance": {
+        "experience_ratio": 0.55,
+        "information_ratio": 0.45,
+        "note": "Deneyim dili ağır basar ama her mekânda en az 1 pratik bilgi zorunlu"
+      },
+
+      "depth_requirements": {
+        "negative_observation_min": 2,
+        "tourist_trap_warning_min": 1,
+        "personal_anecdote_min": 2,
+        "place_count_min": 8
+      }
+    },
+
+    "Destination_HowToGet": {
+      "_description": "Spoke içerik. Coğrafi tanım + ulaşım + gezi planı. Bilgi ağırlıklı ama kuru değil.",
+      "_search_intent": "Navigasyonel + bilgi — 'X nerede, nasıl giderim, ne kadar sürer?'",
+      "_hub_role": "SPOKE — hub'a bağlanır",
+      "_url_pattern": "/[destinasyon]-nerede-nasil-gidilir.html",
+      "_example": "https://yoldaolmak.com/kayseri-nerede-nasil-gidilir.html",
+      "word_floor": 1800,
+      "word_target": 2500,
+
+      "title_format": {
+        "pattern": "[Destinasyon] Nasıl Bir Yer? Nerede, Nasıl Gidilir, Gezi Planı",
+        "note": "Başlık 3 soruyu birden yakalar: nedir + nasıl gidilir + ne yapılır"
+      },
+
+      "opening_paragraph": {
+        "type": "COĞRAFI_KONUM_ÖNCE",
+        "rule": "İlk paragraf şehrin Türkiye veya dünya haritasındaki yerini netleştirir. Kuru ansiklopedi tonu değil — konum bilgisi karakter tespiti ile birleştirilir.",
+        "must_contain": [
+          "Bölge içi konum: 'İç Anadolu'nun merkezinde'",
+          "Komşu önemli destinasyonlarla ilişki: 'Kapadokya'nın kuzey kapısında'",
+          "Ulaşım süreleri büyük şehirlerden"
+        ]
+      },
+
+      "h_structure": {
+        "H1": {"count": 1},
+        "H2_required": [
+          "[Destinasyon] Nerede?",
+          "[Destinasyon]'a Nasıl Gidilir?",
+          "[Destinasyon]'da Ulaşım",
+          "[Destinasyon] Gezi Planı"
+        ],
+        "H3_under_transport": [
+          "Uçakla",
+          "Otobüsle",
+          "Arabayla",
+          "Trenle (varsa)"
+        ],
+        "H2_count": "4-7",
+        "H3_count": "6-15"
+      },
+
+      "required_sections": [
+        {
+          "id": "location",
+          "h2_name": "[Destinasyon] Nerede?",
+          "rules": [
+            "Harita referansı — il sınırı, komşu iller",
+            "Büyük şehirlere mesafe ve süre (İstanbul, Ankara, İzmir)",
+            "Bölgesel bağlam: turizm güzergâhındaki yeri"
+          ]
+        },
+        {
+          "id": "how_to_get",
+          "h2_name": "[Destinasyon]'a Nasıl Gidilir?",
+          "rules": [
+            "Her ulaşım seçeneği karşılaştırmalı: süre + fiyat aralığı + konforu",
+            "Hangi seçenek kime uygun — segmentasyon yapılır",
+            "Fiyatlar kaynaklı ve tarihli"
+          ]
+        },
+        {
+          "id": "city_transport",
+          "h2_name": "[Destinasyon]'da Ulaşım",
+          "rules": [
+            "Şehir içi toplu taşıma",
+            "Araç kiralama değerlendirmesi",
+            "Taksi/servis bilgisi"
+          ]
+        },
+        {
+          "id": "itinerary",
+          "h2_name": "[Destinasyon] Gezi Planı",
+          "rules": [
+            "1 gün + 3 gün alternatifleri",
+            "Anlatı formatı zorunlu — madde listesi değil",
+            "Hub sayfasına ve Places sayfasına link"
+          ]
+        }
+      ],
+
+      "language_style": {
+        "tone": "Bilgi yoğun ama samimi",
+        "sentence_length": "Kısa — 15-20 kelime ortalama",
+        "list_vs_prose": "Ulaşım seçenekleri liste, gezi planı prose"
+      },
+
+      "depth_requirements": {
+        "transport_options_min": 3,
+        "price_with_source_ratio": 0.9,
+        "internal_link_to_hub": "ZORUNLU — ilk 200 kelimede",
+        "itinerary_variants_min": 2
+      }
+    },
+
+    "Destination_Food_Nightlife": {
+      "_description": "Spoke içerik. Mutfak veya gece hayatı. Deneyim ağırlıklı, öneri odaklı.",
+      "_search_intent": "Aktivite + deneyim — 'X'de ne yenir, nereye gidilir?'",
+      "_hub_role": "SPOKE — hub'a bağlanır",
+      "_url_pattern": "/[destinasyon]-ne-yenir.html veya /[destinasyon]-gece-hayati.html",
+      "_examples": [
+        "https://yoldaolmak.com/kayseride-nerede-yenir-kayseri-ne-yenir.html",
+        "https://yoldaolmak.com/batum-gece-hayati.html"
+      ],
+      "word_floor": 2000,
+      "word_target": 3000,
+
+      "title_format": {
+        "food_pattern": "[Destinasyon]'da Ne Yenir? [Yıl]: En İyi Lezzetler ve Mekan Önerileri",
+        "nightlife_pattern": "[Destinasyon] Gece Hayatı [Yıl]: [Odak/Karakter]",
+        "example_food": "Kayseri'de Ne Yenir? Nerede Yenir? 2026: En İyi Mekan Tavsiyeleri",
+        "example_nightlife": "Batum Gece Hayatı ve Casinolar: Fiyatlar, Kurallar, Uyarılar"
+      },
+
+      "opening_paragraph": {
+        "type": "DUYUSAL_SAHNE",
+        "rule": "İlk paragraf bir sahne ile başlar — görsel, koku, ses veya tat. Bilgi değil deneyim. Destinasyon adı ilk cümlede anchor link olarak hub'a bağlanır.",
+        "observed_pattern": "Kayseri mutfak örneği: '[Kayseri]. Erciyes Dağı'nın eteklerinde... ilk geldiğimde hava henüz serinken, sabah pazarından yükselen mantı kokuları vardı havada.' — sahne + kişisel an + destinasyon kimliği.",
+        "must_contain": [
+          "Destinasyon adı hub linki ile",
+          "Duyusal bir an: koku / ses / tat / görsel",
+          "Kişisel ilk karşılaşma anekdotu"
+        ]
+      },
+
+      "h_structure": {
+        "H1": {"count": 1},
+        "H2_food_options": [
+          "Kayseri Mutfağının Temelleri",
+          "Mutlaka Denenecek Yemekler",
+          "En İyi Restoranlar ve Mekânlar",
+          "Sokak Lezzetleri",
+          "Kaçınılacak Yerler / Turist Tuzakları",
+          "Pratik Bilgiler: Bütçe ve Ödeme"
+        ],
+        "H2_nightlife_options": [
+          "Gece Hayatının Karakteri",
+          "Barlar ve Kulüpler",
+          "Casinolar (varsa)",
+          "Alternatif Gece Aktiviteleri",
+          "Güvenlik ve Uyarılar"
+        ],
+        "H3_usage": "Her mekân veya yemek için ayrı H3",
+        "H2_count": "4-7",
+        "H3_count": "6-15"
+      },
+
+      "per_venue_entry": {
+        "must_contain": [
+          "Mekânın karakteri — 1 tanımlayıcı cümle",
+          "Kişisel gözlem veya öneri gerekçesi",
+          "Fiyat aralığı (kaynaklı)",
+          "Kalabalık saatleri veya rezervasyon bilgisi"
+        ]
+      },
+
+      "required_elements": [
+        "Hub sayfasına min 1 link (ilk 100 kelimede)",
+        "Min 5 mekân veya yemek önerisi",
+        "Min 1 'kaçın' veya turist tuzağı uyarısı",
+        "Min 1 yerel vs turist fiyat karşılaştırması",
+        "Bütçe özeti bölümü"
+      ],
+
+      "depth_requirements": {
+        "venue_count_min": 5,
+        "negative_recommendation_min": 1,
+        "price_comparison_required": true,
+        "personal_anecdote_min": 2,
+        "sourced_price_ratio": 0.8
+      }
+    },
+
+    "Singular_Place": {
+      "_description": "Tekil mekân rehberi. Bir park, müze, çarşı, tarihi yapı veya doğal alan için derinlemesine sayfa.",
+      "_search_intent": "Spesifik mekân araştırması — 'X nedir, nasıl gidilir, ne beklenir?'",
+      "_hub_role": "LEAF — Destination_Places'a ve hub'a bağlanır",
+      "_url_pattern": "/[mekan-adi].html",
+      "_examples": [
+        "https://yoldaolmak.com/aladaglar-milli-parki.html",
+        "https://yoldaolmak.com/sultan-sazligi.html",
+        "https://yoldaolmak.com/kayseri-lisesi-milli-mucadele-muzesi.html"
+      ],
+      "word_floor": 1500,
+      "word_target": 2500,
+
+      "title_format": {
+        "pattern": "[Mekân Adı] Rehberi [Yıl]: [Odak/Özellik]",
+        "example": "Aladağlar Milli Parkı Rehberi 2026: Zirveler, Rotalar ve Kamp Alanları"
+      },
+
+      "opening_paragraph": {
+        "type": "TANIM_SONRA_KARAKTER",
+        "rule": "İlk paragraf 'X nedir?' sorusunu cevaplar — ama ansiklopedik değil, karakterini ortaya koyar. Bold ile mekân adı vurgulanır.",
+        "must_contain": [
+          "Mekânın net tanımı: ne tür bir yer, nerede, ne ölçekte",
+          "Benzersiz özelliği veya diğerlerinden farkı",
+          "Ziyaretçi profili ipucu: kime uygun"
+        ]
+      },
+
+      "h_structure": {
+        "H1": {"count": 1, "format": "[Mekân Adı] Rehberi: [Odak]"},
+        "H2_required": [
+          "[Mekân Adı] Nedir?",
+          "[Mekân Adı] Tarihçesi",
+          "[Mekân Adı]'nda Ne Yapılır / Görülür",
+          "[Mekân Adı]'na Nasıl Gidilir",
+          "Pratik Bilgiler"
+        ],
+        "H2_optional": [
+          "Kamp ve Konaklama",
+          "Rotalar ve Güzergâhlar",
+          "Fotoğrafçılık İpuçları",
+          "Yakın Çevrede Neler Var?"
+        ],
+        "H2_count": "4-7",
+        "H3_count": "4-12"
+      },
+
+      "history_section": {
+        "min_words": 100,
+        "rules": [
+          "Spesifik tarihler kullanılır",
+          "Kuruluş / keşif / dönüşüm hikayesi",
+          "Günümüzle bağ kurulur"
+        ]
+      },
+
+      "personal_observation_ratio": 0.35,
+
+      "practical_info_block": {
+        "required_fields": [
+          "Adres veya GPS koordinatı",
+          "Giriş ücreti (kaynaklı ve tarihli)",
+          "Açılış / kapanış saatleri (güncelleme tarihi ile)",
+          "Ulaşım: en yakın şehirden kaç km, hangi yol",
+          "Ziyaret süresi önerisi",
+          "En iyi dönem / sezon"
+        ],
+        "format": "Info kutusu veya H3 altında listeleme"
+      },
+
+      "required_links": [
+        "Destination_Places sayfasına min 1 link",
+        "Hub (Destination_Guide) sayfasına min 1 link",
+        "Yakın diğer Singular_Place sayfasına opsiyonel"
+      ],
+
+      "depth_requirements": {
+        "history_words_min": 100,
+        "personal_observation_markers_min": 2,
+        "practical_info_completeness": "6 alan zorunlu",
+        "negative_observation_min": 1
+      }
+    },
+
+    "Travel_Guide_Educational": {
+      "_description": "Eğitici / bilgi rehberi. Destinasyona bağlı değil, seyahat pratiğine dair.",
+      "_search_intent": "Bilgi / nasıl yapılır — 'X nasıl yapılır, ne bilmem lazım?'",
+      "_hub_role": "STANDALONE — seyahat-rehberi kategorisine bağlanır",
+      "_url_pattern": "/[konu].html",
+      "_examples": [
+        "https://yoldaolmak.com/ucuz-ucak-bileti-bulma-yollari.html",
+        "https://yoldaolmak.com/vizesiz-ulkeler-vize-istemeyen-ulkeler-guncel-liste.html",
+        "https://yoldaolmak.com/mavi-tur-nedir.html"
+      ],
+      "word_floor": 1500,
+      "word_target": 2500,
+
+      "title_format": {
+        "pattern": "[Konu]: [Pratik Odak] | [Yıl] Güncel",
+        "example": "Ucuz Uçak Bileti Bulmak İçin 10 İpucu | 2026 Güncel"
+      },
+
+      "opening_paragraph": {
+        "type": "SORUN_ÇÖZÜMÜ_PROMISE",
+        "rule": "İlk paragraf okuyucunun sorununu tanımlar, ardından bu içeriğin ne sunduğunu netleştirir. Kişisel deneyimle güven inşa edilir.",
+        "must_contain": [
+          "Sorunun veya ihtiyacın tanımı",
+          "Bu içeriğin çözümü sunduğunun vurgusu",
+          "Kişisel deneyim referansı ('X yıl boyunca...')"
+        ]
+      },
+
+      "h_structure": {
+        "H1": {"count": 1},
+        "H2_patterns": [
+          "Numbered list başlıkları: '1. Erken rezervasyon ne zaman işe yarar?'",
+          "Thematic başlıklar: 'Platform Seçimi', 'Tarih Esnekliği'",
+          "Soru formatı: 'Vize başvurusu ne zaman yapılmalı?'"
+        ],
+        "H2_count": "5-12",
+        "H3_count": "4-10",
+        "list_structure": "Numbered list (ipucu/adım) veya definition list (ülke/konu) uygun"
+      },
+
+      "expert_voice": {
+        "rules": [
+          "Uzman dili ama jargon yok — sade ama bilgili",
+          "Kişisel deneyim: 'Ben bunu X şekilde yaptım'",
+          "Rakamsal veri: fiyatlar, süreler, oranlar",
+          "Güncellik: yıl ve tarih referansları zorunlu"
+        ]
+      },
+
+      "trust_signals": [
+        "Kişisel deneyim referansı",
+        "Kaynaklı istatistik veya fiyat",
+        "Yazar geçmişine atıf: '14 yıl boyunca X'",
+        "Neyin işe yaramadığına dair dürüst uyarı"
+      ],
+
+      "required_elements": [
+        "Giriş: sorun tanımı + çözüm vaaidi",
+        "Adım adım veya liste yapısı",
+        "Pratik özet veya 'en önemli nokta' kutucuğu",
+        "İlgili destinasyon veya seyahat-rehberi sayfalarına link",
+        "Güncelleme tarihi zorunlu"
+      ],
+
+      "depth_requirements": {
+        "actionable_tips_min": 5,
+        "personal_experience_min": 1,
+        "sourced_data_min": 2,
+        "update_date_required": true
+      }
+    },
+
+    "Blog_Personal": {
+      "_description": "Kişisel yazı. Seyahat anısı, röportaj, refleksiyon veya manifesto. SEO ikincil, kimlik birincil.",
+      "_search_intent": "Keşif / ilham — okuyucu ne arayacağını bilmez, Kemal Kaya'nın sesini okumak ister",
+      "_hub_role": "STANDALONE — kimlik ve otorite inşası",
+      "_url_pattern": "/[konu-veya-baslik].html",
+      "_examples": [
+        "https://yoldaolmak.com/bir-colun-dusundurdukleri-wadi-rum.html",
+        "https://yoldaolmak.com/bir-tren-yolculugu-onemli-olan-varmak-degil-yolda-olmaktir.html",
+        "https://yoldaolmak.com/rotami-nasil-belirliyorum.html",
+        "https://yoldaolmak.com/anadolu-ajansi-roportaji-14-yillik-profesyonel-is-hayatimi-biraktim-dunyayi-geziyorum.html"
+      ],
+      "word_floor": 800,
+      "word_target": 1800,
+
+      "title_format": {
+        "pattern": "Metaforik, soru, veya kişisel beyan formatı",
+        "examples": [
+          "Bir Çölün Düşündürdükleri: Wadi Rum",
+          "Bir Tren Yolculuğu: Önemli Olan Varmak Değil, Yolda Olmaktır",
+          "Rotamı Nasıl Belirliyorum?"
+        ],
+        "rule": "SEO keyword hedeflenmez. Başlık okuyucuyu meraklandırır."
+      },
+
+      "opening_paragraph": {
+        "type": "IN_MEDIAS_RES_veya_REFLEKSIYON",
+        "rule": "Olayın ortasına düşer veya derin bir soru ile açar. Tanıtım cümlesi yok. 'Bu yazıda X anlatacağım' denmez.",
+        "must_contain": [
+          "Sahne, an veya soru",
+          "Kemal'in sesi net — ilk cümlede karakter belli"
+        ]
+      },
+
+      "h_structure": {
+        "H1": {"count": 1, "note": "Edebi başlık — SEO değil"},
+        "H2_usage": "Opsiyonel — uzun yazılarda bölüm ayırıcı olarak kullanılabilir",
+        "H3_usage": "Nadiren",
+        "note": "Blog yazılarında H yapısı zorunlu değil. Anlatı kendi ritmiyle akar."
+      },
+
+      "narrative_rules": {
+        "rhythm": "Kısa-uzun-kısa. Ritim bilinçli. Sürpriz cümle yapıları.",
+        "paragraph_length": "2-5 cümle. Tek cümlelik paragraflar kabul edilir — vurgu için.",
+        "dialogue_or_scene": "İçeriğin en az bir bölümünde somut sahne veya diyalog",
+        "reflection_required": "Seyahat anısı salt anlatımla bitmez — bir yorum, çıkarım veya soru ile kapanır"
+      },
+
+      "kemal_kaya_character": {
+        "must_convey": [
+          "Profesyonel hayatı bırakma kararının arka planı (her yazıda olmak zorunda değil, ama kimliğin parçası)",
+          "Romantizme kapılmama — güzelliği görür ama eleştirmekten çekinmez",
+          "Merak: neden, nasıl, ne olur sorularını sorar",
+          "Bağımsızlık: kalabalığın gittiği yönün dışına çıkar"
+        ]
+      },
+
+      "seo_approach": {
+        "note": "Blog yazıları SEO için değil, kimlik ve otorite için yazılır.",
+        "keyword_targeting": "Zorunlu değil — doğal kullanım yeterli",
+        "meta_description": "İçeriğin ruhunu yansıtan kısa bir davet",
+        "internal_links": "Konu bağlamında ilgili destinasyon veya seyahat rehberi sayfalarına doğal link kabul edilir"
+      },
+
+      "emotional_depth": {
+        "required_level": "YÜKSEK",
+        "note": "Duygu vardır ama duygusallık yoktur. Kemal gözlemler ve düşünür — ağlamaz, vaaz vermez."
+      },
+
+      "depth_requirements": {
+        "scene_or_dialogue_min": 1,
+        "reflection_or_conclusion_required": true,
+        "minimum_character_voice_markers": 3
+      }
+    }
+  },
+
+  "_hub_spoke_map": {
+    "description": "Bir destinasyon için tam içerik ekosistemi örneği — Kayseri modeli",
+    "hub": {
+      "type": "Destination_Guide",
+      "url": "/kayseri-gezi-rehberi.html",
+      "links_to": [
+        "/kayseri-gezilecek-yerler.html",
+        "/kayseri-nerede-nasil-gidilir.html",
+        "/kayseride-nerede-yenir-kayseri-ne-yenir.html",
+        "/aladaglar-milli-parki.html",
+        "/sultan-sazligi.html"
+      ]
+    },
+    "spokes": [
+      {
+        "type": "Destination_Places",
+        "url": "/kayseri-gezilecek-yerler.html",
+        "links_back_to_hub": true,
+        "links_to_leaves": ["/aladaglar-milli-parki.html", "/sultan-sazligi.html"]
+      },
+      {
+        "type": "Destination_HowToGet",
+        "url": "/kayseri-nerede-nasil-gidilir.html",
+        "links_back_to_hub": true
+      },
+      {
+        "type": "Destination_Food_Nightlife",
+        "url": "/kayseride-nerede-yenir-kayseri-ne-yenir.html",
+        "links_back_to_hub": true
+      }
+    ],
+    "leaves": [
+      {
+        "type": "Singular_Place",
+        "url": "/aladaglar-milli-parki.html",
+        "links_to": ["/kayseri-gezilecek-yerler.html", "/kayseri-gezi-rehberi.html"]
+      },
+      {
+        "type": "Singular_Place",
+        "url": "/sultan-sazligi.html",
+        "links_to": ["/kayseri-gezilecek-yerler.html", "/kayseri-gezi-rehberi.html"]
+      }
+    ]
+  },
+
+  "_timelessness_layers": {
+    "evergreen": {
+      "definition": "Yıllarca geçerliliğini koruyan bilgi",
+      "examples": ["Tarihi bilgi", "Coğrafi konum", "Mimari özellikler"],
+      "source_required": false
+    },
+    "slow_changing": {
+      "definition": "3-5 yılda bir güncellenen bilgi",
+      "examples": ["Mahalle karakteri", "Genel fiyat seviyesi", "Şehir kültürü"],
+      "source_required": false
+    },
+    "fast_changing": {
+      "definition": "Yıllık güncelleme gerektiren bilgi",
+      "examples": ["Giriş ücretleri", "Açılış saatleri", "Döviz kurları", "Vize gereksinimleri"],
+      "source_required": true,
+      "date_format": "(Kaynak, Ay Yıl)",
+      "max_age_months": 12
+    }
+  },
+
+  "_seo_global_rules": {
+    "title_year_required": true,
+    "meta_description_length": "140-160",
+    "schema_by_type": {
+      "Destination_Guide": ["TravelGuide", "FAQPage"],
+      "Destination_Places": ["TravelGuide"],
+      "Destination_HowToGet": ["FAQPage"],
+      "Destination_Food_Nightlife": ["LocalBusiness (per venue)"],
+      "Singular_Place": ["TouristAttraction", "FAQPage"],
+      "Travel_Guide_Educational": ["HowTo veya FAQPage"],
+      "Blog_Personal": "Schema zorunlu değil"
+    },
+    "toc_required_for": ["Destination_Guide", "Destination_Places", "Travel_Guide_Educational"],
+    "heading_hierarchy_rule": "H1 > H2 > H3. Atlama yok. H1 sayısı = 1.",
+    "internal_link_density": "2-4 per 1000 words"
+  }
+}

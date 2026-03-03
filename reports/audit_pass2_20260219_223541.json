@@ -1,0 +1,77 @@
+{
+  "page_info": {
+    "word_count": 277
+  },
+  "voice_analysis": {
+    "first_person_count": 1,
+    "first_person_per_1000": 3.5087719298245617,
+    "first_person_pass": true,
+    "plural_violations": 0,
+    "temporal_anchors": 0,
+    "temporal_anchors_pass": false,
+    "kemal_note_blocks": 3,
+    "kemal_notes_pass": true,
+    "forbidden_word_count": 2,
+    "forbidden_words_pass": true
+  },
+  "authority_analysis": {
+    "sourced_claims": 3,
+    "sourced_per_1000": 10.526315789473683,
+    "sourced_claims_pass": true,
+    "prices_with_source": 0,
+    "total_prices": 1,
+    "price_coverage_percentage": 0.0,
+    "price_coverage_pass": false,
+    "coordinates_found": 0
+  },
+  "critique_analysis": {
+    "pro_con_blocks": 2,
+    "pro_con_pass": true,
+    "tourist_trap_warnings": 1,
+    "tourist_trap_pass": true,
+    "reality_checks": 0,
+    "negative_keyword_count": 5,
+    "negative_keywords_pass": true
+  },
+  "genius_loci_analysis": {
+    "dimensions_detected": [
+      "light",
+      "class_visibility",
+      "tourist_sterilization"
+    ],
+    "dimension_count": 3,
+    "dimension_pass": false,
+    "missing_dimensions": [
+      "time_perception",
+      "rhythm",
+      "social_tempo"
+    ]
+  },
+  "timelessness_analysis": {
+    "evergreen_keyword_count": 3,
+    "volatile_keyword_count": 9,
+    "evergreen_percentage": 25.0,
+    "evergreen_pass": false,
+    "dynamic_blocks_found": 0,
+    "dynamic_blocks_pass": false,
+    "forbidden_temporal_count": 0,
+    "forbidden_temporal_pass": true,
+    "has_update_date": false
+  },
+  "seo_analysis": {
+    "heading_hierarchy_valid": true,
+    "heading_violations": [],
+    "h1_count": 1,
+    "internal_links": 0,
+    "links_per_1000": 0.0,
+    "internal_links_pass": false,
+    "toc_present": false
+  },
+  "audit_score": {
+    "total_score": 6,
+    "verdict": "mandatory_revision",
+    "recommendation": "Rehber kabul edilemez seviyede. Kapsamlı revizyon gerekli.",
+    "word_count": 285,
+    "audit_date": "2026-02-19T22:35:41.225618"
+  }
+}

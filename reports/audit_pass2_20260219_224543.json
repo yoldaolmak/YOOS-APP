@@ -1,0 +1,107 @@
+{
+  "page_info": {
+    "word_count": 275
+  },
+  "voice_analysis": {
+    "temporal_anchors": {
+      "count": 0,
+      "pass": false,
+      "required": 2
+    },
+    "kemal_notes": {
+      "count": 3,
+      "pass": true,
+      "required": 3
+    },
+    "plural_violations": {
+      "count": 0,
+      "pass": true
+    },
+    "first_person": {
+      "per_1000": 0.0,
+      "pass": false
+    },
+    "forbidden_words": {
+      "count": 2,
+      "pass": true
+    }
+  },
+  "authority_analysis": {
+    "sourced_claims": {
+      "count": 3,
+      "per_1000": 10.380622837370241,
+      "pass": true
+    },
+    "prices": {
+      "total": 1,
+      "with_source": 0,
+      "coverage_pct": 0.0,
+      "pass": false
+    },
+    "coordinates": {
+      "count": 2,
+      "pass": true
+    }
+  },
+  "critique_analysis": {
+    "pro_con_blocks": {
+      "count": 2,
+      "pass": true,
+      "required": 2
+    },
+    "tourist_traps": {
+      "count": 1,
+      "pass": true,
+      "required": 1
+    },
+    "reality_checks": {
+      "count": 0,
+      "pass": false
+    },
+    "negative_keywords": {
+      "count": 5,
+      "pass": true
+    }
+  },
+  "genius_loci_analysis": {
+    "dimensions_detected": [
+      "time_perception",
+      "light",
+      "class_visibility",
+      "tourist_sterilization"
+    ],
+    "dimension_count": 4,
+    "dimension_pass": true,
+    "missing_dimensions": [
+      "rhythm",
+      "social_tempo"
+    ]
+  },
+  "timelessness_analysis": {
+    "evergreen_keyword_count": 5,
+    "volatile_keyword_count": 7,
+    "evergreen_percentage": 41.66666666666667,
+    "evergreen_pass": false,
+    "dynamic_blocks_found": 0,
+    "dynamic_blocks_pass": false,
+    "forbidden_temporal_count": 0,
+    "forbidden_temporal_pass": true,
+    "has_update_date": false
+  },
+  "seo_analysis": {
+    "heading_hierarchy_valid": true,
+    "heading_violations": [],
+    "h1_count": 1,
+    "internal_links": 0,
+    "links_per_1000": 0.0,
+    "internal_links_pass": false,
+    "toc_present": false
+  },
+  "audit_score": {
+    "total_score": 6,
+    "verdict": "mandatory_revision",
+    "recommendation": "Rehber kabul edilemez seviyede. Kapsamlı revizyon gerekli.",
+    "word_count": 289,
+    "audit_date": "2026-02-19T22:45:43.813861"
+  }
+}

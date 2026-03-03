@@ -1,0 +1,221 @@
+{
+  "success": true,
+  "url": "test_content.txt",
+  "diagnosed_at": "2026-02-19T22:43:11.364730",
+  "page_info": {
+    "word_count": 51,
+    "content_type": "city_guide",
+    "poi_count": 2
+  },
+  "voice_analysis": {
+    "temporal_anchors": {
+      "count": 0,
+      "pass": false,
+      "required": 2
+    },
+    "kemal_notes": {
+      "count": 0,
+      "pass": false,
+      "required": 3
+    },
+    "plural_violations": {
+      "count": 0,
+      "pass": true
+    },
+    "first_person": {
+      "per_1000": 0.0,
+      "pass": false
+    },
+    "forbidden_words": {
+      "count": 0,
+      "pass": true
+    }
+  },
+  "authority_analysis": {
+    "sourced_claims": {
+      "count": 0,
+      "per_1000": 0.0,
+      "pass": false
+    },
+    "prices": {
+      "total": 1,
+      "with_source": 0,
+      "coverage_pct": 0.0,
+      "pass": false
+    },
+    "coordinates": {
+      "count": 0,
+      "pass": false
+    }
+  },
+  "critique_analysis": {
+    "pro_con_blocks": {
+      "count": 0,
+      "pass": false,
+      "required": 2
+    },
+    "tourist_traps": {
+      "count": 0,
+      "pass": false,
+      "required": 1
+    },
+    "reality_checks": {
+      "count": 0,
+      "pass": false
+    },
+    "negative_keywords": {
+      "count": 0,
+      "pass": false
+    }
+  },
+  "genius_loci_analysis": {
+    "dimensions_detected": [],
+    "dimension_count": 0,
+    "dimension_pass": false,
+    "missing_dimensions": [
+      "time_perception",
+      "light",
+      "rhythm",
+      "social_tempo",
+      "class_visibility",
+      "tourist_sterilization"
+    ]
+  },
+  "timelessness_analysis": {
+    "evergreen_keyword_count": 3,
+    "volatile_keyword_count": 1,
+    "evergreen_percentage": 75.0,
+    "evergreen_pass": false,
+    "dynamic_blocks_found": 0,
+    "dynamic_blocks_pass": false,
+    "forbidden_temporal_count": 0,
+    "forbidden_temporal_pass": true,
+    "has_update_date": false
+  },
+  "seo_analysis": {
+    "heading_hierarchy_valid": true,
+    "heading_violations": [],
+    "h1_count": 1,
+    "internal_links": 0,
+    "links_per_1000": 0.0,
+    "internal_links_pass": false,
+    "toc_present": false
+  },
+  "audit_score": {
+    "total_score": 5,
+    "verdict": "mandatory_revision",
+    "recommendation": "Rehber kabul edilemez seviyede. Kapsamlı revizyon gerekli.",
+    "criterion_scores": [
+      {
+        "id": "narrative_depth",
+        "score": 5,
+        "max_score": 10,
+        "weight": 15,
+        "weighted_score": 75,
+        "issues": [
+          "Genius Loci boyutları eksik: 0/6"
+        ]
+      },
+      {
+        "id": "authority_level",
+        "score": 5,
+        "max_score": 10,
+        "weight": 20,
+        "weighted_score": 100,
+        "issues": [
+          "Kaynaklı iddia yetersiz: 0.0/1000 kelime",
+          "Fiyat kaynak kapsama düşük: %0",
+          "Koordinat az: 0"
+        ]
+      },
+      {
+        "id": "personal_voice_balance",
+        "score": 5,
+        "max_score": 10,
+        "weight": 15,
+        "weighted_score": 75,
+        "issues": [
+          "Birinci tekil zamir az: 0.0/1000 kelime",
+          "Temporal anchor eksik: 0/2",
+          "Kemal'in Notu bloğu eksik: 0/3-6"
+        ]
+      },
+      {
+        "id": "information_reliability",
+        "score": 5,
+        "max_score": 10,
+        "weight": 20,
+        "weighted_score": 100,
+        "issues": [
+          "Kaynaklı iddia yetersiz"
+        ]
+      },
+      {
+        "id": "seo_structure_quality",
+        "score": 7,
+        "max_score": 10,
+        "weight": 10,
+        "weighted_score": 70,
+        "issues": [
+          "İç link yetersiz: 0.0/1000 kelime",
+          "İçindekiler tablosu yok"
+        ]
+      },
+      {
+        "id": "expectation_management",
+        "score": 5,
+        "max_score": 10,
+        "weight": 10,
+        "weighted_score": 50,
+        "issues": [
+          "Fiyat context az: 0/3",
+          "Kalabalık haritası zayıf: 0 referans",
+          "Instagram vs Gerçek kontrastı yok"
+        ]
+      },
+      {
+        "id": "critique_courage",
+        "score": 5,
+        "max_score": 10,
+        "weight": 5,
+        "weighted_score": 25,
+        "issues": [
+          "Pro-Con bloğu az: 0/2",
+          "Turist tuzağı uyarısı yok",
+          "Negatif anahtar kelime az: 0/3"
+        ]
+      },
+      {
+        "id": "timelessness_potential",
+        "score": 6,
+        "max_score": 10,
+        "weight": 5,
+        "weighted_score": 30,
+        "issues": [
+          "Evergreen içerik düşük: %75",
+          "Dynamic block az: 0/2"
+        ]
+      }
+    ],
+    "all_issues": [
+      "Genius Loci boyutları eksik: 0/6",
+      "Kaynaklı iddia yetersiz: 0.0/1000 kelime",
+      "Fiyat kaynak kapsama düşük: %0",
+      "Koordinat az: 0",
+      "Birinci tekil zamir az: 0.0/1000 kelime",
+      "Temporal anchor eksik: 0/2",
+      "Kemal'in Notu bloğu eksik: 0/3-6",
+      "Kaynaklı iddia yetersiz",
+      "İç link yetersiz: 0.0/1000 kelime",
+      "İçindekiler tablosu yok",
+      "Fiyat context az: 0/3",
+      "Kalabalık haritası zayıf: 0 referans",
+      "Instagram vs Gerçek kontrastı yok",
+      "Pro-Con bloğu az: 0/2",
+      "Turist tuzağı uyarısı yok",
+      "Negatif anahtar kelime az: 0/3",
+      "Evergreen içerik düşük: %75",
+      "Dynamic block az: 0/2"
+    ]
+  }
+}

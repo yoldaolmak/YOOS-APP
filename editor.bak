@@ -1,0 +1,3746 @@
+# =============================================================================
+# 🔥 CLAWDBOT EDITOR.PY  v7.6
+# Kaynak: Where.txt — "Nerede/Nasıl Gidilir" Post Düzenleme Talimatı
+# Çoklu AI Motor: Claude Sonnet 4 | OpenAI GPT-4o (4x key rotasyon)
+# =============================================================================
+
+AI_ENGINE = "claude"  # "claude" | "gpt" | "auto"
+
+def set_ai_engine(engine: str):
+    """
+    AI motorunu seç
+    
+    Args:
+        engine: "claude", "gpt", veya "auto" (otomatik fallback)
+    """
+    global AI_ENGINE
+    AI_ENGINE = engine.lower()
+    
+    engine_names = {
+        "claude": "🔵 Claude Sonnet 4",
+        "gpt": "🟢 GPT-4o (4x API Key)",
+        "auto": "🔄 Auto (Claude → GPT fallback)"
+    }
+    
+    print(f"   🤖 Engine: {engine_names.get(AI_ENGINE, AI_ENGINE)}")
+
+
+from claude import ask_claude
+from wp import update_post_complete, save_as_draft, get_post_categories, get_category_slug, get_category_path, delete_post_comments, update_yoast_meta
+import re, os, json
+from datetime import datetime
+
+# ─── YASAK LİSTE ──────────────────────────────────────────────────────────────
+BANNED_WORDS = [
+    # Orijinal yasak kelimeler
+    "muhteşem", "harika", "eşsiz", "büyülü", "nefes kesici",
+    "göz alıcı", "olağanüstü", "fantastik", "inanılmaz", "mükemmel",
+    "benzersiz", "görülmeye değer", "mutlaka", "kesinlikle", "kaçırmayın",
+    # GPT özel eklentiler (Sibenik analizinden)
+    "etkileyici", "misafirperver", "keyifli vakit", "zaman yolculuğu",
+    "mücevher", "kadim", "görkemli", "nefis", "benzersiz", "şaşırtıcı",
+    "tarihin izleri", "tarihi doku", "tarihe tanıklık",
+    "davet ediyorum", "kendi yolunu bulur",
+    # Gezi planı + kapanış GPT kalıpları (Sibenik tur 2)
+    "kaybolmanın keyfine", "kaybolmaya davet", "atmosferinde kaybol",
+    "tadını çıkarın", "huzur bulabilirsiniz", "unutmayın",
+    # Şirket adları + genel kalıplar (v7.8+)
+    "Metro Turizm", "Turkish Airlines", "dikkat çekiyor",
+]
+BANNED_PHRASES = [
+    r'kendi yolunu bulur\s*[–—-]',
+    r'\s[–—]\s',
+    r'kadar gösterişli değil ama',
+    r'kadar parlak değil ama',
+    r'kadar iddialı değil ama',
+    r'dar sokakları,?\s+renkli evleriyle',
+    r'açık hava müzesi',
+    r'binbir gece masallarından',
+    r'zaman yolculuğuna çıkar',
+    r'tarihin izlerini hissed',
+]
+
+# ─── ÜLKE BAYRAĞI ─────────────────────────────────────────────────────────────
+_FLAGS = {
+    'portekiz':'🇵🇹','fransa':'🇫🇷','italya':'🇮🇹','japonya':'🇯🇵',
+    'ispanya':'🇪🇸','hollanda':'🇳🇱','almanya':'🇩🇪','avusturya':'🇦🇹',
+    'cekya':'🇨🇿','macaristan':'🇭🇺','yunanistan':'🇬🇷','ingiltere':'🇬🇧',
+    'irlanda':'🇮🇪','abd':'🇺🇸','bae':'🇦🇪','avustralya':'🇦🇺',
+    'fas':'🇲🇦','vietnam':'🇻🇳','tayland':'🇹🇭','endonezya':'🇮🇩',
+    'misir':'🇪🇬','katar':'🇶🇦','zambiya':'🇿🇲','kenya':'🇰🇪',
+    'tanzanya':'🇹🇿','guney_afrika':'🇿🇦','etiyopya':'🇪🇹',
+    'tunus':'🇹🇳','cezayir':'🇩🇿','nijerya':'🇳🇬','brezilya':'🇧🇷',
+    'arjantin':'🇦🇷','kolombiya':'🇨🇴','peru':'🇵🇪','meksika':'🇲🇽',
+    'kuba':'🇨🇺','kanada':'🇨🇦','hindistan':'🇮🇳','cin':'🇨🇳',
+    'guney_kore':'🇰🇷','singapur':'🇸🇬','malezya':'🇲🇾','filipinler':'🇵🇭',
+    'kambocya':'🇰🇭','nepal':'🇳🇵','sri_lanka':'🇱🇰','iran':'🇮🇷',
+    'urdun':'🇯🇴','lubnan':'🇱🇧','suudi_arabistan':'🇸🇦','kuveyt':'🇰🇼',
+    'polonya':'🇵🇱','romanya':'🇷🇴','bulgaristan':'🇧🇬','sirbistan':'🇷🇸',
+    'hirvatistan':'🇭🇷','ukrayna':'🇺🇦','rusya':'🇷🇺','norvec':'🇳🇴',
+    'isvec':'🇸🇪','finlandiya':'🇫🇮','danimarka':'🇩🇰','isvicre':'🇨🇭',
+    'belcika':'🇧🇪',
+    # Şehir → ülke
+    'porto':'🇵🇹','lizbon':'🇵🇹','paris':'🇫🇷','lyon':'🇫🇷','nice':'🇫🇷',
+    'roma':'🇮🇹','milano':'🇮🇹','venedik':'🇮🇹','floransa':'🇮🇹',
+    'napoli':'🇮🇹','bari':'🇮🇹','sicilya':'🇮🇹',
+    'tokyo':'🇯🇵','kyoto':'🇯🇵','osaka':'🇯🇵',
+    'barcelona':'🇪🇸','madrid':'🇪🇸','sevilla':'🇪🇸',
+    'amsterdam':'🇳🇱','berlin':'🇩🇪','munih':'🇩🇪',
+    'viyana':'🇦🇹','prag':'🇨🇿','budapeste':'🇭🇺','atina':'🇬🇷',
+    'londra':'🇬🇧','dublin':'🇮🇪','dubai':'🇦🇪','sydney':'🇦🇺',
+    'marakes':'🇲🇦','kazablanka':'🇲🇦','fes':'🇲🇦',
+    'hanoi':'🇻🇳','bangkok':'🇹🇭','bali':'🇮🇩','kahire':'🇪🇬',
+    'doha':'🇶🇦','lusaka':'🇿🇲','nairobi':'🇰🇪',
+    'turkiye':'','istanbul':'','ankara':'','izmir':'','antalya':'',
+    'trabzon':'','bursa':'','konya':'','adana':'','gaziantep':'',
+}
+
+_TR_NORMALIZE = [
+    ('İ','i'),('I','i'),('Ğ','g'),('Ş','s'),('Ç','c'),('Ö','o'),('Ü','u'),
+    ('ğ','g'),('ş','s'),('ç','c'),('ö','o'),('ü','u'),('ı','i'),
+]
+
+# Türkçe ek kalıpları: 'nın, 'de, 'da, 'ta, 'te, 'e, 'a, 'ı, 'i, 'u, 'ü, 'ye, 'ya vb.
+_DEST_SUFFIX_RE = re.compile(r"['\u2019][a-züğışçöA-ZÜĞİŞÇÖ]{1,4}$")
+# Başlıkta destinasyonu kesen tetikleyici kelimeler
+_DEST_SPLIT_WORDS = [
+    'Nerede', 'Nasıl', 'Nasil', 'Gezilecek', 'Gezi Rehberi',
+    'Rehberi', 'Hakkında', 'Hakkinda',
+]
+
+def extract_dest(title: str) -> str:
+    """
+    Post başlığından destinasyon adını temizleyerek çıkar.
+
+    'Dubrovnik Nerede'       → 'Dubrovnik'
+    'Belem Gezilecek Yerler' → 'Belem'
+    "Dubrovnik'e Nasıl Gidilir" → 'Dubrovnik'
+    'Split Hakkında'         → 'Split'
+    '&#8217;' gibi HTML entity apostrof da temizlenir.
+    """
+    s = title.replace('&#8217;', "\u2019").replace('&#039;', "'")
+    for word in _DEST_SPLIT_WORDS:
+        idx = s.find(word)
+        if idx != -1:
+            s = s[:idx]
+    s = s.strip()
+    # Apostrof + Türkçe ek sonu: "Dubrovnik'e" → "Dubrovnik"
+    s = _DEST_SUFFIX_RE.sub('', s).strip()
+    return s
+
+
+def get_flag(dest: str) -> str:
+    key = dest.strip()
+    for a, b in _TR_NORMALIZE:
+        key = key.replace(a, b)
+    key = key.lower()
+    key = re.sub(r'[\s_]+', '_', key).strip('_')
+    return _FLAGS.get(key, '🌍')
+
+def is_where_post(title: str) -> bool:
+    t = title.lower()
+    return 'nerede' in t or 'nasil gidilir' in t or 'nasıl gidilir' in t
+
+
+# ─── AI ROUTER ────────────────────────────────────────────────────────────────
+def ask_ai(prompt, max_tokens=16000):
+    """
+    Akıllı AI motor seçimi - Claude veya GPT
+    
+    Args:
+        prompt: AI'ya gönderilecek prompt
+        max_tokens: Maksimum token sayısı
+    
+    Returns:
+        str: AI'ın yanıtı
+    """
+    global AI_ENGINE
+    
+    # AUTO mod: Claude dene, başarısızsa GPT
+    if AI_ENGINE == "auto":
+        try:
+            return ask_claude(prompt, max_tokens=max_tokens, model="claude-sonnet-4-20250514")
+        except Exception as e:
+            print(f"      ⚠️  Claude hatası: {str(e)[:50]}")
+            print(f"      🔄 GPT-4o'ya geçiliyor...")
+            from openai_engine import ask_gpt
+            return ask_gpt(prompt, max_tokens=max_tokens, model="gpt-4o")
+    
+    # GPT mod
+    elif AI_ENGINE == "gpt":
+        from openai_engine import ask_gpt
+        return ask_gpt(prompt, max_tokens=max_tokens, model="gpt-4o")
+    
+    # Claude mod (varsayılan)
+    else:
+        return ask_claude(prompt, max_tokens=max_tokens, model="claude-sonnet-4-20250514")
+
+def ask_claude_only(prompt, max_tokens=4000):
+    """
+    DAIMA Claude — Ses/kimlik korunan bölümler:
+    giriş 2 paragraf, kişisel bakış.
+    AUTO modda bile Claude override edilmez.
+    """
+    return ask_claude(prompt, max_tokens=max_tokens, model="claude-sonnet-4-20250514")
+
+def ask_gpt_only(prompt, max_tokens=4000):
+    """
+    DAIMA GPT-4o — Bilgi ağırlıklı, düşük maliyetli bölümler:
+    Nasıl Bir Yer, Nerede, Nasıl Gidilir, Gezi Planı, Kapanış.
+    AI_ENGINE ne olursa olsun GPT kullanır.
+    """
+    from openai_engine import ask_gpt
+    return ask_gpt(prompt, max_tokens=max_tokens, model="gpt-4o")
+
+def safe_gpt(prompt, original, max_tokens=4000, min_chars=None):
+    """safe_ai'in GPT-only versiyonu — WHERE mod bilgi bölümleri için."""
+    try:
+        result = ask_gpt_only(prompt, max_tokens=max_tokens)
+        result = clean_html(result)
+        result = fix_md_bold_italic(result)
+        if not result or len(result.strip()) < 80:
+            print("      ⚠️  GPT boş cevap → orijinal"); return original
+        if min_chars is not None and len(result) < min_chars:
+            print(f"      ⚠️  GPT kısa ({len(result)}<{min_chars}) → orijinal"); return original
+        return result
+    except Exception as e:
+        print(f"      ❌ GPT: {e} → orijinal"); return original
+
+def safe_ai(prompt, original, max_tokens=16000, min_ratio=0.70, min_chars=None):
+    try:
+        result = ask_ai(prompt, max_tokens=max_tokens)
+        result = clean_html(result)
+        result = fix_md_bold_italic(result)
+        if not result or len(result.strip()) < 80:
+            print("      ⚠️  Boş cevap → orijinal"); return original
+        if min_chars is not None:
+            if len(result) < min_chars:
+                print(f"      ⚠️  Kısa ({len(result)}<{min_chars}) → orijinal"); return original
+            return result
+        if len(result) < len(original) * min_ratio:
+            print(f"      ⚠️  Kısa (%{int(len(result)/len(original)*100)}) → orijinal"); return original
+        return result
+    except Exception as e:
+        print(f"      ❌ AI: {e} → orijinal"); return original
+
+
+# ─── HTML YARDIMCILAR ─────────────────────────────────────────────────────────
+
+def check_giris_kalip(html: str, dest: str) -> list[str]:
+    """
+    GPT çıktısında kalıp giriş tespit eder.
+    Sorun bulursa liste döner, temizse [] döner.
+    """
+    issues = []
+    check_str = html.lower()
+    kaliplar = [
+        ("herkes bir şey söyledi",  "Kalıp giriş: 'herkes bir şey söyledi'"),
+        ("ama eksik anlattılar",     "Kalıp giriş: 'eksik anlattılar'"),
+        ("beklediğim gibi değildi",  "Kalıp: 'beklediğim gibi değildi'"),
+        ("kendi yolunu bulur",       "Kalıp: 'kendi yolunu bulur'"),
+        ("—",                        "Tire '—' kullanımı"),
+        ("davet ediyorum",           "Influencer kapanış: 'davet ediyorum'"),
+        ("kaçırmayın",               "Hard imperative: 'kaçırmayın'"),
+        ("mutlaka görün",            "Hard imperative: 'mutlaka görün'"),
+        ("eksik anlattı",            "Kalıp varyantı: 'eksik anlattı'"),
+        ("haklıydılar",              "Kalıp varyantı: 'haklıydılar'"),
+        ("zaman yolculuğu",          "Kalıp: 'zaman yolculuğu'"),
+        ("kaybolmanın keyfine",      "Kalıp: 'kaybolmanın keyfine'"),
+        ("atmosferinde kaybol",      "Kalıp: 'atmosferinde kaybol'"),
+    ]
+    for pattern, label in kaliplar:
+        if pattern.lower() in check_str:
+            issues.append(label)
+    return issues
+
+def auto_fix_gpt_output(html: str) -> str:
+    """
+    GPT çıktısındaki bilinen sorunları otomatik düzelt:
+    - Tire '—' → boşlukla kaldır
+    - Markdown başlıklar → Gutenberg H2/H3
+    - Yasak kelimeleri sil
+    """
+    import re as _re
+    # 1. Tire — H3 basligindaki 'N. Ad — Tanim' formatini KORU
+    _h3_stash = {}
+    _h3_idx   = [0]
+    def _stash_h3(m):
+        key = f'\x00H3STASH{_h3_idx[0]}\x00'
+        _h3_stash[key] = m.group(0)
+        _h3_idx[0] += 1
+        return key
+    html = _re.sub(r'<h3[^>]*>.*?</h3>', _stash_h3, html,
+                   flags=_re.DOTALL | _re.IGNORECASE)
+    html = _re.sub(r'\s*[\u2014\u2013]\s*', ' ', html)  # metin ici tire temizle
+    for key, val in _h3_stash.items():
+        html = html.replace(key, val)  # H3'leri geri koy
+    # 2. Markdown H2 → Gutenberg
+    def _md_h2(m):
+        text = m.group(1).strip()
+        return (
+            '<!-- wp:separator -->\n'
+            '<hr class="wp-block-separator has-alpha-channel-opacity"/>\n'
+            '<!-- /wp:separator -->\n'
+            '<!-- wp:heading {"level":2} -->\n'
+            f'<h2 class="wp-block-heading"><strong>{text}</strong></h2>\n'
+            '<!-- /wp:heading -->'
+        )
+    def _md_h3(m):
+        text = m.group(1).strip()
+        return (
+            '<!-- wp:heading {"level":3} -->\n'
+            f'<h3 class="wp-block-heading"><strong>{text}</strong></h3>\n'
+            '<!-- /wp:heading -->'
+        )
+    html = _re.sub(r'^## (.+)$', _md_h2, html, flags=_re.MULTILINE)
+    html = _re.sub(r'^### (.+)$', _md_h3, html, flags=_re.MULTILINE)
+    html = _re.sub(r'^#### (.+)$', _md_h3, html, flags=_re.MULTILINE)
+    # 3. Markdown bold/italic → HTML (wrap_gutenberg bunu zaten yapıyor ama ekstra güvenlik)
+    html = _re.sub(r'\*\*(.+?)\*\*', r'<strong>\1</strong>', html)
+    html = _re.sub(r'\*(.+?)\*', r'<em>\1</em>', html)
+    # 4. Yasak kelimeler
+    for bw in BANNED_WORDS:
+        html = _re.sub(rf'\b{_re.escape(bw)}\b\s*', '', html, flags=_re.IGNORECASE)
+    # 5. <img> loading=lazy kaldır (<iframe>'e dokunma)
+    html = _re.sub(
+        r'(<img[^>]*?)[ ]+loading=["\']lazy["\']([ ]*[/]?>)',
+        r'\1\2', html, flags=_re.IGNORECASE
+    )
+    return html
+
+def clean_html(text: str) -> str:
+    text = re.sub(r'^```html\s*\n?', '', text, flags=re.MULTILINE)
+    text = re.sub(r'\n?```\s*$',     '', text, flags=re.MULTILINE)
+    text = text.replace('```html','').replace('```','')
+    return text.strip()
+
+def fix_md_bold_italic(text: str) -> str:
+    text = re.sub(r'\*\*\*(.*?)\*\*\*', r'<strong><em>\1</em></strong>', text)
+    text = re.sub(r'\*\*(.*?)\*\*',     r'<strong>\1</strong>', text)
+    text = re.sub(r'(?<!\*)\*(?!\*)(.*?)(?<!\*)\*', r'<em>\1</em>', text)
+    return text
+
+def strip_gutenberg(html: str) -> str:
+    return re.sub(r'<!--\s*/?wp:[^>]*-->', '', html).strip()
+
+def _close_unclosed_p(html: str) -> str:
+    """AI çıktısındaki kapanmamış <p> taglarını kapat"""
+    lines = html.split('\n')
+    result = []
+    for line in lines:
+        # <p> açılmış ama satır </p> ile bitmiyor ve satırda başka kapanış yok
+        if re.search(r'<p[^>]*>', line, re.I) and not re.search(r'</p>', line, re.I):
+            line = line.rstrip() + '</p>'
+        result.append(line)
+    return '\n'.join(result)
+
+def wrap_gutenberg(html: str) -> str:
+    """
+    Ham HTML → Gutenberg blokları.
+    Kritik düzeltmeler:
+    0. Mevcut <!-- wp:html -->...<!-- /wp:html --> blokları ÖNCE sakla
+       (rich maps box gibi nested div içerenler parçalanmaz)
+    1. Kalan <div> blokları stash → basit Maps div parçalanmaz
+    2. <h2>/<h3> sonrasındaki düz metin → ayrı wp:paragraph bloğu
+    3. Kapanmamış <p> tagları otomatik kapatılır
+    """
+    # ── ADIM 0: ÖNCE wp:html bloklarını sakla ────────────────────────────
+    # strip_gutenberg wp:html yorum taglarını siler — ondan ÖNCE stash edilmeli
+    # (rich maps box, FAQ schema gibi nested-div içeren bloklar korunur)
+    wph_stash: list[str] = []
+    def _stash_wph(m: re.Match) -> str:
+        inner = re.sub(r'<!--\s*/?wp:html\s*-->', '', m.group(0)).strip()
+        wph_stash.append(inner)
+        return f'\x00WPH{len(wph_stash)-1}\x00'
+    html = re.sub(
+        r'<!--\s*wp:html\s*-->.*?<!--\s*/wp:html\s*-->',
+        _stash_wph, html, flags=re.DOTALL
+    )
+
+    html = strip_gutenberg(html)      # Geri kalan wp: yorumları sil
+    html = _close_unclosed_p(html)
+
+    # Adım 1: Toplevel <div> bloklarını ayır (içlerinde iframe olabilir)
+    div_stash = []
+    def stash_div(m):
+        div_stash.append(m.group(0))
+        return f'\x00DIV{len(div_stash)-1}\x00'
+    html_nodiv = re.sub(r'<div[^>]*>.*?</div>', stash_div, html,
+                        flags=re.DOTALL|re.IGNORECASE)
+
+    # Adım 2: Normal elementleri tokenize et (div hariç)
+    # KRITIK: WPH placeholder sınırlarında da böl —
+    # aksi hâlde son <p>...\x00WPH0\x00 token'ı paragraf içine sıkışır
+    raw_tokens = re.split(
+        r'(?=<(?:p|h[1-6]|hr|ul|ol|figure|script)[^>]*>)',
+        html_nodiv
+    )
+    tokens = []
+    _wph_re = re.compile(r'(\x00WPH\d+\x00)')
+    for _rt in raw_tokens:
+        if '\x00WPH' in _rt:
+            # \x00WPHn\x00 sınırlarında böl, placeholder ayrı token
+            _parts = _wph_re.split(_rt)
+            tokens.extend(_p for _p in _parts if _p)
+        else:
+            tokens.append(_rt)
+
+    out = []
+    for tok in tokens:
+        tok = tok.strip()
+        if not tok: continue
+
+        # WPH placeholder → doğrudan çıkar, son restore adımı halleder
+        if _wph_re.fullmatch(tok):
+            out.append(tok); continue
+
+        # Zaten Gutenberg yorum bloğu → dokunma
+        if tok.startswith('<!--'):
+            out.append(tok); continue
+
+        # DIV placeholder → wp:html bloğu olarak geri koy
+        if '\x00DIV' in tok:
+            def _restore(m):
+                d = div_stash[int(m.group(1))]
+                return f'<!-- wp:html -->\n{d}\n<!-- /wp:html -->'
+            tok = re.sub(r'\x00DIV(\d+)\x00', _restore, tok)
+            out.append(tok); continue
+
+        # <h2> / <h3>: sadece tag → heading bloğu; sonraki metin → paragraf bloğu
+        hm = re.match(r'(<h([23])[^>]*>.*?</h\2>)(.*)', tok,
+                      re.IGNORECASE|re.DOTALL)
+        if hm:
+            lvl   = hm.group(2)
+            htag  = hm.group(1)
+            after = hm.group(3).strip()
+            if lvl == '2':
+                out.append('<!-- wp:separator -->\n'
+                            '<hr class="wp-block-separator has-alpha-channel-opacity"/>\n'
+                            '<!-- /wp:separator -->')
+            out.append(f'<!-- wp:heading {{"level":{lvl}}} -->\n{htag}\n<!-- /wp:heading -->')
+            if after:
+                for chunk in re.split(r'\n{2,}', after):
+                    chunk = chunk.strip()
+                    if not chunk: continue
+                    if re.match(r'<p[^>]*>', chunk, re.I):
+                        if not chunk.rstrip().endswith('</p>'): chunk += '</p>'
+                        out.append(f'<!-- wp:paragraph -->\n{chunk}\n<!-- /wp:paragraph -->')
+                    elif re.match(r'<(?:ul|ol)[^>]*>', chunk, re.I):
+                        tag = 'list {"ordered":true}' if chunk.startswith('<ol') else 'list'
+                        out.append(f'<!-- wp:{tag} -->\n{chunk}\n<!-- /wp:list -->')
+                    elif re.match(r'<h3[^>]*>', chunk, re.I):
+                        out.append(f'<!-- wp:heading {{"level":3}} -->\n{chunk}\n<!-- /wp:heading -->')
+                    else:
+                        out.append(f'<!-- wp:paragraph -->\n<p>{chunk}</p>\n<!-- /wp:paragraph -->')
+            continue
+
+        # <p>
+        if re.match(r'^<p[^>]*>', tok, re.I):
+            if not tok.rstrip().endswith('</p>'): tok += '</p>'
+            out.append(f'<!-- wp:paragraph -->\n{tok}\n<!-- /wp:paragraph -->')
+        elif re.match(r'^<hr[^>]*/?>$', tok.split('\n')[0], re.I):
+            out.append('<!-- wp:separator -->\n'
+                       '<hr class="wp-block-separator has-alpha-channel-opacity"/>\n'
+                       '<!-- /wp:separator -->')
+        elif re.match(r'^<ul[^>]*>', tok, re.I):
+            out.append(f'<!-- wp:list -->\n{tok}\n<!-- /wp:list -->')
+        elif re.match(r'^<ol[^>]*>', tok, re.I):
+            out.append(f'<!-- wp:list {{"ordered":true}} -->\n{tok}\n<!-- /wp:list -->')
+        elif re.match(r'^<figure[^>]*>', tok, re.I):
+            out.append(f'<!-- wp:image -->\n{tok}\n<!-- /wp:image -->')
+        elif re.match(r'^<(?:script|iframe)', tok, re.I):
+            out.append(f'<!-- wp:html -->\n{tok}\n<!-- /wp:html -->')
+        else:
+            # Orphan düz metin / inline element → wp:paragraph'a sar
+            stripped = tok.strip()
+            if not stripped:
+                continue
+            if re.match(r'^<(?:script|style|div|table|thead|tbody|tr|td|th)', stripped, re.I):
+                out.append(stripped)
+            else:
+                if not re.match(r'^<p[\s>]', stripped, re.I):
+                    stripped = '<p>' + stripped + '</p>'
+                out.append('<!-- wp:paragraph -->\n' + stripped + '\n<!-- /wp:paragraph -->')
+
+    result = '\n\n'.join(out)
+
+    # ADIM SON: WPH restore — saf HTML'i wp:html bloğu olarak geri koy
+    if wph_stash:
+        def _restore_wph(m: re.Match) -> str:
+            return f'<!-- wp:html -->\n{wph_stash[int(m.group(1))]}\n<!-- /wp:html -->'
+        result = re.sub(r'\x00WPH(\d+)\x00', _restore_wph, result)
+
+    # SON KONTROL: Gutenberg etiketi olmayan orphan <p> taglarını sar
+    def _fix_orphan_p(m):
+        pos   = m.start()
+        chunk = result[max(0, pos - 80) : pos]
+        if '<!-- wp:paragraph -->' in chunk:
+            return m.group(0)  # zaten sarılı
+        return f'<!-- wp:paragraph -->\n{m.group(0)}\n<!-- /wp:paragraph -->'
+    result = re.sub(r'<p>(?:(?!<p>).)+?</p>', _fix_orphan_p, result, flags=re.DOTALL)
+
+    return result
+
+
+def validate_gutenberg(html: str) -> str:
+    """G4: Gutenberg bloğu dışında kalan bare <p> taglarını sar."""
+    result = re.sub(
+        r'(?<!<!-- wp:paragraph -->\n)(<p\b[^>]*>(?:(?!<p\b).)+?</p>)',
+        lambda m: (
+            m.group(0) if
+            html[:m.start()].rstrip().endswith('<!-- wp:paragraph -->')
+            else f'<!-- wp:paragraph -->\n{m.group(0)}\n<!-- /wp:paragraph -->'
+        ),
+        html, flags=re.DOTALL
+    )
+    return result
+
+def enforce_h_bold(html: str) -> str:
+    def wrap(m):
+        o, inner, c = m.group(1), m.group(2), m.group(3)
+        if '<strong>' in inner: return m.group(0)
+        return f'{o}<strong>{inner}</strong>{c}'
+    return re.sub(r'(<h[23][^>]*>)(.*?)(</h[23]>)', wrap, html,
+                  flags=re.IGNORECASE|re.DOTALL)
+
+def check_banned(text: str) -> list:
+    issues = []
+    # BANNED_WORDS kontrolu (tam metin)
+    for w in BANNED_WORDS:
+        if w.lower() in text.lower(): issues.append(f"KEL:{w}")
+    # BANNED_PHRASES: H3 basliklarini cikart (tire H3'te serbest)
+    text_no_h3 = re.sub(r'<h3[^>]*>.*?</h3>', '', text, flags=re.DOTALL | re.IGNORECASE)
+    for p in BANNED_PHRASES:
+        if re.search(p, text_no_h3, re.IGNORECASE): issues.append(f"CUMLE:{p}")
+    return issues
+
+# ─── AYIRAÇ (Where.txt §4 & §10: SADECE H2 ÖNCESİNDE) ───────────────────────
+SEP = '<hr class="wp-block-separator has-alpha-channel-opacity"/>'
+
+def title_case_tr(text: str) -> str:
+    """Türkçe title case: her kelimenin baş harfi büyük (i→İ, ı→I vb.)."""
+    TR_UPPER = {'i': 'İ', 'ı': 'I', 'ş': 'Ş', 'ç': 'Ç', 'ğ': 'Ğ', 'ö': 'Ö', 'ü': 'Ü'}
+    words = text.split(' ')
+    out = []
+    for w in words:
+        if not w:
+            out.append(w)
+            continue
+        first = TR_UPPER.get(w[0], w[0].upper())
+        out.append(first + w[1:])
+    return ' '.join(out)
+
+
+def capitalize_h_titles(html: str) -> str:
+    """
+    H2 ve H3 başlıklarındaki metni Türkçe title case'e çevir.
+    HTML tag'leri, emoji ve özel karakterleri korur.
+    """
+    def _cap_inner(inner: str) -> str:
+        # HTML parçalara böl: tag vs metin
+        parts = re.split(r'(<[^>]+>)', inner)
+        result = []
+        for p in parts:
+            if p.startswith('<'):
+                result.append(p)
+            elif p.strip():
+                result.append(title_case_tr(p))
+            else:
+                result.append(p)
+        return ''.join(result)
+
+    def _cap_heading(m):
+        return m.group(1) + _cap_inner(m.group(2)) + m.group(3)
+
+    return re.sub(
+        r'(<h[23][^>]*>)(.*?)(</h[23]>)',
+        _cap_heading,
+        html,
+        flags=re.DOTALL | re.IGNORECASE
+    )
+
+
+def dedup_separators(html: str) -> str:
+    """Ard arda gelen birden fazla separator bloğunu teke indir."""
+    SEP_PAT = (
+        r'(?:'
+        r'<!-- wp:separator -->\s*'
+        r'<hr[^/]*/>\s*'
+        r'<!-- /wp:separator -->\s*'
+        r')+'
+    )
+    SEP_ONE = (
+        '<!-- wp:separator -->\n'
+        '<hr class="wp-block-separator has-alpha-channel-opacity"/>\n'
+        '<!-- /wp:separator -->\n'
+    )
+    return re.sub(SEP_PAT, SEP_ONE, html, flags=re.IGNORECASE | re.DOTALL)
+
+# Gezi Rehberi başlıklarında yasak emojiler (sadece bayrak kalacak)
+_H2_BANNED_EMOJIS = re.compile(
+    r'[\U00002702-\U000027B0\U0001F300-\U0001F9FF'   # geniş emoji aralığı
+    r'\U00002600-\U000026FF]',                          # semboller
+    re.UNICODE
+)
+
+def _strip_h2_emojis(text: str, keep: str = "") -> str:
+    """H2 başlık metnindeki emojileri temizle; keep değerini koru."""
+    cleaned = _H2_BANNED_EMOJIS.sub("", text).strip()
+    return cleaned
+
+def add_flag_to_first_h2(html: str, flag: str) -> str:
+    """
+    İlk H2 başlığını standardize et:
+    1. Mevcut emojileri temizle (✈️ 🌍 🏛️ vb.)
+    2. Sonuna bayrak ekle (yoksa)
+    """
+    if not html:
+        return html
+    first = re.search(r'(<h2[^>]*>)(.*?)(</h2>)', html, re.DOTALL | re.IGNORECASE)
+    if not first:
+        return html
+    inner = first.group(2)
+    # <strong> içeriğini temizle
+    if '</strong>' in inner:
+        inner = re.sub(
+            r'(<strong>)(.*?)(</strong>)',
+            lambda m: m.group(1) + _strip_h2_emojis(m.group(2)) + m.group(3),
+            inner, flags=re.DOTALL
+        )
+    else:
+        inner = _strip_h2_emojis(inner)
+    # Bayrak ekle (yoksa)
+    if flag and flag not in inner:
+        if '</strong>' in inner:
+            inner = inner.rstrip().replace('</strong>', f' {flag}</strong>', 1)
+        else:
+            inner = inner.rstrip() + ' ' + flag
+    replacement = first.group(1) + inner + first.group(3)
+    return html[:first.start()] + replacement + html[first.end():]
+
+
+def enforce_h2_emojis(html: str, flag: str) -> str:
+    """
+    WHERE mod çıktısında H2 emoji kurallarını deterministik uygula.
+    AI ne yaparsa yapsın bu fonksiyon sonucu garanti eder.
+
+    Kurallar:
+      "Gezi Rehberi"   → sonunda bayrak emoji (flag)
+      "Nasıl Bir Yer"  → sonunda bayrak emoji (flag)
+      "Gezilecek Yerler" → sonunda 📌
+    """
+    def _h2_ensure_suffix(html_in: str, keyword: str, suffix: str) -> str:
+        """keyword içeren her H2'nin sonuna suffix ekler (yoksa)."""
+        def replacer(m):
+            open_tag, inner, close_tag = m.group(1), m.group(2), m.group(3)
+            # <strong> içeriğini bul
+            sm = re.search(r'(<strong>)(.*?)(</strong>)', inner, re.DOTALL)
+            if sm:
+                text_in_strong = sm.group(2)
+                # Mevcut suffix yoksa ekle
+                stripped = text_in_strong.rstrip()
+                if not stripped.endswith(suffix):
+                    # Trailing emojileri temizle, sonra suffix ekle
+                    stripped_clean = re.sub(
+                        r'[\U00002600-\U000027BF\U0001F300-\U0001FAFF\s]+$',
+                        '', stripped
+                    ).rstrip()
+                    new_strong_inner = stripped_clean + ' ' + suffix
+                    inner_new = (inner[:sm.start(2)]
+                                 + new_strong_inner
+                                 + inner[sm.end(2):])
+                    return open_tag + inner_new + close_tag
+                return m.group(0)
+            else:
+                # <strong> yok — düz metin
+                stripped = inner.rstrip()
+                if not stripped.endswith(suffix):
+                    stripped_clean = re.sub(
+                        r'[\U00002600-\U000027BF\U0001F300-\U0001FAFF\s]+$',
+                        '', stripped
+                    ).rstrip()
+                    return open_tag + stripped_clean + ' ' + suffix + close_tag
+                return m.group(0)
+
+        pattern = re.compile(
+            r'(<h2[^>]*>)((?:(?!</h2>).)*?' + re.escape(keyword) + r'(?:(?!</h2>).)*?)(</h2>)',
+            re.DOTALL | re.IGNORECASE
+        )
+        return pattern.sub(replacer, html_in)
+
+    if flag:
+        html = _h2_ensure_suffix(html, "Gezi Rehberi",  flag)
+        html = _h2_ensure_suffix(html, "Nasıl Bir Yer", flag)
+    html = _h2_ensure_suffix(html, "Gezilecek Yerler", "📌")
+    return html
+
+# ─── GÖRSEL WRAPPER (Where.txt §2 & §8) ──────────────────────────────────────
+def img_wrapper(src: str, alt: str) -> str:
+    """Standart resim sarıcı. loading='lazy' YOK - LiteSpeed halleder."""
+    return (
+        '<div style="text-align: center; width: 100%; margin: 30px auto;">\n'
+        f'    <img src="{src}" alt="{alt}" '
+        'style="display: inline-block; max-width: 100%; height: auto;" />\n'
+        '</div>'
+    )
+
+def distribute_images(images: list[dict], sections: list[str], start: int = 2) -> list[str]:
+    """
+    3. fotoğraftan itibaren kalan fotoğrafları bölümler arasına dağıt.
+    start: kaçıncı indexten başlanacak (0-tabanlı, default=2 yani 3. foto)
+    Her 2 bölümde bir bir fotoğraf ekler.
+    """
+    remaining = images[start:]
+    if not remaining:
+        return sections
+    result = list(sections)
+    inserted = 0
+    img_idx = 0
+    i = 2  # ilk 2 section (giriş + 1.foto) sonrasından başla
+    while img_idx < len(remaining) and i < len(result) - 2:
+        # Her 2 bölümde bir fotoğraf (schema/faq gibi son bölümlere ekleme)
+        if inserted % 1 == 0 and result[i].strip():
+            img = remaining[img_idx]
+            result.insert(i + 1, img_wrapper(img["src"], img["alt"] or "Fotoğraf"))
+            img_idx += 1
+            i += 3  # yerleştirilen + 2 section atla
+        else:
+            i += 2
+        inserted += 1
+    return result
+
+def extract_all_images(html: str) -> list[dict]:
+    """
+    HTML'den tüm resimleri çıkar → [{'src':..., 'alt':...}, ...]
+    figure, img, wp:html içindekileri yakala
+    """
+    images = []
+    # figure > img
+    for fig in re.finditer(r'<figure[^>]*>(.*?)</figure>', html,
+                           re.DOTALL|re.IGNORECASE):
+        img_m = re.search(r'<img[^>]*>', fig.group(1), re.IGNORECASE)
+        if img_m:
+            src = re.search(r'src="([^"]*)"', img_m.group(0))
+            alt = re.search(r'alt="([^"]*)"', img_m.group(0))
+            if src:
+                images.append({
+                    'src': src.group(1),
+                    'alt': alt.group(1) if alt else '',
+                    'original': fig.group(0)
+                })
+    # loose img (figure dışında)
+    for img_m in re.finditer(r'<img[^>]*>', html, re.IGNORECASE):
+        src = re.search(r'src="([^"]*)"', img_m.group(0))
+        alt = re.search(r'alt="([^"]*)"', img_m.group(0))
+        if src:
+            already = any(i['src'] == src.group(1) for i in images)
+            if not already:
+                images.append({
+                    'src': src.group(1),
+                    'alt': alt.group(1) if alt else '',
+                    'original': img_m.group(0)
+                })
+    return images
+
+def remove_all_images(html: str) -> str:
+    """Tüm resim elementlerini içerikten kaldır (yeniden yerleştirme için)"""
+    html = re.sub(r'<figure[^>]*>.*?</figure>', '', html,
+                  flags=re.DOTALL|re.IGNORECASE)
+    html = re.sub(r'<!--\s*wp:html\s*-->.*?<!--\s*/wp:html\s*-->', '', html,
+                  flags=re.DOTALL)
+    html = re.sub(r'<img[^>]*>', '', html, flags=re.IGNORECASE)
+    return html
+
+
+
+# ─── GOOGLE MAPS BOX — ZENGİN ŞABLON ────────────────────────────────────────
+# Marakeş şablonu baz alınmış; Claude JSON üretir → build_rich_maps_box HTML
+
+
+# ── JSON PROMPT ──────────────────────────────────────────────────────────────
+_MAPS_DATA_PROMPT = """\
+SEN: Yoldaolmak.com seyahat blog yazarı Kemal Kaya'sın.
+GÖREV: {dest} için HAR Google Harita kutusu verilerini JSON olarak üret.
+
+ÇIKTI FORMAT — sadece geçerli JSON, başka hiçbir şey:
+
+{{{{
+  "flag_emoji": "🇲🇦",
+  "color_primary": "#a52a2a",
+  "color_bg": "#fff4e6",
+  "color_bg2": "#fef3e0",
+  "color_border": "#fad1b0",
+  "color_text": "#5a3e1b",
+  "color_text_dark": "#8b4513",
+  "subtitle": "Kırmızı Şehir, Fas",
+  "rakım": "466m",
+  "nüfus": "1.0M",
+  "ülke": "Fas",
+  "ülke_emoji": "🏜️",
+  "badge_left_emoji": "🎪",
+  "badge_left_name": "Cema el-Fna",
+  "badge_left_detail": "Dünyanın En Büyük Meydanı",
+  "badge_right_emoji": "🕌",
+  "badge_right_name": "Kutubiye Camii",
+  "badge_right_detail": "69m Minare",
+  "special_label": "UNESCO",
+  "special_text": "Marakeş Medinesi (1985)",
+  "landmark_pills": [
+    {{{{
+      "emoji": "🎪",
+      "name": "Cema el-Fna"
+    }}}},
+    {{{{
+      "emoji": "🕌",
+      "name": "Kutubiye"
+    }}}},
+    {{{{
+      "emoji": "🏛️",
+      "name": "Bahia Sarayı"
+    }}}},
+    {{{{
+      "emoji": "🌴",
+      "name": "Majorelle"
+    }}}},
+    {{{{
+      "emoji": "🏘️",
+      "name": "Medine"
+    }}}}
+  ],
+  "maps_query": "Marakeş,Fas",
+  "directions_url": "https://www.google.com/maps/dir//Marakeş,+Fas",
+  "search_url": "https://www.google.com/maps/search/?api=1&query=Marakeş,+Fas",
+  "footer_geo": "Tensift Nehri • Atlas Dağları etekleri",
+  "coordinates": "31.6346°K, 7.9999°B",
+  "timezone": "GMT+1",
+  "airport": "Marakeş Havalimanı (RAK)",
+  "about_title": "🏆 Marakeş Hakkında Kısa Bilgiler",
+  "about_text": "...",
+  "about_tags": ["Cema el-Fna", "Kutubiye", "Majorelle", "Medine", "Riad"],
+  "place_cards": [
+    {{{{
+      "emoji": "🎪",
+      "title": "Cema el-Fna & Medine",
+      "items": [
+        "<strong>Cema el-Fna Meydanı</strong> - Gündüz portakal suyu, akşam yemek tezgâhları",
+        "<strong>Souk</strong> - Deri, bakır, halı, baharat",
+        "<strong>Rahba Kedima</strong> - Baharat pazarı",
+        "<strong>Derb Chtouka</strong> - Halıcılar çarşısı",
+        "<strong>Kriyane</strong> - Berberi pazarı"
+      ]
+    }}}},
+    {{{{
+      "emoji": "🕌",
+      "title": "Tarihi Yapılar",
+      "items": [
+        "<strong>Kutubiye Camii</strong> - 12. yy, 69m minare",
+        "<strong>Bahia Sarayı</strong> - 19. yy, 150 oda",
+        "<strong>Ben Youssef Medresesi</strong> - 14. yy",
+        "<strong>El Badi Sarayı</strong> - 16. yy kalıntıları",
+        "<strong>Saadiler Türbesi</strong> - Altın varaklı"
+      ]
+    }}}},
+    {{{{
+      "emoji": "🌴",
+      "title": "Bahçeler & Modern",
+      "items": [
+        "<strong>Majorelle Bahçesi</strong> - Yves Saint Laurent",
+        "<strong>Menara Bahçeleri</strong> - Atlas manzarası",
+        "<strong>La Mamounia</strong> - Lüks otel, 20 dönüm",
+        "<strong>Anima Bahçesi</strong> - Sanat bahçesi",
+        "<strong>Atlas Dağları</strong> - Günübirlik turlar"
+      ]
+    }}}}
+  ],
+  "food_cards": [
+    {{{{
+      "emoji": "🍲",
+      "title": "{dest}'te Ne Yenir?",
+      "items": [
+        "<strong>Tajine</strong> - Kuzu/tavuk, sebze",
+        "<strong>Couscous</strong> - Geleneksel",
+        "<strong>Pastilla</strong> - Tatlı börek",
+        "<strong>Mechoui</strong> - Kuzu çevirme",
+        "<strong>Harira</strong> - Geleneksel çorba"
+      ]
+    }}}},
+    {{{{
+      "emoji": "🥘",
+      "title": "Sokak Lezzetleri",
+      "items": [
+        "<strong>Gece pazarı</strong> - 100+ tezgâh",
+        "<strong>Mechoui tezgâhları</strong> - Ekmek arası",
+        "<strong>Bissara</strong> - Bakla çorbası",
+        "<strong>Chebakia</strong> - Susamlı tatlı",
+        "<strong>Nane çayı</strong> - Şehrin simgesi"
+      ]
+    }}}},
+    {{{{
+      "emoji": "ℹ️",
+      "title": "Pratik Bilgiler",
+      "items": [
+        "<strong>Vize:</strong> Türk vatandaşları vizesiz",
+        "<strong>Para:</strong> Yerel para birimi",
+        "<strong>Ulaşım:</strong> Havalimanı servis/taksi",
+        "<strong>Dil:</strong> Yerel dil + Fransızca",
+        "<strong>En iyi zaman:</strong> İlkbahar-Sonbahar"
+      ]
+    }}}}
+  ],
+  "tip_card": {{{{
+    "emoji": "🏡",
+    "title": "Konaklama Önerisi",
+    "text": "Şehrin kalbindeki geleneksel konaklamalar önerilir. Fiyatlar değişken olup rezervasyon önerilir.",
+    "tags": ["🏡 Tarihi Bölge", "🏨 Otel"]
+  }}}},
+  "extra_card_title": "💰 {dest} Çarşısında Pazarlık Rehberi",
+  "extra_card_items": [
+    "Satıcı fiyatının %30-40'ına inin",
+    "Çay içmeden pazarlık olmaz",
+    "Almayacaksanız fiyat sormayın",
+    "Birkaç dükkâna sorun, karşılaştırın"
+  ],
+  "extra_card_footer": "Tezgâhçı size 'Habibi' diye seslenirse pazarlık başlamıştır."
+}}}}
+
+KURALLAR:
+1. Tüm bilgiler {dest} için GERÇEK ve DOĞRU olacak
+2. color_primary: şehrin/ülkenin kültürel rengiyle uyumlu (örn. Bratislava için #1a237e)
+3. about_text: 3-4 cümle, <strong> ile önemli yerler vurgulu
+4. place_cards: {dest}'teki GERÇEK yer isimleri — "Tarihi Merkez","Müzeler" GENERİK YASAK
+5. food_cards: SPESIFIK yemek isimleri — "Yerel yemekler" GENERİK YASAK
+6. tip_card: {dest}'e özgü konaklama/deneyim ipucu
+7. Yasak: "—" tire, "muhteşem", "harika", "eşsiz"
+8. airport: IATA kodu + havalimanı adı (en yakın varsa belirt)
+9. rakım + nüfus: GERÇEK değer — "?" YASAK, tahmini bile olsa sayı yaz (~35.000 gibi)
+10. timezone: Gerçek UTC offset — "UTC+?" YASAK (örn. "CET (UTC+1)")
+11. coordinates: Gerçek koordinat — tahmini bile sayı yaz
+
+JSON DIŞINDA HİÇBİR ŞEY YAZMA.
+```json veya ``` KOD BLOKU EKLEME — çıplak JSON ver.
+Açıklama, not, giriş cümlesi YAZMA.
+YANIT: İlk karakter {{ olmalı, son karakter }} olmalı.
+"""
+
+
+def _parse_maps_json(raw: str, dest: str) -> dict:
+    """AI çıktısından JSON parse et, hata durumunda fallback döndür."""
+    # Kod bloğu temizle
+    raw = re.sub(r'^```[a-z]*\s*\n?', '', raw.strip(), flags=re.MULTILINE)
+    raw = re.sub(r'\n?```\s*$', '', raw.strip(), flags=re.MULTILINE)
+    raw = raw.strip()
+
+    try:
+        return json.loads(raw)
+    except json.JSONDecodeError:
+        # Kısmi parse dene
+        m = re.search(r'\{.*\}', raw, re.DOTALL)
+        if m:
+            try:
+                return json.loads(m.group(0))
+            except Exception:
+                pass
+    # Fallback veri
+    q = dest.replace(' ', '+')
+    return {
+        "flag_emoji": "📍",
+        "color_primary": "#1565c0",
+        "color_bg": "#e3f2fd",
+        "color_bg2": "#e8f5e9",
+        "color_border": "#bbdefb",
+        "color_text": "#0d47a1",
+        "color_text_dark": "#1565c0",
+        "subtitle": f"{dest} Şehir Merkezi",
+        "rakım": "?",
+        "nüfus": "?",
+        "ülke": dest,
+        "ülke_emoji": "🌍",
+        "badge_left_emoji": "🏛️",
+        "badge_left_name": f"{dest} Merkezi",
+        "badge_left_detail": "Şehir Meydanı",
+        "badge_right_emoji": "✈️",
+        "badge_right_name": "Havalimanı",
+        "badge_right_detail": "Uluslararası",
+        "special_label": "📍",
+        "special_text": f"{dest} Rehberi",
+        "landmark_pills": [
+            {"emoji":"🏛️","name":"Tarihi Merkez"},
+            {"emoji":"🎭","name":"Kültür"},
+            {"emoji":"🍽️","name":"Gastronomi"},
+            {"emoji":"🛍️","name":"Alışveriş"},
+            {"emoji":"🌿","name":"Doğa"},
+        ],
+        "maps_query": q,
+        "directions_url": f"https://www.google.com/maps/dir//{q}",
+        "search_url": f"https://www.google.com/maps/search/?api=1&query={q}",
+        "footer_geo": f"{dest} • Şehir Merkezi",
+        "coordinates": "—",
+        "timezone": "UTC+?",
+        "airport": f"{dest} Havalimanı",
+        "about_title": f"🏆 {dest} Hakkında Kısa Bilgiler",
+        "about_text": f"<strong>{dest}</strong>, kendine özgü tarihi ve kültürüyle öne çıkan bir şehirdir. Güncel bilgi için yerel kaynakları kontrol ediniz.",
+        "about_tags": [dest],
+        "place_cards": [
+            {"emoji":"🏛️","title":"Tarihi Yerler","items":["<strong>Tarihi Merkez</strong>","<strong>Müzeler</strong>","<strong>Saraylar</strong>","<strong>Camiler/Kiliseler</strong>","<strong>Kaleler</strong>"]},
+            {"emoji":"🌿","title":"Doğa & Parklar","items":["<strong>Parklar</strong>","<strong>Nehir kenarı</strong>","<strong>Çevre doğa</strong>","<strong>Piknik alanları</strong>","<strong>Yürüyüş rotaları</strong>"]},
+            {"emoji":"🍽️","title":"Yeme-İçme","items":["<strong>Yerel mutfak</strong>","<strong>Pazarlar</strong>","<strong>Kafeler</strong>","<strong>Restoranlar</strong>","<strong>Sokak yemeği</strong>"]},
+        ],
+        "food_cards": [
+            {"emoji":"🍲","title":f"{dest}'te Ne Yenir?","items":["<strong>Yerel yemekler</strong>","<strong>Geleneksel lezzetler</strong>","<strong>Mevsimlik ürünler</strong>","<strong>Tatlılar</strong>","<strong>İçecekler</strong>"]},
+            {"emoji":"🥘","title":"Sokak Lezzetleri","items":["<strong>Pazar yemekleri</strong>","<strong>Yerel atıştırmalıklar</strong>","<strong>Kahvaltı seçenekleri</strong>","<strong>Akşam lezzetleri</strong>","<strong>Tatlı dükkanları</strong>"]},
+            {"emoji":"ℹ️","title":"Pratik Bilgiler","items":["<strong>Vize:</strong> Pasaport kontrolü","<strong>Para:</strong> Yerel para birimi","<strong>Ulaşım:</strong> Toplu taşıma","<strong>Dil:</strong> Yerel dil","<strong>En iyi zaman:</strong> İlkbahar"]},
+        ],
+        "tip_card": {"emoji":"🏨","title":"Konaklama Önerisi","text":"Şehir merkezinde konaklama önerilir. Erken rezervasyon yapmanız tavsiye edilir.","tags":["🏨 Merkez","🏡 Airbnb"]},
+        "extra_card_title": f"💡 {dest} Seyahat İpuçları",
+        "extra_card_items": ["Erken rezervasyon yapın","Yerel para birimi getirin","Ulaşımı önceden planlayın","Mevsime uygun giyinin"],
+        "extra_card_footer": f"{dest} seyahatiniz için önceden araştırma yapmanız önerilir.",
+    }
+
+
+def _build_pill(data: dict) -> str:
+    """Landmark pill HTML"""
+    emoji = data.get('emoji', '📍')
+    name  = data.get('name', '')
+    return (
+        f'<span style="display: flex; align-items: center; gap: 5px;">'
+        f'{emoji} <strong>{name}</strong></span>'
+    )
+
+
+def _build_place_card(card: dict, cp: str, cb: str, border: str, ct: str, ctd: str) -> str:
+    """3'lü kart HTML"""
+    items_html = ''.join(f'<li>{item}</li>\n' for item in card.get('items', []))
+    return f'''  <div style="background: white; border-radius: 12px; padding: 18px; box-shadow: 0 4px 12px rgba(0,0,0,0.06); border: 1px solid {border};">
+    <div style="display: flex; align-items: center; gap: 12px; margin-bottom: 15px;">
+      <div style="background: {cp}; width: 40px; height: 40px; border-radius: 50%; display: flex; align-items: center; justify-content: center; color: white; font-size: 20px;">{card.get("emoji","🏛️")}</div>
+      <h4 style="margin: 0; color: {ctd}; font-size: 16px;">{card.get("title","")}</h4>
+    </div>
+    <ul style="margin: 0; padding-left: 20px; color: #5a5a5a; line-height: 1.8;">
+{items_html}    </ul>
+  </div>'''
+
+
+def build_rich_maps_box(dest: str, data: dict) -> str:
+    """
+    Zengin harita kutusunu HTML olarak üret.
+    data: _parse_maps_json() çıktısı
+    Returns: <!-- wp:html --> bloğu
+    """
+    cp   = data.get('color_primary',  '#1565c0')
+    cb   = data.get('color_bg',       '#e3f2fd')
+    cb2  = data.get('color_bg2',      '#e8f5e9')
+    brd  = data.get('color_border',   '#bbdefb')
+    ct   = data.get('color_text',     '#0d47a1')
+    ctd  = data.get('color_text_dark','#1565c0')
+
+    flag         = data.get('flag_emoji', '📍')
+    subtitle     = data.get('subtitle', dest)
+    rakım        = data.get('rakım', '?')
+    nufus        = data.get('nüfus', '?')
+    ulke         = data.get('ülke', dest)
+    ulke_emoji   = data.get('ülke_emoji', '🌍')
+
+    bl_emoji     = data.get('badge_left_emoji', '🏛️')
+    bl_name      = data.get('badge_left_name', '')
+    bl_detail    = data.get('badge_left_detail', '')
+    br_emoji     = data.get('badge_right_emoji', '✈️')
+    br_name      = data.get('badge_right_name', '')
+    br_detail    = data.get('badge_right_detail', '')
+
+    sp_label     = data.get('special_label', '')
+    sp_text      = data.get('special_text', '')
+    pills        = data.get('landmark_pills', [])
+    maps_q       = data.get('maps_query', dest.replace(' ', '+'))
+    dir_url      = data.get('directions_url', f'https://www.google.com/maps/dir//{maps_q}')
+    srch_url     = data.get('search_url', f'https://www.google.com/maps/search/?api=1&query={maps_q}')
+
+    footer_geo   = data.get('footer_geo', dest)
+    coords       = data.get('coordinates', '')  # noqa — footer'da artık kullanılmıyor
+    tz           = data.get('timezone', '')
+    airport      = data.get('airport', '')
+
+    about_title  = data.get('about_title', f'🏆 {dest} Hakkında Kısa Bilgiler')
+    about_text   = data.get('about_text', '')
+    about_tags   = data.get('about_tags', [])
+
+    place_cards  = data.get('place_cards', [])
+    food_cards   = data.get('food_cards', [])
+
+    tip          = data.get('tip_card', {})
+    tip_emoji    = tip.get('emoji', '🏨')
+    tip_title    = tip.get('title', 'Konaklama')
+    tip_text     = tip.get('text', '')
+    tip_tags     = tip.get('tags', [])
+
+    ex_title     = data.get('extra_card_title', '💡 İpuçları')
+    ex_items     = data.get('extra_card_items', [])
+    ex_footer    = data.get('extra_card_footer', '')
+
+    # ── Landmark pills ─────────────────────────────────────────────────────
+    pills_html = '\n        '.join(_build_pill(p) for p in pills[:5])
+
+    # ── About tags ──────────────────────────────────────────────────────────
+    tags_html = ' '.join(
+        f'<span style="background: #fff; padding: 5px 12px; border-radius: 20px; '
+        f'font-size: 12px; color: {cp}; border: 1px solid {cp};">{t}</span>'
+        for t in about_tags
+    )
+
+    # ── Tip tags ────────────────────────────────────────────────────────────
+    tip_tags_html = ' '.join(
+        f'<span style="background: {cp}; color: white; padding: 5px 12px; '
+        f'border-radius: 20px; font-size: 12px;">{t}</span>'
+        for t in tip_tags
+    )
+
+    # ── Place cards ─────────────────────────────────────────────────────────
+    place_cards_html = '\n'.join(
+        _build_place_card(c, cp, cb, brd, ct, ctd)
+        for c in place_cards[:3]
+    )
+
+    # ── Food cards ──────────────────────────────────────────────────────────
+    food_cards_html = '\n'.join(
+        _build_place_card(c, cp, cb, brd, ct, ctd)
+        for c in food_cards[:3]
+    )
+
+    # ── Extra card items ────────────────────────────────────────────────────
+    ex_items_html = '\n    '.join(
+        f'<div style="padding: 12px; background: #fff9f0; border-radius: 8px;">'
+        f'<strong style="color: {ctd};">• </strong>{item}</div>'
+        for item in ex_items[:4]
+    )
+
+    html = f'''\
+<!-- wp:html -->
+<div style="margin: 2em 0; border: 1px solid #e0e0e0; overflow: hidden; box-shadow: 0 8px 24px rgba(0,0,0,0.12); position: relative; background: #fff;">
+
+  <iframe
+    src="https://www.google.com/maps?q={maps_q}&hl=tr&z=13&output=embed"
+    width="100%"
+    height="450"
+    style="border:0; display: block;"
+    loading="lazy"
+    referrerpolicy="no-referrer-when-downgrade"
+    title="{dest} Haritası"
+    aria-label="{dest} şehir merkezi interaktif haritası">
+  </iframe>
+
+  <div style="position: absolute; top: 15px; left: 15px; background: {cp}dd; padding: 10px 20px; border-radius: 40px; box-shadow: 0 4px 15px rgba(0,0,0,0.2); font-size: 15px; font-weight: 600; color: white; backdrop-filter: blur(8px); display: flex; align-items: center; gap: 8px; border: 1px solid rgba(255,215,0,0.4);">
+    <span style="font-size: 20px;">{flag}</span>
+    <span>{dest} | <span style="color: #ffd700; font-weight: 400;">{subtitle}</span></span>
+  </div>
+
+  <div style="position: absolute; top: 15px; right: 15px; background: rgba(255,255,255,0.95); padding: 10px 18px; border-radius: 40px; box-shadow: 0 4px 15px rgba(0,0,0,0.12); font-size: 14px; color: #2c3e50; backdrop-filter: blur(8px); display: flex; flex-wrap: wrap; gap: 12px; align-items: center; border: 1px solid rgba(0,0,0,0.05);">
+    <span style="display: flex; align-items: center; gap: 5px;"><span style="font-size: 16px;">📍</span> <strong>{rakım}</strong> rakım</span>
+    <span style="display: flex; align-items: center; gap: 5px;"><span style="font-size: 16px;">👥</span> <strong>{nufus}</strong> nüfus</span>
+    <span style="display: flex; align-items: center; gap: 5px;"><span style="font-size: 16px;">{ulke_emoji}</span> <strong>{ulke}</strong></span>
+  </div>
+
+  <div style="position: absolute; bottom: 15px; left: 15px; background: rgba(255,255,255,0.9); padding: 8px 16px; border-radius: 40px; box-shadow: 0 4px 12px rgba(0,0,0,0.15); font-size: 13px; font-weight: 600; color: {cp}; backdrop-filter: blur(8px); display: flex; align-items: center; gap: 6px; border: 1px solid {cp}33;">
+    <span style="font-size: 18px;">{bl_emoji}</span>
+    <span>{bl_name} | <strong>{bl_detail}</strong></span>
+  </div>
+
+  <div style="position: absolute; bottom: 15px; right: 15px; background: rgba(255,255,255,0.9); padding: 8px 16px; border-radius: 40px; box-shadow: 0 4px 12px rgba(0,0,0,0.15); font-size: 13px; font-weight: 600; color: #0b4f6c; backdrop-filter: blur(8px); display: flex; align-items: center; gap: 6px; border: 1px solid rgba(11,79,108,0.2);">
+    <span style="font-size: 18px;">{br_emoji}</span>
+    <span>{br_name} | <strong>{br_detail}</strong></span>
+  </div>
+
+  <div style="background: linear-gradient(145deg, {cb} 0%, {cb2} 100%); padding: 18px 25px; border-top: 3px solid {cp}; display: flex; flex-wrap: wrap; justify-content: space-between; align-items: center; gap: 15px;">
+    <div style="display: flex; flex-wrap: wrap; gap: 20px; align-items: center;">
+      <div style="display: flex; align-items: center; gap: 8px;">
+        <span style="background: {cp}; color: white; padding: 6px 14px; border-radius: 30px; font-size: 13px; font-weight: 600; letter-spacing: 0.5px;">{sp_label}</span>
+        <span style="color: {ct}; font-size: 14px;"><strong>{sp_text}</strong></span>
+      </div>
+      <div style="display: flex; align-items: center; gap: 15px; font-size: 14px; color: {ct}; flex-wrap: wrap;">
+        {pills_html}
+      </div>
+    </div>
+    <div style="display: flex; gap: 10px;">
+      <a href="{dir_url}" target="_blank" rel="noopener noreferrer" style="background: #1a73e8; color: white; padding: 8px 18px; border-radius: 30px; text-decoration: none; font-size: 13px; font-weight: 500; display: flex; align-items: center; gap: 5px; box-shadow: 0 2px 8px rgba(26,115,232,0.3);">
+        🧭 Yol Tarifi
+      </a>
+      <a href="{srch_url}" target="_blank" rel="noopener noreferrer" style="background: #f5f5f5; color: #3c4043; padding: 8px 18px; border-radius: 30px; text-decoration: none; font-size: 13px; font-weight: 500; display: flex; align-items: center; gap: 5px; border: 1px solid #ddd;">
+        🔍 Detaylı Ara
+      </a>
+    </div>
+  </div>
+
+  <div style="padding: 10px 20px; background: #fff; font-size: 12px; color: #9e9e9e; border-top: 1px solid #f0f0f0; display: flex; flex-wrap: wrap; justify-content: space-between; align-items: center;">
+    <span>⚡ {footer_geo}</span>
+    <span style="display: flex; gap: 15px; flex-wrap: wrap;">
+      <span>🕒 {tz}</span>
+      <span>✈️ {airport}</span>
+    </span>
+  </div>
+</div>
+
+<div style="margin-top: 20px; padding: 20px; background: linear-gradient(135deg, {cb} 0%, {cb2} 100%); border-left: 4px solid {cp}; font-size: 14px; color: #3c3c3c; display: flex; flex-wrap: wrap; gap: 20px; align-items: center; box-shadow: 0 4px 12px rgba(0,0,0,0.08);">
+  <div style="flex: 0 0 60px; text-align: center;">
+    <span style="font-size: 42px;">{flag}</span>
+  </div>
+  <div style="flex: 1;">
+    <p style="margin: 0 0 8px 0; font-weight: bold; color: {cp}; font-size: 16px;">{about_title}</p>
+    <p style="margin: 0; color: #5a5a5a; line-height: 1.6;">{about_text}</p>
+  </div>
+  <div style="display: flex; gap: 10px; flex-wrap: wrap;">
+    {tags_html}
+  </div>
+</div>
+
+<div style="margin-top: 20px; display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 20px;">
+{place_cards_html}
+</div>
+
+<div style="margin-top: 20px; display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 20px;">
+{food_cards_html}
+</div>
+
+<div style="margin-top: 20px; padding: 18px; background: white; border: 1px solid {brd}; box-shadow: 0 4px 12px rgba(0,0,0,0.04); display: flex; flex-wrap: wrap; gap: 20px; align-items: center;">
+  <div style="flex: 0 0 60px; text-align: center;">
+    <span style="font-size: 32px;">{tip_emoji}</span>
+  </div>
+  <div style="flex: 1;">
+    <p style="margin: 0 0 5px 0; font-weight: bold; color: {cp}; font-size: 15px;">{tip_title}</p>
+    <p style="margin: 0; color: #666; font-size: 13px; line-height: 1.6;">{tip_text}</p>
+  </div>
+  <div style="display: flex; gap: 10px; flex-wrap: wrap;">
+    {tip_tags_html}
+  </div>
+</div>
+
+<div style="margin-top: 20px; padding: 18px; background: {cb}; border: 1px solid {brd}; box-shadow: 0 4px 12px rgba(0,0,0,0.04);">
+  <div style="display: flex; align-items: center; gap: 12px; margin-bottom: 15px;">
+    <p style="margin: 0; font-weight: bold; color: {cp}; font-size: 16px;">{ex_title}</p>
+  </div>
+  <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 15px;">
+    {ex_items_html}
+  </div>
+  <p style="margin: 15px 0 0 0; font-size: 13px; color: #5a5a5a; font-style: italic;">
+    💡 {ex_footer}
+  </p>
+</div>
+
+<style>
+  @media (max-width: 768px) {{
+    div[style*="position: absolute"] {{
+      position: relative !important;
+      top: 0 !important; left: 0 !important; right: 0 !important;
+      margin: 10px !important; width: auto !important;
+    }}
+    iframe {{ height: 300px !important; }}
+    div[style*="grid-template-columns"] {{ grid-template-columns: 1fr !important; }}
+  }}
+</style>
+<!-- /wp:html -->'''
+
+    return html
+
+
+def _validate_maps_data(data: dict) -> bool:
+    """Kritik alanlar dolu mu kontrol et. Boş fallback değerler varsa False döner."""
+    if data.get('subtitle', '').endswith('Şehir Merkezi') and data.get('rakım') == '?':
+        return False  # Fallback veri gelmiş, retry gerekli
+    if not data.get('about_text', '').strip():
+        return False
+    if not data.get('place_cards'):
+        return False
+    return True
+
+
+def _build_hotel_box(dest: str, cp: str, cb: str, brd: str) -> str:
+    """
+    GPT ile otel tavsiye bölümü üret.
+    Booking.com affiliate linkleri: aid=385885, nofollow, yeni sekme, ↗
+    """
+    dest_url = dest.lower().replace(' ', '-').replace('ş','s').replace('ı','i').replace('ğ','g').replace('ü','u').replace('ö','o').replace('ç','c')
+    booking_base = f"https://www.booking.com/searchresults.tr.html?ss={dest.replace(' ', '+')}&aid=385885"
+
+    prompt = (
+        f"GÖREV: {dest} için nerede kalınır otel tavsiyesi — 3 bölge, her bölgede 2 otel\n\n"
+        f"ÇIKTI: Yalnızca JSON, başka hiçbir şey yazma:\n"
+        f'{{"regions": [\n'
+        f'  {{"name": "Bölge Adı (Türkçe)", "emoji": "📍", "hotels": [\n'
+        f'    {{"name": "Otel Adı", "desc": "3-5 kelime özellik"}},\n'
+        f'    {{"name": "Otel Adı", "desc": "3-5 kelime özellik"}}\n'
+        f'  ]}},\n'
+        f'  ... (3 bölge toplam)\n'
+        f']}}\n\n'
+        f"KURALLAR:\n"
+        f"- Gerçek otel isimleri ver (uydurma)\n"
+        f"- Bölgeler: Tarihi merkez / Sahil veya Merkez / Bütçe dostu\n"
+        f"- desc: Somut özellik (örn: 'Karl Köprüsü\'ne 5 dk', 'havalimanına yakın', 'hostel tarzı')\n"
+        f"- YASAK: muhteşem, harika, mükemmel"
+    )
+
+    regions = []
+    try:
+        raw = ask_gpt_only(prompt, max_tokens=600)
+        raw = re.sub(r'```(?:json)?\s*', '', raw).replace('```', '').strip()
+        m = re.search(r'\{.*\}', raw, re.DOTALL)
+        if m:
+            data = json.loads(m.group(0))
+            regions = data.get('regions', [])
+    except Exception as e:
+        print(f"      ⚠️  Otel verisi alınamadı: {e}")
+
+    # Fallback: bölge isimleri GPT'siz
+    if not regions:
+        regions = [
+            {"name": "Tarihi Merkez", "emoji": "🏛️", "hotels": [
+                {"name": f"{dest} Palace Hotel", "desc": "merkezi konum, tarihi bina"},
+                {"name": f"Grand Hotel {dest}", "desc": "şehir merkezi, yürüme mesafesi"},
+            ]},
+            {"name": "Şehir Merkezi", "emoji": "🏙️", "hotels": [
+                {"name": f"{dest} City Hotel", "desc": "modern, iş bölgesi"},
+                {"name": f"Hotel Central {dest}", "desc": "toplu taşımaya yakın"},
+            ]},
+            {"name": "Bütçe Dostu", "emoji": "💰", "hotels": [
+                {"name": f"{dest} Hostel & Rooms", "desc": "uygun fiyat, genç gezginler"},
+                {"name": f"Budget Inn {dest}", "desc": "temiz, basit, merkezi"},
+            ]},
+        ]
+
+    # Bölge HTML'leri
+    regions_html = ""
+    for region in regions[:3]:
+        bolge_url = region['name'].lower().replace(' ', '-')
+        hotels_html = ""
+        for hotel in region.get('hotels', [])[:2]:
+            hotel_url = hotel['name'].lower().replace(' ', '-')
+            link = (f"https://www.booking.com/searchresults.tr.html"
+                    f"?ss={dest.replace(' ', '+')}&aid=385885&label={dest_url}-{bolge_url}")
+            hotels_html += (
+                f'    <li style="padding: 10px 0; border-bottom: 1px solid {brd}; list-style: none;">'
+                f'<strong style="color: #1a1a1a;">{hotel["name"]}</strong>'
+                f' <span style="color: #666; font-size: 13px;">— {hotel["desc"]}</span><br>'
+                f'<a href="{link}" target="_blank" rel="nofollow noopener noreferrer" '
+                f'style="font-size: 13px; color: {cp}; text-decoration: none; font-weight: 500;">'
+                f'booking.com\'da fiyatları gör ↗</a>'
+                f'</li>\n'
+            )
+        regions_html += (
+            f'  <div style="margin-bottom: 18px;">\n'
+            f'    <h4 style="margin: 0 0 10px; color: {cp}; font-size: 15px;">'
+            f'{region.get("emoji","📍")} {region["name"]}</h4>\n'
+            f'    <ul style="margin: 0; padding: 0;">\n{hotels_html}    </ul>\n'
+            f'  </div>\n'
+        )
+
+    booking_all = f"{booking_base}&label={dest_url}-genel"
+
+    return (
+        f'\n<div style="margin-top: 24px; padding: 22px 24px; background: #f9f9f9; '
+        f'border-top: 3px solid {cp}; border-radius: 0 0 8px 8px;">\n'
+        f'  <h3 style="margin: 0 0 18px; color: {cp}; font-size: 17px; font-weight: 700;">'
+        f'🏨 {dest} Nerede Kalınır?</h3>\n'
+        f'{regions_html}'
+        f'  <p style="margin: 12px 0 0; font-size: 13px; color: #888;">\n'
+        f'    💡 Fiyatlar sezona göre değişir. Güncel fiyatlar için '
+        f'<a href="{booking_all}" target="_blank" rel="nofollow noopener noreferrer" '
+        f'style="color: {cp}; font-weight: 500;">Booking.com ↗</a>'
+        f'\n  </p>\n'
+        f'</div>'
+    )
+
+
+def get_rich_maps_box(dest: str) -> str:
+    """
+    GPT'den {dest} için harita verisi alır, zengin interaktif HTML kutusu döndürür.
+    Boş/hatalı veri → retry → basit iframe fallback.
+    Maps box sonuna otel tavsiye bölümü eklenir.
+    """
+    prompt = _MAPS_DATA_PROMPT.format(dest=dest)
+    data = None
+
+    # İlk deneme
+    try:
+        raw  = ask_ai(prompt, max_tokens=3000)
+        data = _parse_maps_json(raw, dest)
+        if not _validate_maps_data(data):
+            print(f"      ⚠️  Maps verisi eksik — retry yapılıyor...")
+            data = None
+    except Exception as e:
+        print(f"      ⚠️  Maps ilk deneme hatası: {e}")
+
+    # Retry
+    if data is None:
+        try:
+            raw  = ask_gpt_only(prompt, max_tokens=3000)
+            data = _parse_maps_json(raw, dest)
+            if not _validate_maps_data(data):
+                print(f"      ⚠️  Retry sonrası da eksik — fallback kullanılıyor")
+                data = None
+        except Exception as e:
+            print(f"      ⚠️  Maps retry hatası: {e}")
+
+    if data is not None:
+        cp  = data.get('color_primary', '#1565c0')
+        cb  = data.get('color_bg',      '#e3f2fd')
+        brd = data.get('color_border',  '#bbdefb')
+        box = build_rich_maps_box(dest, data)
+        # Otel bölümünü <!-- /wp:html --> öncesine ekle
+        hotel_html = _build_hotel_box(dest, cp, cb, brd)
+        box = box.replace('\n<!-- /wp:html -->', hotel_html + '\n<!-- /wp:html -->')
+        print(f"      🗺️  Zengin harita + otel tavsiyesi üretildi ({len(box):,} char)")
+        return box
+
+    # Nihai fallback: basit iframe + otel
+    print(f"      ⚠️  Basit iframe fallback kullanılıyor")
+    q   = dest.replace(' ', '+')
+    cp  = '#1565c0'
+    cb  = '#e3f2fd'
+    brd = '#bbdefb'
+    hotel_html = _build_hotel_box(dest, cp, cb, brd)
+    return (
+        f'<!-- wp:html -->\n'
+        f'<div style="margin: 2em 0; border: 1px solid #e0e0e0; overflow: hidden; '
+        f'box-shadow: 0 4px 12px rgba(0,0,0,0.08); background: #fff;">\n'
+        f'  <iframe\n'
+        f'    src="https://www.google.com/maps?q={q}&output=embed&hl=tr"\n'
+        f'    style="width: 100%; height: 350px; border: 0; display: block;"\n'
+        f'    loading="lazy"\n'
+        f'    referrerpolicy="no-referrer-when-downgrade"\n'
+        f'    title="{dest} Haritası">\n'
+        f'  </iframe>\n'
+        f'  <p style="text-align: center; padding: 12px; font-size: 14px; color: #555; margin: 0;">\n'
+        f'    📍 {dest} • Google Haritalar\'da konum\n'
+        f'  </p>\n'
+        f'{hotel_html}\n'
+        f'</div>\n'
+        f'<!-- /wp:html -->'
+    )
+
+
+
+# ─── UÇAK BİLETİ (Where.txt §9) ──────────────────────────────────────────────
+def build_flight_links(dest: str) -> str:
+    return (
+        f'<h3 class="wp-block-heading">'
+        f'<strong><em>✈️ {dest} Ucuz Uçak Bileti Bulma</em></strong></h3>\n'
+        '<ul>\n'
+        '<li>✈️ <a href="https://yoldaolmak.com/ucuz-ucak-bileti-nasil-alinir"'
+        ' target="_blank" rel="noopener"><em>Ucuz Uçak Bileti Nasıl Alınır</em></a></li>\n'
+        '<li>✈️ <a href="https://yoldaolmak.com/ucak-bileti-kampanyalari-nasil-bulunur"'
+        ' target="_blank" rel="noopener"><em>Uçak Bileti Kampanyaları Nasıl Bulunur</em></a></li>\n'
+        '<li>✈️ <a href="https://yoldaolmak.com/ucakta-en-iyi-koltuk-hangisi"'
+        ' target="_blank" rel="noopener"><em>Uçakta En İyi Koltuk Hangisi</em></a></li>\n'
+        '<li>✈️ <a href="https://yoldaolmak.com/en-ucuz-ucak-bileti-ne-zaman-alinir"'
+        ' target="_blank" rel="noopener"><em>En Ucuz Uçak Bileti Ne Zaman Alınır</em></a></li>\n'
+        '<li>✈️ <a href="https://yoldaolmak.com/en-ucuz-bilet-sunan-havayolu-firmalari"'
+        ' target="_blank" rel="noopener"><em>En Ucuz Bilet Sunan Havayolu Firmaları</em></a></li>\n'
+        '</ul>'
+    )
+
+
+# ─── STANDALONE SCHEMA + FAQ EKLEME MODÜLÜ ───────────────────────────────────
+def add_schema_faq_to_post(post_id: int, mode: str = 'auto') -> bool:
+    """
+    Verilen POST ID'ye Schema + FAQ bloğu ekle (post sonuna).
+    
+    mode:
+        'auto'  → Post içeriğinden mod tespit et (H2 başlıklarına göre)
+        'where' → WHERE mod soru seti
+        'guide' → GUIDE mod soru seti
+    
+    Returns:
+        True → başarılı
+        False → hata
+    """
+    from wp import get_post
+    try:
+        # Post al
+        post = get_post(post_id)
+        if not post:
+            print(f"❌ Post ID {post_id} bulunamadı")
+            return False
+        
+        title   = post['title']['rendered']
+        content = post['content']['rendered']
+        dest    = extract_dest(title)
+        flag    = get_flag(dest)
+        today   = datetime.now().strftime('%Y-%m-%d')
+        
+        print(f"\n📋 SCHEMA + FAQ EKLEME: {dest} {flag}")
+        print(f"   🆔 Post ID: {post_id}")
+        
+        # Mod tespiti
+        if mode == 'auto':
+            # H2 başlıklarına göre mod belirle
+            if 'Gezilecek Yerler' in content and 'Yeme İçme' in content and 'Konaklama' in content:
+                mode = 'guide'
+                print(f"   🤖 Mod: GUIDE (otomatik tespit)")
+            elif 'Nasıl Bir Yer' in content or 'Nasıl Gidilir' in content:
+                mode = 'where'
+                print(f"   🤖 Mod: WHERE (otomatik tespit)")
+            else:
+                mode = 'where'  # Varsayılan
+                print(f"   🤖 Mod: WHERE (varsayılan)")
+        else:
+            print(f"   🤖 Mod: {mode.upper()} (manuel)")
+        
+        # Yoast meta (varsa kullan, yoksa oluştur)
+        if mode == 'guide':
+            yoast_title, yoast_desc = build_yoast_meta_guide(dest)
+        else:
+            yoast_title, yoast_desc = build_yoast_meta(dest)
+        
+        # Schema + FAQ oluştur
+        print(f"   ❓ FAQ + Schema oluşturuluyor...")
+        faq_schema_html = build_faq_schema(dest, mode, yoast_title, yoast_desc, today)
+        
+        # Post sonuna ekle (eğer zaten varsa ekleme)
+        if 'yoa-faq-schema' in content:
+            print(f"   ⚠️  Post zaten FAQ + Schema içeriyor, güncelleniyor...")
+            # Eski schema'yı sil, yenisini ekle
+            import re
+            content = re.sub(
+                r'<!-- wp:html -->\s*<div class="yoa-faq-schema".*?</div>\s*<!-- /wp:html -->',
+                '',
+                content,
+                flags=re.DOTALL
+            )
+        
+        # Sonuna ekle
+        new_content = content.strip() + "\n\n" + faq_schema_html
+        
+        # WordPress'e yaz
+        print(f"   📤 Post güncelleniyor...")
+        update_post_complete(
+            post_id,
+            title,
+            new_content,
+            close_comments=False,
+            update_date=False,
+        )
+        print(f"   ✅ Schema + FAQ eklendi ({len(faq_schema_html)} karakter)")
+        return True
+        
+    except Exception as e:
+        print(f"   ❌ Hata: {e}")
+        import traceback
+        traceback.print_exc()
+        return False
+
+
+# ─── SCHEMA + FAQ (faq-schema-prompt.txt) ────────────────────────────────────
+# Soru setleri mod bazlı; AI cevap üretir; Article + FAQPage; mavi tema.
+
+_FAQ_QUESTIONS = {
+    'where': [
+        # WHERE modda H2 başlıkları: Nasıl Bir Yer / Nerede / Nasıl Gidilir / Gezi Planı
+        # SEO odaklı, ulaşım ve konum ağırlıklı
+        ("✈️", "{dest}'a nasıl gidilir, hangi havayolları uçuyor?"),
+        ("🗺️", "{dest} nerede, hangi ülkede ve bölgede?"),
+        ("🏙️", "{dest} nasıl bir yer, karakteri nedir?"),
+        ("🚌", "{dest} havalimanından şehir merkezine nasıl gidilir?"),
+        ("📅", "{dest} için kaç gün yeterli, ne zaman gidilmeli?"),
+        ("💰", "{dest} pahalı mı, günlük bütçe ne kadar?"),
+        ("🛂", "{dest} vize istiyor mu, Türk pasaportu geçerli mi?"),
+    ],
+    'guide': [
+        # GUIDE modda H2 başlıkları: Gezi Rehberi / Gezilecek Yerler / Yeme İçme / Konaklama / Alışveriş / Pratik Bilgiler
+        # SEO odaklı, destinasyon bilgisi ve gezi içeriği ağırlıklı
+        ("📍", "{dest}'de mutlaka görülmesi gereken yerler hangileri?"),
+        ("🍽️", "{dest}'de ne yenir, yerel mutfak nasıl?"),
+        ("🏨", "{dest}'de nerede kalınmalı, en iyi bölgeler neresi?"),
+        ("🛍️", "{dest}'den ne alınır, alışveriş önerileri neler?"),
+        ("📅", "{dest}'e ne zaman gidilmeli, en iyi mevsim hangisi?"),
+        ("🏛️", "{dest} neden önemli, tarihi ve kültürel önemi nedir?"),
+        ("🛂", "{dest} vize istiyor mu?"),  # Türkiye'de elenir
+    ],
+}
+
+_FAQ_ANSWER_RULES = """
+FAQ CEVAP KURALLARI:
+- 1-2 cümle, maksimum 250 karakter
+- Bilgilendirici, samimi, net
+- Sadece bilgi, şiirsel anlatım yok
+→ bkz. DIL_KURALLARI (yasak kelimeler, bold)
+
+CEVAP ŞABLONLARı:
+"NEREDE": "{dest}, {ülke}'nin {bölge} bölgesinde, {coğrafya} kıyısında yer alır."
+"NASIL GİDİLİR": "Türkiye'den {havayolu} ile {direkt/aktarmalı} uçuşlar var. Uçuş süresi yaklaşık <strong>X saat</strong>."
+"KAÇ GÜN": "Ana noktalar için <strong>X-Y gün</strong> yeterli. Çevre eklenirse <strong>Z gün</strong> ayırmalısınız."
+"NE ZAMAN": "En ideal dönem <strong>Ay-Ay</strong> arası. Kış/yaz aylarında {hava} yaşanabilir."
+"VİZE": "Evet/Hayır, {vize durumu}. {süreç}"
+"""
+
+def _strip_html(text: str) -> str:
+    """Schema cevaplarından HTML taglarını temizle"""
+    return re.sub(r'<[^>]+>', '', text).strip()
+
+def generate_faq_pairs(dest: str, mode: str) -> list[tuple[str, str]]:
+    """
+    WHERE ve GUIDE için ayrı soru seti. Türkiye filtresi burada uygulanır.
+    Returns: [(emoji+soru, cevap), ...]
+    """
+    # Mode'a göre soru seti seç, bilinmeyen mod → where
+    raw_list = _FAQ_QUESTIONS.get(mode, _FAQ_QUESTIONS['where'])
+
+    # Türkiye filtresi
+    _is_tr = (get_flag(dest) == '')
+    if _is_tr:
+        raw_list = [
+            (emoji, q) for emoji, q in raw_list
+            if not any(kw in q.lower() for kw in ['vize', 'saat farkı', 'pasaport'])
+        ]
+        if not any('ünlü' in q.lower() or 'meşhur' in q.lower() or 'önemli' in q.lower()
+                   for _, q in raw_list):
+            raw_list = list(raw_list) + [("🏛️", "{dest} neden ünlü, öne çıkan özellikleri neler?")]
+
+    questions  = [(emoji, q.replace('{dest}', dest)) for emoji, q in raw_list]
+    q_json = "[" + ", ".join(f'"{q}"' for _, q in questions) + "]"
+
+    prompt = (
+        f"SEN: Yoldaolmak.com seyahat blog yazarısın.\n"
+        f"GÖREV: {dest} için aşağıdaki {len(questions)} soruya kısa, bilgilendirici cevaplar yaz.\n\n"
+        f"KURALLAR:\n"
+        f"- Her cevap 1-2 cümle, maksimum 220 karakter\n"
+        f"- Rakamlar, süreler, mevsimler için <strong>tag</strong> kullan\n"
+        f"- Samimi, net, yalnızca bilgi\n\n"
+        f"SORULAR: {q_json}\n\n"
+        f"CIKTI: Yalnizca JSON array, baska HİÇBİR SEY YAZMA:\n"
+        f'[{{"s": "soru metni", "c": "cevap metni"}}, ...]\n'
+    )
+
+    raw = ask_gpt_only(prompt, max_tokens=1200)
+    # NOT: clean_html KULLANMA — JSON içindeki <strong> taglarını siler
+    raw = raw.strip()
+
+    # ── Parse: JSON dene ─────────────────────────────────────────────────
+    pairs = []
+    try:
+        raw_clean = re.sub(r'```(?:json)?\s*', '', raw).replace('```', '').strip()
+        m = re.search(r'(\[.*\])', raw_clean, re.DOTALL)
+        if m:
+            data = json.loads(m.group(1))
+            for idx, item in enumerate(data):
+                q_text = item.get('s') or item.get('soru') or item.get('question') or ''
+                a_text = item.get('c') or item.get('cevap') or item.get('answer') or ''
+                q_text = q_text.strip()
+                a_text = a_text.strip()
+                if q_text and a_text:
+                    if len(_strip_html(a_text)) > 260:
+                        a_text = a_text[:250] + '...'
+                    # Emoji'yi soru başına ekle (eğer yoksa)
+                    emoji = questions[idx][0] if idx < len(questions) else "❓"
+                    if not q_text.startswith(emoji):
+                        q_text = f"{emoji} {q_text}"
+                    pairs.append((q_text, a_text))
+    except Exception as _je:
+        print(f"      ⚠️  FAQ JSON parse hatası: {_je}")
+
+    # ── Fallback: statik ─────────────────────────────────────────────────
+    if not pairs:
+        print("      ⚠️  FAQ parse edilemedi — statik fallback")
+        for emoji, q in questions:
+            pairs.append((f"{emoji} {q}", f"{dest} hakkında güncel bilgi için resmi turizm kaynaklarını inceleyin."))
+
+    print(f"      ✅ FAQ üretildi: {len(pairs)} soru-cevap çifti")
+    return pairs
+
+def build_faq_schema(
+    dest:      str,
+    mode:      str,          # 'where' | 'guide'
+    headline:  str = "",
+    meta_desc: str = "",
+    today:     str = "2026-02-13"
+) -> str:
+    """
+    WHERE ve GUIDE için ayrı FAQ + Article + FAQPage schema bloğu.
+    """
+    if not headline:
+        if mode == 'guide':
+            headline = f"{dest} Gezi Rehberi"
+        else:
+            headline = f"{dest} Nasıl Bir Yer? Nerede, Nasıl Gidilir, Gezi Planı"
+    if not meta_desc:
+        if mode == 'guide':
+            meta_desc = (f"{dest} gezi rehberi: gezilecek yerler, ne yenir, "
+                         f"ne alınır, konaklama ve pratik bilgiler.")
+        else:
+            meta_desc = (f"{dest} nerede, nasıl gidilir? "
+                         f"{dest} nasıl bir yer, gezi planı ve ulaşım rehberi.")
+
+    # AI ile cevap üret
+    pairs = generate_faq_pairs(dest, mode)
+
+    # ── HTML FAQ item'ları ───────────────────────────────────────────────
+    items_html_parts = []
+    for idx, (q, a) in enumerate(pairs):
+        is_last = (idx == len(pairs) - 1)
+        # Son item'da border-bottom YOK
+        style = 'padding:14px 0;' if is_last else 'border-bottom:1px solid #d1e3f0;padding:14px 0;'
+        items_html_parts.append(
+            f'  <div style="{style}">\n'
+            f'    <p style="font-weight:700;margin:0 0 6px;color:#0f3460;">{q}</p>\n'
+            f'    <p style="margin:0;color:#374151;line-height:1.6;">{a}</p>\n'
+            f'  </div>'
+        )
+    items_html = '\n'.join(items_html_parts)
+
+    # ── Article schema ───────────────────────────────────────────────────
+    article_schema = {
+        "@context": "https://schema.org",
+        "@type": "Article",
+        "headline": headline,
+        "description": meta_desc,
+        "datePublished": today,
+        "author": {"@type": "Person", "name": "Kemal Kaya"},
+        "publisher": {
+            "@type": "Organization",
+            "name": "Yoldaolmak.com",
+            "logo": {
+                "@type": "ImageObject",
+                "url": "https://yoldaolmak.com/logo.png"
+            }
+        }
+    }
+
+    # ── FAQPage schema (cevaplarda HTML etiket temizle) ──────────────────
+    faq_entities = [
+        {
+            "@type": "Question",
+            "name": q,
+            "acceptedAnswer": {"@type": "Answer", "text": _strip_html(a)}
+        }
+        for q, a in pairs
+    ]
+    faq_schema = {
+        "@context": "https://schema.org",
+        "@type": "FAQPage",
+        "mainEntity": faq_entities
+    }
+
+    # ── Tek wp:html bloğu ────────────────────────────────────────────────
+    return (
+        '<!-- wp:html -->\n'
+        '<div class="yoa-faq-schema" style="border:2px solid #0073aa;'
+        'border-radius:10px;padding:24px 28px;margin:2.5em 0;background:#f0f7ff;">\n'
+        f'  <h3 style="margin:0 0 18px;color:#0073aa;font-size:1.15em;font-weight:700;">'
+        f'📋 {dest} Hakkında Sık Sorulan Sorular</h3>\n\n'
+        f'{items_html}\n\n'
+        '  <script type="application/ld+json">\n'
+        f'{json.dumps(article_schema, ensure_ascii=False, indent=2)}\n'
+        '  </script>\n'
+        '  <script type="application/ld+json">\n'
+        f'{json.dumps(faq_schema, ensure_ascii=False, indent=2)}\n'
+        '  </script>\n'
+        '</div>\n'
+        '<!-- /wp:html -->'
+    )
+
+
+# ─── YOAST META (Where.txt §14) ───────────────────────────────────────────────
+# Destinasyon → ülke/bölge bilgisi haritası
+# Değerler KISA — dest adı İÇERMEZ (şablon zaten dest ekler)
+# Şablon: "{dest} nerede... {hint} {dest}. {dest} nasıl..."
+_COUNTRY_INFO: dict[str, str] = {
+    "Kırgızistan":   "Orta Asya'nın kalbi",
+    "Bişkek":        "Orta Asya'nın kalbi Kırgızistan",
+    "Moskova":       "Rusya'nın başkenti",
+    "St. Petersburg": "Rusya'nın kültür başkenti",
+    "Prag":          "Çekya'nın başkenti",
+    "Budapeşte":     "Macaristan'ın başkenti",
+    "Viyana":        "Avusturya'nın başkenti",
+    "Roma":          "İtalya'nın başkenti",
+    "Paris":         "Fransa'nın başkenti",
+    "Londra":        "İngiltere'nin başkenti",
+    "Berlin":        "Almanya'nın başkenti",
+    "Madrid":        "İspanya'nın başkenti",
+    "Barselona":     "İspanya'nın Katalonya bölgesi",
+    "Lizbon":        "Portekiz'in başkenti",
+    "Atina":         "Yunanistan'ın başkenti",
+    "Tokyo":         "Japonya'nın başkenti",
+    "Kyoto":         "Japonya'nın eski başkenti",
+    "Seul":          "Güney Kore'nin başkenti",
+    "Bangkok":       "Tayland'ın başkenti",
+    "New York":      "Amerika'nın Doğu Yakası",
+    "Dubai":         "BAE'nin küresel merkezi",
+    "Şanghay":       "Çin'in ekonomi ve kültür merkezi",
+    "Bratislava":    "Slovakya'nın başkenti",
+    "Varşova":       "Polonya'nın başkenti",
+    "Krakow":        "Polonya'nın kültür başkenti",
+    "Bükreş":        "Romanya'nın başkenti",
+    "Sofya":         "Bulgaristan'ın başkenti",
+    "Kiev":          "Ukrayna'nın başkenti",
+    "Tiflis":        "Gürcistan'ın başkenti",
+    "Yerevan":       "Ermenistan'ın başkenti",
+    "Bakü":          "Azerbaycan'ın başkenti",
+    "Taşkent":       "Özbekistan'ın başkenti",
+    "Semerkant":     "İpek Yolu'nun incisi",
+    "Almatı":        "Kazakistan'ın eski başkenti",
+    "Amsterdam":     "Hollanda'nın başkenti",
+    "Brüksel":       "Belçika'nın başkenti",
+    "Stockholm":     "İsveç'in başkenti",
+    "Oslo":          "Norveç'in başkenti",
+    "Helsinki":      "Finlandiya'nın başkenti",
+    "Kopenhag":      "Danimarka'nın başkenti",
+    "Zürih":         "İsviçre'nin finans merkezi",
+    "Cenova":        "İtalya'nın Ligurya sahili",
+    "Floransa":      "Rönesans'ın kalbi",
+    "Venedik":       "Su üstündeki şehir",
+    "Napoli":        "Güney İtalya'nın başkenti",
+    "Sicilya":       "Akdeniz'in en büyük adası",
+    "Dubrovnik":     "Hırvatistan'ın inci şehri",
+    "Saraybosna":    "Balkanlar'ın ruhu",
+    "Belgrad":       "Sırbistan'ın başkenti",
+    "Ljubljana":     "Slovenya'nın başkenti",
+    "Montreal":      "Kanada'nın Fransız kalbi",
+    "Toronto":       "Kanada'nın en büyük şehri",
+    "Mexico City":   "Meksika'nın başkenti",
+    "Buenos Aires":  "Arjantin'in başkenti",
+    "Marakeş":       "Fas'ın kültür başkenti",
+    "Kahire":        "Mısır'ın başkenti",
+    "Nairobi":       "Kenya'nın başkenti",
+    "Cape Town":     "Güney Afrika'nın Atlantik şehri",
+    "Sydney":        "Avustralya'nın sembol şehri",
+    "Melbourne":     "Avustralya'nın kültür başkenti",
+    "Singapur":      "Güneydoğu Asya'nın liman şehri",
+    "Hong Kong":     "Asya'nın köprüsü",
+    "Bali":          "Endonezya'nın rüya adası",
+    "Phuket":        "Tayland'ın tropik cenneti",
+}
+
+def get_country_info(dest: str) -> str:
+    """
+    Destinasyon adına göre kısa ülke/bölge tanımı döndürür.
+    Haritada yoksa Claude'a sorarak dinamik üretir.
+    """
+    # Direkt eşleşme
+    if dest in _COUNTRY_INFO:
+        return _COUNTRY_INFO[dest]
+    # Kısmi eşleşme (büyük/küçük harf bağımsız)
+    for key, val in _COUNTRY_INFO.items():
+        if key.lower() in dest.lower() or dest.lower() in key.lower():
+            return val
+    # Claude fallback — ülke/bölge bilgisini sor
+    try:
+        raw_hint = ask_ai(
+            f"'{dest}' sehrinin/ulkesinin bagli oldugu ulke ve bolge nedir? "
+            f"Sadece kisa bir tanim yaz, maksimum 10 kelime. "
+            f"Ornek: 'Orta Asya nin kalbi Kirgizistan' gibi.",
+            max_tokens=60
+        ).strip()
+        # HTML tag, satır başı, tırnak temizle
+        hint = re.sub(r'<[^>]+>', '', raw_hint).strip()
+        hint = re.sub(r'[\n\r]+', ' ', hint).strip().strip('"').strip("'")
+        return hint if hint else f"{dest} sehri"
+    except Exception:
+        return f"{dest} şehri"
+
+
+def build_yoast_meta(dest: str, location_hint: str = "") -> tuple[str, str]:
+    """
+    (yoast_title, yoast_desc) döndür.
+    Hedef: desc 150-155 karakter, max 158.
+    location_hint boşsa get_country_info() ile otomatik alır.
+    """
+    yoast_title = f"{dest} Nasıl Bir Yer? Nerede, Nasıl Gidilir, Gezi Planı"
+
+    if not location_hint:
+        location_hint = get_country_info(dest)
+
+    # Şablon (belge örneğiyle birebir):
+    # "Kırgızistan nerede, nasıl gidilir? Orta Asya'nın kalbi Kırgızistan.
+    #  Kırgızistan nasıl bir yer, ulaşım seçenekleri ve gezi planı rehberi."
+    # Lokasyon hint'inden HTML ve satır başı temizle
+    location_hint = re.sub(r'<[^>]+>', '', location_hint).strip()
+    location_hint = re.sub(r'[\n\r]+', ' ', location_hint).strip()
+    base = (
+        f"{dest} nerede, nasıl gidilir? "
+        f"{location_hint} {dest}. "
+        f"{dest} nasıl bir yer, ulaşım seçenekleri ve gezi planı rehberi."
+    )
+
+    # 120-158 karakter aralığı hedefi
+    if len(base) > 158:
+        # Kelime sınırında kes, nokta ekle
+        cut = base[:154].rsplit(' ', 1)[0].rstrip('.,')
+        yoast_desc = cut + '...'
+    elif len(base) < 120:
+        # Çok kısa — "Gezi planı ve pratik ipuçları." ekle (rehber tekrarından kaçın)
+        ext = " Gezi planı ve pratik ipuçları."
+        candidate = base.rstrip('.') + ext
+        if len(candidate) <= 158:
+            yoast_desc = candidate
+        else:
+            yoast_desc = base  # uzadıysa dokunma
+    else:
+        yoast_desc = base
+
+    return yoast_title, yoast_desc
+
+
+
+
+# ============================================================
+# DIL_KURALLARI — Tüm modlarda geçerli merkezi dil & stil kuralı
+# WHERE / TRAVEL / GUIDE — tek kaynak
+# ============================================================
+DIL_KURALLARI = """
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+DIL, ANLATIM VE STİL — TÜM MODLAR İÇİN
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+YAZIM DILI:
+- Simdiki zaman (tarihi anlatimlarda bile): "gidiyor, dönüşüyor, çıkıyor"
+- Ben dili (ölçülü): "fark ettim", "ilk baktığımda", "durakladım"
+- Kısa cümle + somut sayı: "37 metre", "8. yüzyıl", nüfus
+- Duyusal detay (1-2 tane seç): ışık / ses / koku / doku / renk — somut, abartısız
+
+GÖSTER-SÖYLE PRENSİBİ:
+- ASLA "güzel/etkileyici/muhteşem" → GÖSTER: "Taş sokakta gölge yok, öğle sıcağından kaçacak yer yok."
+- Gerçekçi gözlem: "Esnaf ilgisiz; turistlerle dolu şehrin yorgunluğu var."
+- Romantize etme
+- SOYUT DUYGU CÜMLESİ KURMA: "Geçmişi hissedebilirsiniz", "tarihin izinde yürüyebilirsiniz", "kendinizi kaptırın" YASAK.
+  Bunun yerine somut nesne, sayı veya eylem yaz:
+  ❌ "Her adımda geçmişin yansımasını hissedebileceğiniz bir sokak."
+  ✅ "Sokakta iki adımda bir farklı dönemden yapı var: Osmanlı hamamı, Venedik çan kulesi, Avusturya postanesi."
+
+DRAMATİK ANLATIMDAN KAÇIN:
+  YANLIŞ → DOĞRU
+  "Büyüleyici manzara, nefesimi kesti" → "Tepeden şehrin tamamını görebiliyorsunuz"
+  "Zamanın durduğu masalsı yer" → "Sokakları taş döşeli, evler eski ama bakımlı"
+  "Cennetten bir köşe" → "Deniz o kadar temizdi ki dibi görünüyordu"
+  "Dar sokakları, renkli evleriyle..." → "Sokaklar 2 metre genişliğinde, araba giremez"
+  "Açık hava müzesi gibi" → "Her köşede tarihi yapı var, eski kent planı korunmuş"
+
+YASAK KELİMELER:
+  muhteşem, harika, eşsiz, inanılmaz, mükemmel, şaşırtıcı, benzersiz,
+  olağanüstü, nefes kesici, büyülü, fantastik, göz alıcı, mücevher,
+  kadim, görkemli, nefis, dikkat çekiyor, etkileyici, misafirperver,
+  Metro Turizm, Turkish Airlines
+
+YASAK CÜMLE KALIPLARI:
+  "Kendi yolunu bulur..." / "Kadar gösterişli değil ama..." /
+  "Dar sokakları, renkli evleriyle..." / "Açık hava müzesi..." /
+  "Binbir gece masallarından..." / "Zaman yolculuğuna çıkar..." /
+  "Tarihin izlerini hissed..." / "Kaybolmanın keyfine..." /
+  "Davet ediyorum" / "Tadını çıkarın" / "Unutmayın"
+
+YASAK YAPI:
+  - Tire "—" veya "–" (H3 başlığında serbest)
+  - <ul><li> liste etiketleri → paragrafa çevir
+  - ## ### Markdown → Gutenberg HTML kullan
+  - Koordinat, enlem, boylam
+
+BOLD KURALI:
+  - H2/H3 altındaki ilk destinasyon veya yer adı → <strong>bold</strong>
+  - Sayılar bold OLMAZ (giriş ücreti, mesafe gibi pratik bilgiler hariç)
+  - Her paragrafta maksimum 1-2 bold
+  - Yer/yapı adı ilk geçtiğinde bold, tekrarda değil
+  - Tüm cümleyi bold yapmak YASAK
+
+GPT İÇİN ANLATI DENGESİ:
+  GPT'nin bilgi ağırlıklı bölümlerde (Nasıl Bir Yer, Nerede, Nasıl Gidilir, Gezilecek Yerler, Gezi Planı):
+  %30 → Dergi yazısı anlatımı (akıcı, betimleyici, atmosferik)
+  %70 → Gerçekçi, bilgilendirici, pratik anlatım
+  ÖRNEK DENGELİ CÜMLE: "Karl Köprüsü sabahın köründe tenha. Taş döşeme ıslak, 
+  nehirden soğuk rüzgar vuruyor. Sabah 7'de gidersen turist kalabalığından önce 
+  görebilirsin. Köprü 516 metre, yürüyerek geçmek 8-10 dakika sürüyor."
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+"""
+
+# Geriye dönük uyumluluk (eski referanslar için)
+BOLD_RULES = DIL_KURALLARI
+
+# ============================================================
+# GIRIS_TRAINING — Giris2.txt kuralları (Claude + GPT)
+# İlk 2 paragraf: giris (sehir karakteri) + kisisel bakis
+# ============================================================
+GIRIS_TRAINING = """
+GIRIS ANLATI MIMARISI DILI
+
+--- PARAGRAF 1: DESTINASYON ADI İLE BAŞLA (BOLD) ---
+İLK KURAL: İlk cümle destinasyon adıyla başlar ve **bold** yapılır.
+Format: **[Destinasyon].** [Gerçekçi gözlem, abartısız betimleme, ilk izlenim...]
+
+ÖRNEK AÇILIŞ:
+✅ DOĞRU: "**Prag.** İlk kez Karl Köprüsü'ne adım attığımda saat sabahın yedisiydi."
+✅ DOĞRU: "**Belem.** Tejo Nehri ağzında, Atlantik'ten içeri giren ilk yerleşim."
+❌ YANLIŞ: "Portekiz'in başkenti Lizbon'un batı ucunda Belem var." (bold yok)
+❌ YANLIŞ: "Belem muhteşem bir yerleşim." (dramatik)
+
+--- PARAGRAF 1: KISA KONUM + KARAKTER + BENZERSIZ OZELLIK + GENEL YAPI ---
+Sehrin cografi konumu: ulke/bolge, deniz/nehir/dag iliskisi, ulke icindeki yeri.
+Karakteristik ozelligi: sehrin ruhu, mimari doku, genel havasi (somut, abartisiz).
+Benzersiz ozelligi: baska hicbir yerde olmayan 1 spesifik sey (tarihi yapi, cografi konum, kultur...).
+Genel yapisi: buyuklugu, nufusu, sehir profili (1 cumle).
+
+{BOLD_RULES}
+- **Destinasyon adı** ilk geçtiği yerde ZORUNLU bold
+
+--- PARAGRAF 2: TARİHİ ÖNEM (OLAY DEGİL — NEDEN ÖNEMLİYDİ?) ---
+AMAÇ: Sehrin tarih sahnesindeki yerini anlat. Olay anlatma, stratejik önem anlat.
+
+YANLIŞ (HİKAYE): "Kral II. Friedrich 1248'de kaleyi kuşattığında, halk 40 gün boyunca direnmiş..."
+DOĞRU (ÖNEM):    "Bu şehir, üç büyük imparatorluğa başkentlik yaptı: Roma, Bizans, Osmanlı.
+                  Konum olarak hem deniz hem kara yolunun kesiştiği noktada; bu yüzden hep
+                  el üstünde tutuldu."
+
+YAZMASI GEREKENLER (hepsini değil, şehre uygun olanları seç):
+  - Stratejik konum: ticaret yolu kavşağı mı? Dini merkez mi? Askeri üs mü?
+  - Hangi medeniyetler buraya değer verdi ve neden?
+  - Şehrin "kimlik dönüşümü": balıkçı → sanayi → petrol → turizm gibi
+  - Günümüz profilini şekillendiren tarihi kırılma noktası (1-2 somut)
+  - İmparatorluk mirası: hangi katmanlar hâlâ fiziksel olarak görülüyor?
+Bold: medeniyet isimleri, tarihi dönüm noktaları, yapılar.
+En az 5-6 cumle; 8'i gecme.
+
+--- YAZIM DILI + GORSTER-SOYLEME PRENSIBI ---
+→ bkz. DIL_KURALLARI (tüm modlar için ortak — yukarıda tanımlı)
+
+CIKTI: Sadece 2 <p>...</p>. Orijinal metin verilmişse TEMELden yeniden yaz (bilgileri koru, tonu değiştir).
+"""
+
+# ============================================================
+# GIRIS_SONRASI_TRAINING — GirisSonrasi2.txt kuralları
+# Giris sonraki 2-3 paragraf: gozlem + pratik degerlendirme
+# ============================================================
+GIRIS_SONRASI_TRAINING = """
+GIRIS SONRASI KISISEL BAKIS-GOZLEM-DEGERLENDIRME (4 kural):
+
+1. KISISEL BAKIS:
+   "Ben" dili, ama abartisiz. Gordum, fark ettim, durakladim.
+   Asiri "ben, ben, ben" degil; dengeyi kur.
+
+2. OLUMLU + OLUMSUZ DENGESI (ZORUNLU):
+   Sadece ovgu degil, donust degerlendirme.
+   1 somut begeni: spesifik yer/yemek/deneyim adi ver.
+   1 somut elestiri: ne can sikti? fiyat, kalabalik, ulasim?
+
+3. SOMUT ORNEK:
+   "Muzeler" degil hangi muze (Zwinger, Albertinum, Uffizi...).
+   "Guzel meydan" degil hangi meydan. "Yerel yemek" degil hangi yemek.
+   Kime uyar, kime uymaz? (aile/cift/yalniz gezgin?)
+
+4. PRATIK UYARI + KISA ÖZET:
+   Gezme suresi: kac gun ideal, minimum nedir?
+   1 gunde gezilirse ne yanlis izlenim kalir?
+   "Kisaca: [tek cumle net yargi]" ile bitir.
+
+FORMAT: Olumlu gözlem + Olumsuz gözlem + Kısa özet
+
+ÖRNEK (PRAG):
+"Prag beklediğimden daha kalabalıktı açıkçası. Eski Şehir Meydanı öğlen 
+saatlerinde turist kaynıyor, Astronomik Saat'in önünde fotoğraf sırası var. 
+Ama sabahın köründe, sokaklar boşken yürümek... İşte o anlar için değer. 
+Vltava Nehri kıyısında, güneş doğarken oturup kahve içmek başka bir deneyim. 
+Kısacası: Prag erken kalkanındır. Öğleden sonra kalabalıktan kaçmak için 
+Letná Park'a çıkın; şehrin en iyi manzarası oradan."
+
+YASAK: → bkz. DIL_KURALLARI (ortak kural)
+CIKTI: 2 adet <p>...</p>.
+"""
+
+# ─── ULTRA TRAINING ──────────────────────────────────────────────────────────
+ULTRA_TRAINING = """
+NEREDE/NASIL GIDILIR FORMAT EGITIMI (Where.txt)
+=================================================
+""" + DIL_KURALLARI + """
+ITALIK (2-4): tarihi yapi, muze, mahalle, ozel isimler
+
+YAZI DILI: Ben dili, samimi blogger uslubu, Genius Loci aktif
+BOLUM SINIRI: Her H2 kendi konusunda kalir, bolumler arasi sizinti yok
+"""
+
+
+
+# ============================================================
+# KAPANIS_TRAINING — Tüm modlarda ortak kapanış kuralı
+# WHERE, TRAVEL, GUIDE — tek kaynak
+# ============================================================
+KAPANIS_TRAINING = """
+SEN: yoldaolmak.com yazarı Kemal Kaya
+GÖREV: {dest} için KAPANIŞ (2 paragraf)
+
+PARAGRAF 1:
+- Destinasyonun en güçlü yanı
+- Kime hitap ediyor? (budget gezgin, kültür, aile, doğa...)
+- Neden gidilmeli? (net, kısa, çarpıcı)
+
+PARAGRAF 2:
+- En iyi seyahat zamanı (ay/mevsim)
+- Kaç gün önerilir
+- 1-2 pratik ipucu
+- Son cümle: yönlendirmeyen, net, samimi
+
+YASAK:
+❌ "davet ediyorum" / "kaybolmaya davet" / "Seni X'e davet ediyorum"
+❌ Tire (—)
+→ bkz. DIL_KURALLARI (yasak kelimeler, bold)
+
+ÇIKTI: 2 adet <p>...</p>
+"""
+
+# ============================================================
+# GEZILECEK_TRAINING — Gezilecek Yerler H2 bolumu icin
+# ============================================================
+GEZILECEK_TRAINING = """
+OZEL GOREV: "Gezilecek Yerler" H2 bolumundaki her yeri kapsamli sekilde yaz.
+Her H3 icin 2-3 paragraf + pratik bilgi ZORUNLU.
+
+--- H3 BASLIK FORMATI (ZORUNLU) ---
+  <!-- wp:heading {"level":3} -->
+  <h3 class="wp-block-heading"><strong>1. Yer Adi — Kisa tematik/mimari tanim</strong></h3>
+  <!-- /wp:heading -->
+Not: Metin ici tire YASAK, sadece H3 basliginda serbest.
+
+--- HER H3 ALTINDA ZORUNLU YAPI (3 paragraf) ---
+
+PARAGRAF 1 — KONUM + TARIH + MİMARİ:
+  - Nerede: şehir merkezine mesafe, hangi semt/mahalle
+  - Nasıl gidilir: metro/otobüs/yürüyüş + en yakın durak/istasyon
+  - Yapım yılı/dönemi, mimar varsa adı, mimari stil ve malzeme
+  - Tarihi önemi: olay değil, neden değerliydi, hangi medeniyete ne ifade etti
+  - UNESCO statüsü varsa mutlaka belirt
+
+PARAGRAF 2 — NEDEN GÖRÜLMELİ + İÇERİ GİRDİĞİNDE NE VAR:
+  - İçinde ne var? En dikkat çekici bölüm/eser/alan — spesifik
+  - Varsa en iyi zaman, yön, kat, pencere, ışık saati
+  - 1 olumlu + 1 gerçekçi gözlem (olumsuz veya beklenti ayarı)
+  - Kişisel gözlem varsa ekle (gordum, fark ettim — abartısız)
+
+PARAGRAF 3 — PRATİK BİLGİLER (ZORUNLU — HEPSİ):
+  - Giriş ücreti: 2024-2025 döneminde yerel para + EUR karşılığı.
+    Ücretsizse "Ücretsiz giriş" yaz. Bilmiyorsan "Giriş ücretini
+    ziyaret öncesi resmi siteden doğrulayın" yaz.
+  - Kaç saat ayırmalı: "1-2 saat yeterli" / "yarım gün" şeklinde
+  - Ziyaret saatleri (varsa, kısa)
+  - Rehberli tur var mı, önerilir mi?
+  Aynı bölgede gezilebilecek 1-2 yakın nokta varsa son cümlede belirt.
+
+--- NUMARA ILE BASLAYAN KELIME LİSTELERİ ---
+Orijinalde sadece "1. Arktik Kilise" gibi isim varsa:
+  - Tematik başlık tanımı oluştur
+  - 3 paragraf yaz (yukarıdaki yapı)
+  - Güncel bilgileri ekle
+
+--- BOLUM YAPISI ---
+Her H3 ARASINA ve listenin SONUNA separator:
+  <!-- wp:separator -->
+  <hr class="wp-block-separator has-alpha-channel-opacity"/>
+  <!-- /wp:separator -->
+
+--- DİL ---
+  - Ben dili + mimari gözlem: "gördüm, fark ettim, baktım"
+  - Duyusal detay (birini seç): ışık / ses / koku / doku / renk
+  - Spesifik: "vitray" değil "güneş ışığı cam filtrelerden geçerken"
+  - Olumlu + gerçekçi gözlem her zaman
+
+YASAK:
+  müthiş, harika, eşsiz, inanılmaz, mükemmel, benzersiz, olağanüstü,
+  nefes kesici, büyülü, fantastik, metin içi tire
+"""
+
+# ─── DRAFT MOD EGİTİM PROMPTu ─────────────────────────────────────────────
+# ============================================================
+# GOVDE_MAD_TRAINING — GPT govde bolumu icin mimari anlati
+# Giris sonrasindaki TUM paragraf, baslik ve bolumler icin
+# ============================================================
+GOVDE_MAD_TRAINING = """
+GOVDE MIMARI ANLATI DILI — GPT icin kural seti
+
+""" + DIL_KURALLARI + """
+1. PARAGRAF GELISTIRME:
+   Mevcut paragraflar varsa: ayni anlami koru, dili gelistir.
+   Eksik paragraflar varsa: yukardaki yapi + mimari anlatim ile yaz.
+   Her paragraf 3-5 cumle, 8i gecme.
+
+2. BASLIK GUCLENDIRME (H2 + H3):
+   H2: Kisa, net, bilgilendirici. Emoji ile. Ornek: "✈️ Nasil Gidilir"
+   H3: Alt baslik, kisa ve spesifik.
+   Gezilecek Yerler H3: "N. Yer Adi — Kisa tematik tanim" formati (ZORUNLU).
+
+3. MIMARI VE MEKAN DILI:
+   - Bir yapinin dis gorunusunu tarif et: malzeme, renk, form
+   - Ic mekanini tarif et: isik, ses, yogunluk, koku
+   - Tarihi katmani ekle: kac yillik, kim yaptirmis, ne zaman restorasyondan gec.
+   - "Guzel" veya "etkileyici" degil: gorme nedeni ne?
+
+4. GUNCEL BİLGİ STANDARDI:
+   Gezilecek her yer icin ZORUNLU pratik bilgi:
+   - Giris ucreti: 2024-2025 donemi (yerel para + EUR karsiligi).
+     Ucretsizse "Ucretsiz giris" yaz. Bilmiyorsan "Giris ucretini ziyaret
+     oncesi resmi siteden dogrulayin" yaz.
+   - Tahmini sure: "1-2 saat yeterli", "yarim gun"
+   - En iyi zaman veya sezon (varsa)
+
+5. ANLATICI SES:
+   - "Ben" dili: gordum, baktim, fark ettim (ama abartisiz)
+   - Spesifik detay: "pazar" degil "Cuma sabahi Balık Pazarı"
+   - Karsilastirma (1 kez max): "X kadar kalabalik degil ama..."
+   - Kısa cümle + somut sayi: "37 metre yüksekliğinde", "14. yüzyıldan kalma"
+
+6. KESIN YASAKLAR:
+   → bkz. DIL_KURALLARI (ortak kural)
+"""
+
+
+DRAFT_TRAINING = """
+SEN: yoldaolmak.com yazari Kemal Kaya. Seyahat blog yazisini yeniden yaziyorsun.
+HEDEF OKUYUCU: Turkce konusan, pratik bilgi isteyen, kurumsal dil sevmeyen gezgin.
+
+""" + DIL_KURALLARI + """
+===========================================================
+KURAL 1: BASLIK HIYERARSISI
+===========================================================
+H1: ASLA kullanma. WordPress zaten koyuyor.
+H2: Ana bolumler (Nasil Gidilir, Nerede Kalinir, Ne Yenir, Gezilecek Yerler...)
+  DOGRU FORMAT:
+    <!-- wp:heading {"level":2} -->
+    <h2 class="wp-block-heading"><strong>Nasil Gidilir</strong></h2>
+    <!-- /wp:heading -->
+  YANLIS: <h2>Nasil Gidilir</h2>
+  YANLIS: ### Nasil Gidilir  (Markdown YASAK)
+
+H3: Alt basliklar (Ucakla, Otobusse, Vizesi, Ne Zaman...)
+  DOGRU FORMAT:
+    <!-- wp:heading {"level":3} -->
+    <h3 class="wp-block-heading"><strong>Otobusle</strong></h3>
+    <!-- /wp:heading -->
+
+Her H2'den HEMEN ONCE separator (bos satir birakma, hep ekle):
+    <!-- wp:separator -->
+    <hr class="wp-block-separator has-alpha-channel-opacity"/>
+    <!-- /wp:separator -->
+
+H2 EMOJİ STANDARTLARI (sadece bu, baskasi YOK):
+  "Gezi Rehberi"   → sonunda ülke bayrağı (🇹🇷 🇬🇷 vb.)
+  "Gezilecek Yerler" → sonunda 📌
+  "Nasıl Gidilir"  → sonunda ✈️
+  "Nerede"         → sonunda 📍
+  "Gezi Planı"     → sonunda 🗓
+  Diger H2ler      → emoji YOK veya 1 tane kontextuel emoji
+YASAK: H2 başına emoji koyma. Emoji SONDA.
+
+===========================================================
+KURAL 2: PARAGRAF FORMATI
+===========================================================
+Her paragraf su formatta olmali:
+  <!-- wp:paragraph -->
+  <p>Icerik burada.</p>
+  <!-- /wp:paragraph -->
+
+Duz <p>...</p> YASAK (Gutenberg etiketsiz)
+Markdown metni YASAK (** icin <strong>, * icin <em> kullan)
+
+===========================================================
+KURAL 3: KESINLIKLE YASAK
+===========================================================
+- Tire veya uzun tire -> nokta veya noktali virgul yap (H3 basliginda SERBEST)
+- Markdown: ## Baslik, **bold**, *italik* -> Gutenberg HTML kullan
+- Yasak sifatlar (ayrica GOVDE_MAD_TRAINING Kural 6'ya bak):
+  muhtesem, harika, essiz, buyulu, nefes kesici, olaganustu, inanilmaz,
+  mukemmel, goz alici, fantastik, etkileyici, mucevher, kadim, gorkemli,
+  nefis, sasirtici, benzersiz
+- Klise: tarihin izleri, zaman yolculugu, misafirperver halk,
+  keyifli vakit, davet ediyorum, kacirmayin, mutlaka gidin
+- Liste etiketleri: <ul>, <li> -> bunlari yaziya donustur
+
+===========================================================
+KURAL 4: YAZIM DILI (ANLATICI SES)
+===========================================================
+- Ben dili: gordum, gittim, fark ettim, tavsiyem su...
+- Soft imperative: bir sabahi buna ayir
+- Karsilastirma (1-2 kez): X kadar kalabalik degil ama...
+- Kisa cumleler + somut rakamlar + spesifik yer adlari
+- Her paragrafta 1-2 BOLD (sayi/mesafe/fiyat/sure):
+    <strong>3 saat</strong>, <strong>45 Euro</strong>
+- Yazida toplam 3-5 ITALIK (yer adi/yerel kelime):
+    <em>Katedrale</em>, <em>Ribeira</em>
+
+===========================================================
+KURAL 5: BOLUM YAPISI
+===========================================================
+Tipik bolumler (hepsi olmak zorunda degil, orjinale gore):
+  H2: Nasil Gidilir -> H3 altinda: Ucakla, Otobusse, Arabayla
+  H2: Nerede Kalinir -> H3: Butce, Orta, Luks (varsa)
+  H2: Ne Zaman Gidilmeli -> sezon + kalabalik analizi
+  H2: Ne Yenir / Gastronomi -> spesifik yemek/mekan adlari
+  H2: "Gezilecek Yerler 📌" -> H3 altinda her yer ayri (emojisi 📌, baskasi YOK)
+  H2: "Gezi Plani 🗓" -> Gun bazli oneri (emojisi 🗓, baskasi YOK)
+
+Her H2 bolumu kendi konusunda kalir. Bolumler arasi sizinti yok.
+Paragraf uzunlugu: 3-5 cumle ideal, 8i gecme.
+
+===========================================================
+KURAL 6: GEZILECEK YERLER H2 - OZEL KURAL
+===========================================================
+"Gezilecek Yerler" basligi iceren H2 bolumunde:
+1. Bos H2 altina 2 paragraf ozet yaz (bolge ozeti + tavsiye)
+2. Her H3 = ayri bir yer: "1. Yer Adi - Kisa tanitim" formati
+3. Her H3 altinda 2-3 paragraf (karakter, one cikan, pratik)
+4. Sadece virgullu anahtar kelime listesi varsa -> paragrafa donustur
+5. Numarali ama bos H3 varsa -> baslik olustur + doldur
+6. Her H3 ARASINA ve sonuna separator ekle
+"""
+
+
+# ============================================================
+# GUIDE_TRAINING — Gezi Rehberi formatı için training
+# ============================================================
+GUIDE_GIRIS_TRAINING = GIRIS_TRAINING  # Ortak — WHERE/TRAVEL/GUIDE aynı giriş kuralı
+
+GUIDE_GEZILECEK_TRAINING = """
+GUIDE MOD GEZİLECEK YERLER
+
+H3 FORMAT (ZORUNLU):
+{Sıra}. {Yer Adı} - {Kısa tanıtım}
+
+Örnek:
+### 1. Senso-ji Tapınağı - Tokyo'nun en eski Budist tapınağı
+
+Her H3 için 2-3 paragraf:
+1. PARAGRAF: Konum, ulaşım, tarih, mimari
+2. PARAGRAF: İçinde ne var, neden görülmeli, dikkat çekici bölümler
+3. PARAGRAF (opsiyonel): Pratik bilgiler (giriş ücreti, saatler, süre), çevre gezilecekler
+
+Her H3 arasına separator:
+<!-- wp:separator -->
+<hr class="wp-block-separator has-alpha-channel-opacity"/>
+<!-- /wp:separator -->
+→ bkz. DIL_KURALLARI (yasak kelimeler, bold, anlatım)
+"""
+
+
+def revise_where_post(post):
+    """
+    Where.txt uygulama sırası (§15):
+    ADIM 1: Giriş paragrafları (Claude, Anlatı mimarisi)
+    ADIM 2: İlk fotoğraf
+    ADIM 3: Kişisel bakış/yorum paragrafı (Claude)
+    ADIM 4: HR + H2 "Nasıl Bir Yer" + Gezilecek Yerler
+    ADIM 5: HR + H2 "Nerede" + 2 paragraf + Maps box
+    ADIM 6: HR + H2 "Nasıl Gidilir" + 2.-3. fotoğraflar
+    ADIM 7: Uçak bileti link listesi
+    ADIM 8: HR + Gezi Planı + HR + Kapanış paragrafları
+    ADIM 9: Schema + FAQ
+    ADIM 10: Yorum + Yoast SEO → WP güncelle
+    """
+    pid     = post['id']
+    title   = post['title']['rendered']
+    content = post['content']['rendered']
+
+    dest     = extract_dest(title)
+    today    = datetime.now().strftime('%Y-%m-%d')
+    flag     = get_flag(dest)
+
+    # Orijinal kategorileri al (WP güncelleme + yerel kayıt için)
+    try:
+        orig_cats = get_post_categories(pid)
+        cat_slug  = get_category_path(orig_cats[0]) if orig_cats else 'draft'
+    except Exception:
+        orig_cats, cat_slug = [], 'draft'
+    is_where = is_where_post(title)
+
+    engine_names = {"claude": "Claude Sonnet 4.5", "gpt": "GPT-4o (4x key)",
+                    "auto": "Auto (Claude → GPT)"}
+    engine = engine_names.get(AI_ENGINE, AI_ENGINE)
+    is_gpt = AI_ENGINE in ("gpt", "auto")
+    print("\n   📊 ENGINE ROUTING:")
+    print(f"      🔵 Claude : ADIM 1 (giriş 2§) — AI_ENGINE'den bağımsız")
+    print(f"      🔵 Claude : ADIM 3 (kişisel bakış) — AI_ENGINE'den bağımsız")
+    print(f"      {'🟢 GPT-4o' if is_gpt else '🔵 Claude'} : ADIM 4/5/6 (nasıl bir yer/nerede/nasıl gidilir)")
+    print(f"      {'🟢 GPT-4o' if is_gpt else '🔵 Claude'} : ADIM 8 (gezi planı), Maps box JSON")
+    print(f"      🟢 GPT-4o : ADIM 9 (FAQ+Schema) — AI_ENGINE'den bağımsız")
+    _tasarruf = "~%20 (GPT-4o Claude Sonnet'tan ucuz)" if is_gpt else "%0 (--ai gpt ekle)"
+    print(f"      💡 Tahmini tasarruf: {_tasarruf}\n")
+    print(f"\n🚀 WHERE MODE: {dest} {flag}")
+    print(f"   📦 Post ID: {pid}  |  🤖 {engine}")
+    print(f"   📌 WHERE: {'Evet' if is_where else 'Hayır — H1 korunacak'}\n")
+
+    # ── Ön hazırlık: Gutenberg sıyır ────────────────────────────────────
+    content = strip_gutenberg(content)
+
+    # ── BOX + ESKİ MAPS TEMİZLİĞİ ───────────────────────────────────────
+    print("   🗑️  Gereksiz içerik temizleniyor...")
+    content = re.sub(r'<p[^>]*style="background-color:[^"]*"[^>]*>.*?</p>',
+                     '', content, flags=re.DOTALL|re.IGNORECASE)
+    content = re.sub(r'<p[^>]*class="has-background"[^>]*>.*?</p>',
+                     '', content, flags=re.DOTALL|re.IGNORECASE)
+    content = re.sub(r'<p[^>]*(?:ceebfd|cdfbe9)[^>]*>.*?</p>',
+                     '', content, flags=re.DOTALL|re.IGNORECASE)
+    # Eski styled div kutular (airbnb vs)
+    content = re.sub(
+        r'<div[^>]*style="[^"]*(?:background|border-radius)[^"]*"[^>]*>(?:(?!</div>).)*?</div>',
+        '', content, flags=re.DOTALL|re.IGNORECASE
+    )
+    # Eski Google Maps iframe
+    content = re.sub(r'<iframe[^>]*maps[^>]*>.*?</iframe>', '',
+                     content, flags=re.DOTALL|re.IGNORECASE)
+    # Eski uçak bileti H3'leri
+    content = re.sub(
+        r'<h3[^>]*>.*?[Uu]çak [Bb]ileti.*?</h3>.*?(?=<h[23]|$)',
+        '', content, flags=re.DOTALL|re.IGNORECASE
+    )
+    print("      ✅ Temizlendi")
+
+    # ── H2 başlık normalizasyonu ──────────────────────────────────────────
+    # "Hakkında Kısa Bilgiler" → "Nasıl Bir Yer" (Where.txt §4)
+    content = re.sub(
+        r'(<h2[^>]*>.*?)(Hakkında Kısa Bilgiler|Hakkinda Kisa Bilgiler)(.*?</h2>)',
+        r'\1Nasıl Bir Yer\3',
+        content, flags=re.IGNORECASE|re.DOTALL
+    )
+
+    # ── Resimleri çıkar (sonra yeniden yerleştireceğiz) ─────────────────
+    images = extract_all_images(content)
+    content = remove_all_images(content)
+    print(f"   🖼️  {len(images)} resim çıkarıldı (yeniden yerleştirilecek)")
+
+    # ── Gezilecek Yerler çıkar ──────────────────────────────────────────
+    gezilecek_html = ""
+    gm = re.search(r'(<h3[^>]*>.*?gezilecek yerler.*?</h3>.*?)(?=<h[23]|<script|$)',
+                   content, re.IGNORECASE|re.DOTALL)
+    if gm:
+        gezilecek_html = gm.group(1).strip()
+        # H3 'Gezilecek Yerler 📌' başlığını sil — içerik kalacak
+        gezilecek_html = re.sub(
+            r'<h[23][^>]*>.*?[Gg]ezilecek\s+[Yy]erler.*?</h[23]>\s*',
+            '', gezilecek_html, flags=re.DOTALL
+        ).strip()
+        content = content.replace(gm.group(1).strip(), '')
+        print("   📌 Gezilecek Yerler çıkarıldı (başlık silindi, içerik korundu)")
+
+    original_paras = len(re.findall(r'<p>', content))
+    print(f"   📊 Orijinal: {original_paras} paragraf\n")
+
+    # ════════════════════════════════════════════════════════════════════
+    # ADIM 1: GİRİŞ PARAGRAFLARI (Where.txt §1 — Claude, Anlatı Mimarisi)
+    # Orijinal girişi referans al, Anlatı Mimarisine göre YENIDEN YAZ
+    # ════════════════════════════════════════════════════════════════════
+    print("   🔵 ADIM 1: Giriş paragrafları (Claude — Anlatı Mimarisi)...")
+    # Orijinal içerikten ilk 2 paragrafı al (referans için)
+    _orig_p = re.findall(r'<p[^>]*>.*?</p>', content, re.DOTALL)
+    _orig_giris = "\n".join(_orig_p[:2]) if _orig_p else ""
+    giris_prompt = f"""SEN: yoldaolmak.com yazari Kemal Kaya.
+GOREV: {dest} {flag} icin ilk 2 giris paragrafi — ASAGIDAKI ORIJINAL METNI YENIDEN YAZ.
+
+{GIRIS_TRAINING}
+
+ORIJINAL GİRİŞ (bilgileri koru, dili ve tonu TEMELDEN yeniden yaz):
+{_orig_giris if _orig_giris else "(Mevcut giriş yok — sıfırdan yaz)"}
+
+CIKTI: Sadece 2 adet <p>...</p>. Fazlasi degil."""
+    giris_raw = ask_claude_only(giris_prompt, max_tokens=1500)   # Claude (AI_ENGINE'den bağımsız)
+    giris_raw = clean_html(giris_raw)
+    giris_raw = fix_md_bold_italic(giris_raw)
+    giris_raw = auto_fix_gpt_output(giris_raw)   # tire + yasak kelime otofiks
+    # Kalıp kontrolü
+    kalip_issues = check_giris_kalip(giris_raw, dest)
+    if kalip_issues:
+        import random as _rnd
+        # Farklı bir açılış tipi zorla — dict double-quote güvenli
+        _tip_c = "Ilk fark ettiğim şey deniz değildi. " + dest + " başka bir şeyle vurdu:"
+        _tip_d = "Şehrin tepesinde yanlış bir sokağa saptım. Bir kapı aralığından"
+        _tip_e = "Kaç kişi " + dest + " için sadece bir gecelik plan yapmış, sabah planı değiştirmiştir?"
+        zorunlu_tip, ornek = _rnd.choice([("C", _tip_c), ("D", _tip_d), ("E", _tip_e)])
+        giris_prompt_retry = (
+            giris_prompt
+            + "\n\n⚠️ RETRY — ÖNCEKİ DENEME KALIP KULLANDIĞI İÇİN RED EDİLDİ.\n"
+            + "ZORUNLU: Mutlaka TİP " + zorunlu_tip + " kullan.\n"
+            + "İLK CÜMLE bu yapıyla başlamalı (sözcükleri değiştir):\n"
+            + "\u2192 \"" + ornek + "\"\n"
+            + "KALIP: \"" + dest + "'e gelmeden herkes...\" ve \"Haklıydılar\" KESINLIKLE YASAK.\n"
+        )
+        print(f"      ⚠️  KALIP TESPİT: {', '.join(kalip_issues[:3])}")
+        print(f"      🔄  TİP {zorunlu_tip} zorlanarak yeniden üretiliyor...")
+        giris_raw = ask_claude_only(giris_prompt_retry, max_tokens=1500)  # Claude
+        giris_raw = clean_html(giris_raw)
+        giris_raw = fix_md_bold_italic(giris_raw)
+    # auto_fix_gpt_output zaten yasak kelimeleri temizledi — check_banned sadece sanity log
+    _banned = check_banned(giris_raw)
+    if _banned:
+        print(f"      ⚠️  Yasak kelime log: {', '.join(_banned[:3])}")
+    print("      ✅ Giriş hazır")
+
+    # ════════════════════════════════════════════════════════════════════
+    # ADIM 2: İLK FOTOĞRAF (giriş paragraflarından sonra, Where.txt §2)
+    # ════════════════════════════════════════════════════════════════════
+    first_img_html = ""
+    if images:
+        img = images[0]
+        first_img_html = img_wrapper(img['src'], img['alt'] or f"{dest} fotoğraf")
+        print(f"   🖼️  ADIM 2: İlk fotoğraf yerleştirildi ({img['src'][:50]}...)")
+    else:
+        print("   ⚠️  ADIM 2: Fotoğraf bulunamadı")
+
+    # ════════════════════════════════════════════════════════════════════
+    # ADIM 3: KİŞİSEL BAKIŞ (fotoğraftan sonra, Where.txt §3 — Claude)
+    # ════════════════════════════════════════════════════════════════════
+    print("   💬 ADIM 3: Kişisel bakış (Claude)...")
+    kisisel_prompt = f"""SEN: yoldaolmak.com yazari Kemal Kaya.
+GOREV: {dest} icin giris sonrasi 2 paragraf (kisisel bakis + pratik degerlendirme).
+
+{GIRIS_SONRASI_TRAINING}
+
+CIKTI: 2 adet <p>...</p>."""
+    kisisel_raw = ask_claude_only(kisisel_prompt, max_tokens=800)  # Kişisel bakış
+    kisisel_raw = clean_html(kisisel_raw)
+    kisisel_raw = fix_md_bold_italic(kisisel_raw)
+    print("      ✅ Kişisel bakış hazır")
+
+    # ════════════════════════════════════════════════════════════════════
+    # ADIM 4: H2 "NASIL BİR YER" bölümü (Where.txt §5)
+    # ════════════════════════════════════════════════════════════════════
+    print(f"   🌍 ADIM 4: 'Nasıl Bir Yer' bölümü ({engine})...")
+    
+    # Türkiye kontrolü
+    _is_turkey_nasil = (flag == '')
+    _turkey_note_nasil = ""
+    if _is_turkey_nasil:
+        _turkey_note_nasil = (
+            "\n\n🚫 TÜRKİYE DESTİNASYONU:\n"
+            "   ❌ Saat dilimi, UTC bilgisi YAZMA\n"
+            "   ❌ Vize, pasaport gereksinimleri YAZMA\n"
+            "   ❌ Saat farkı YAZMA\n"
+            "   ❌ Türk vatandaşı için yerel bilgiler YAZMA\n"
+        )
+    
+    nasil_bir_yer_prompt = f"""{ULTRA_TRAINING}
+{_turkey_note_nasil}
+
+GÖREV: {dest} {flag} için "NASIL BİR YER" bölümü yaz/düzenle
+
+BAŞLIK: <h2 class="wp-block-heading"><strong>{dest} Nasıl Bir Yer {flag}</strong></h2>
+
+SIRA:
+1. KONUM: Coğrafi lokasyon, ülke/bölge/nehir/dağ/deniz ilişkisi, rakım, iklim (kısa)
+2. TARİH: Kuruluş, medeniyet katmanları, mimari izler (kısa, öz, anlatı dili)
+3. KARAKTER (Genius Loci):
+   - Şehrin ruhu
+   - Dokusu, ışığı
+   - Zaman algısı
+   - İnsanı
+
+NOT: Gezilecek yerler listesi BU BÖLÜMÜN SONUNDA ayrı bir H3 altında eklenecek.
+     Ulaşım bilgisi bu bölüme YAZILMAZ.
+
+MEVCUT İÇERİK (harmanlayarak kullan):
+{content}
+
+ZORUNLU:
+- Her paragrafta 1-2 <strong>bold</strong>
+- 2-3 özel isim için <em>italik</em>
+- Tire (— veya –) YOK
+- Yasak kelimeler YOK
+- EN AZ 4-5 paragraf
+
+GPT YASAK KALIPLAR:
+❌ "adeta bir zaman yolculuğuna çıkarıyor" — KLİŞE
+❌ "zaman yavaş akıyor" — KLİŞE
+❌ "her köşe başında tarihin izlerini hissedebilirsiniz" — KLİŞE
+❌ "misafirperver" — YASAK KELIME
+❌ "şehrin ruhu sokaklarda hissedilebiliyor" — BELİRSİZ
+
+BUNUN YERİNE:
+✅ Venedik/Osmanlı/vs. hangi medeniyet bıraktığını somut yap
+✅ Spesifik yapı, koku, ses, doku ile çiz
+✅ Nüfus/büyüklük/tempo hakkında somut bilgi
+
+ÇIKTI: H2 + paragraflar (HTML, not/açıklama yok):
+"""
+    nasil_bir_yer = safe_gpt(nasil_bir_yer_prompt, content,
+                             max_tokens=2000, min_chars=500)  # Token optimizasyonu
+
+    # Gezilecek Yerleri bu bölümün sonuna ekle (anlatı içinde, liste DEĞİL)
+    if gezilecek_html:
+        nasil_bir_yer += "\n\n" + gezilecek_html
+        print("      📌 Gezilecek Yerler eklendi")
+    print("      ✅ Nasıl Bir Yer hazır")
+
+    # ════════════════════════════════════════════════════════════════════
+    # ADIM 5: H2 "NEREDE" bölümü + Maps (Where.txt §6)
+    # G3: Türkiye filtresi / G7: GPT'ye devredildi
+    # ════════════════════════════════════════════════════════════════════
+    print(f"   📍 ADIM 5: 'Nerede' bölümü (GPT)...")
+    _is_turkey = (get_flag(dest) == '')
+    if _is_turkey:
+        _nerede_p2 = (
+            "Türkiye içindeki coğrafi konumu: hangi bölgede, yakın şehirler, "
+            "nehir/dağ/deniz ilişkisi (kısa). Ardından: bu destinasyonun tarihi önemi — "
+            "hangi medeniyetler burada yaşadı, neden stratejik önem taşıdı, "
+            "günümüzde neden ünlü (somut, anlatı dili)"
+        )
+        _turkey_note = (
+            "\n🚫 KESINLIKLE YAZMA: saat dilimi, UTC, vize, pasaport kontrolü, "
+            "Türk vatandaşı için gereksinimler — BUNLAR TÜRKİYE DESTİNASYONLARINDA ANLAMSIZ."
+        )
+    else:
+        _nerede_p2 = "Yüzölçümü, rakım, saat dilimi (UTC+X), vize/pasaport (Türk vatandaşı için), tarihî önem"
+        _turkey_note = ""
+
+    if _is_turkey:
+        _turkey_block = (
+            "\n🚫 TÜRKİYE DESTİNASYONU — KESINLIKLE YAZMA (anlamsız):\n"
+            "   saat dilimi, UTC, vize, pasaport kontrolü, gümrük, Türk vatandaşı gereksinimleri\n"
+        )
+        _p2_directive = (
+            "PARAGRAF 2 — COĞRAFİ ÖNEMİN TARİHSEL SONUÇLARI:\n"
+            "Bu konumun coğrafyası hangi medeniyetleri buraya çekti?\n"
+            "Ticaret yolu kavşağı mıydı, dini merkez miydi, askeri üs müydü?\n"
+            "Konum bugün şehrin kimliğini nasıl şekillendiriyor?\n"
+            "Somut: hangi medeniyetler, hangi yapılar, hangi kırılma noktaları."
+        )
+    else:
+        _turkey_block = ""
+        _p2_directive = (
+            "PARAGRAF 2 — COĞRAFİ ÖNEMİN TARİHSEL SONUÇLARI:\n"
+            "Bu konumun coğrafyası (deniz/nehir/dağ/yol) tarihi nasıl şekillendirdi?\n"
+            "Hangi medeniyetler bu yüzden buraya değer verdi?\n"
+            "Saat dilimi (UTC+X), vize/pasaport (Türk vatandaşı için) kısa not olarak ekle.\n"
+            "Somut: hangi ticaret yolu, hangi imparatorluk, hangi dönem dönüşümü."
+        )
+
+    nerede_prompt = (
+        f"{_turkey_block}\n"
+        + ULTRA_TRAINING + "\n\n"
+        + f'GÖREV: {dest} için "NEREDE" bölümü yaz\n\n'
+        + f'BAŞLIK: <h2 class="wp-block-heading"><strong>{dest} Nerede 📍</strong></h2>\n\n'
+        + "PARAGRAF 1 — COĞRAFİ KONUM:\n"
+        + "Ülke, bölge, nehir/dağ/deniz ilişkisi, komşu şehirler/ülkeler, rakım/yüzölçüm (kısa).\n\n"
+        + _p2_directive + "\n\n"
+        + "🚫 KESİNLİKLE YASAK: Koordinat, enlem, boylam, derece (°)\n"
+        + "Her paragrafta 1-2 bold. Tire yok.\n\n"
+        + "ÇIKTI: H2 + 2 adet <p>...</p>"
+    )
+    nerede_raw = safe_gpt(nerede_prompt, "", max_tokens=1200, min_chars=200)
+
+    # Zengin harita kutusu
+    maps_box = get_rich_maps_box(dest)
+    nerede_section = nerede_raw + "\n\n" + maps_box
+    print("      🗺️  Zengin harita kutusu eklendi")
+    print("      ✅ Nerede hazır")
+
+    # ════════════════════════════════════════════════════════════════════
+    # ADIM 6: H2 "NASIL GİDİLİR" + 2.-3. fotoğraflar (Where.txt §7 & §8)
+    # ════════════════════════════════════════════════════════════════════
+    print(f"   ✈️  ADIM 6: 'Nasıl Gidilir' bölümü ({engine})...")
+    
+    # Türkiye kontrolü - ulaşım bilgileri için
+    _is_turkey_nasil_gid = (flag == '')
+    if _is_turkey_nasil_gid:
+        _ulasim_directive = (
+            "\n\n🚫 TÜRKİYE DESTİNASYONU:\n"
+            "   ❌ 'İstanbul'dan' yerine 'Türkiye'den' veya şehir adlarını kullan\n"
+            "   ❌ Vize, pasaport kontrolü, gümrük bilgisi YAZMA\n"
+            "   ❌ Saat farkı YAZMA\n"
+            "   ✅ Türkiye içi ulaşım odaklı yaz: otobüs, uçak, özel araç, tren (varsa)\n"
+        )
+        _ulasim_kapsam = (
+            "- Uçak: Türkiye'nin hangi şehirlerinden uçuş var, havalimanı adı, kaç saat\n"
+            "- Otobüs: Hangi şehirlerden, terminal adı, kaç saat\n"
+            "- Özel araç: Hangi yollar, kaç km, kaç saat\n"
+            "- Tren: Sadece gerçekten varsa\n"
+            "- Şehir içi: Otogar/havalimanından merkeze ulaşım"
+        )
+    else:
+        _ulasim_directive = ""
+        _ulasim_kapsam = (
+            "- Uçak: Hangi havalimanı (isim ver), İstanbul'dan hangi havayolları, direkt mi aktarmalı mı, kaç saat\n"
+            "- Kara yolu: Otobüs kaç saat sürer, karayolu güzergahı, sınır kapısı (uluslararası ise)\n"
+            "- Demir yolu: Sadece tren bağlantısı gerçekten varsa yaz\n"
+            "- Deniz yolu: Sadece feribot/vapur gerçekten varsa yaz\n"
+            "- Şehir içi: Havalimanından merkeze nasıl gidilir (metro/taksi/servis), yaklaşık ücret, süre"
+        )
+    
+    nasil_gidilir_prompt = f"""{ULTRA_TRAINING}
+{_ulasim_directive}
+
+GÖREV: {dest} için "NASIL GİDİLİR" bölümü
+
+BAŞLIK: <h2 class="wp-block-heading"><strong>{dest}'a Nasıl Gidilir ✈️</strong></h2>
+
+KAPSAM (yalnızca gerçekten var olanları yaz — olmayan ulaşımı "yok" diye de yazma):
+{_ulasim_kapsam}
+
+KALİTE STANDARDI:
+- Havalimanı adını yaz: "X Havalimanı" — "yerel havalimanı" yazma
+- Uçuş süresini yaz: "yaklaşık 3 saat" — "birkaç saat" yazma
+- Otobüs için terminal adını yaz (biliyorsan) ve kaç saatte varılır
+- Şehir içi transferde seçenek sun: "Metro 40 dakika, taksi 25 dakika ama 3-4 kat pahalı"
+- Her ulaşım türü ayrı paragraf, başında <strong>Uçak:</strong> / <strong>Otobüs:</strong> gibi etiket
+
+ÇIKTI: H2 + paragraflar (HTML)
+"""
+    _nasil_raw = safe_gpt(nasil_gidilir_prompt, "", max_tokens=1500, min_chars=400)  # Token optimizasyonu
+    # Gutenberg wrap — GPT çıplak paragraf döndürürse sarmalama yap
+    if "<!-- wp:paragraph -->" not in _nasil_raw:
+        nasil_gidilir = wrap_gutenberg(_nasil_raw)
+    else:
+        nasil_gidilir = _nasil_raw
+
+    print("      ✅ Nasıl Gidilir hazır")
+
+    # ════════════════════════════════════════════════════════════════════
+    # ADIM 6b: 2. FOTOĞRAF — Uçak bileti başlığı öncesi
+    # ════════════════════════════════════════════════════════════════════
+    second_img_html = ""
+    if len(images) >= 2:
+        second_img_html = img_wrapper(
+            images[1]['src'],
+            images[1]['alt'] or f"{dest} havalimanı"
+        )
+        print(f"   🖼️  ADIM 6b: 2. fotoğraf hazır (uçak bileti öncesi)")
+    else:
+        print("   ⚠️  ADIM 6b: 2. fotoğraf bulunamadı")
+
+    # ════════════════════════════════════════════════════════════════════
+    # ADIM 7: UÇAK BİLETİ LİNK LİSTESİ (Where.txt §9)
+    # ════════════════════════════════════════════════════════════════════
+    flight_links = build_flight_links(dest)
+    print("   ✈️  ADIM 7: Uçak bileti listesi hazır (SEP öncesiyle birlikte)")
+
+    # ════════════════════════════════════════════════════════════════════
+    # ADIM 8: GEZİ PLANI + KAPANIS PARAGRAFLARI (Where.txt §11 & §13)
+    # ════════════════════════════════════════════════════════════════════
+    print(f"   🗓️  ADIM 8: Gezi Planı ({engine})...")
+    gezi_prompt = f"""{ULTRA_TRAINING}
+
+GÖREV: {dest} için GEZİ PLANI bölümü
+
+BAŞLIK: <h2 class="wp-block-heading"><strong>{dest} Gezi Planı 🗓</strong></h2>
+
+- Destinasyonu gezmek için kaç gün ayırmalı (minimum/ideal/uzun)
+- Önerilen gezi planı — HER GÜN 1 PARAGRAF şeklinde yaz (Gün 1, Gün 2...)
+- Örnek rotalar, dikkat edilecekler
+
+Her paragrafta 1-2 <strong>bold</strong>. Tire yok. Yasak kelime yok. Pratik, blogger tonu.
+
+MUTLAK YASAKLAR:
+❌ "kaybolmanın keyfine varın" — KLİŞE
+❌ "atmosferinde kaybolun" — KLİŞE
+❌ "zaman yolculuğuna çıkın" — KLİŞE
+❌ "unutmayın" — HARD IMPERATIVE
+❌ Tire (—) karakteri
+❌ Emin olmadığın pazar/restoran/yer adı — UYDURMA (generik tut)
+
+BUNUN YERİNE:
+✅ "Eski kenti sabah erkenden gez" (soft imperative)
+✅ "Birinci gün için 4-5 saat yeterli" (somut süre)
+
+ÇIKTI: H2 + her gün 1 paragraf (HTML):
+"""
+    gezi_raw = ask_gpt_only(gezi_prompt, max_tokens=1200)  # Token optimizasyonu
+    gezi_raw = clean_html(gezi_raw)
+    gezi_raw = fix_md_bold_italic(gezi_raw)
+    gezi_raw = auto_fix_gpt_output(gezi_raw)
+    print("      ✅ Gezi Planı hazır")
+
+    print(f"   📝 ADIM 8b: Kapanış paragrafları (Claude)...")
+    kapanis_prompt = KAPANIS_TRAINING.replace('{dest}', dest)
+    kapanis_raw = ask_gpt_only(kapanis_prompt, max_tokens=800)  # G6: GPT
+    kapanis_raw = clean_html(kapanis_raw)
+    kapanis_raw = fix_md_bold_italic(kapanis_raw)
+    kapanis_raw = auto_fix_gpt_output(kapanis_raw)
+    _kap_issues = check_giris_kalip(kapanis_raw, dest)
+    if _kap_issues:
+        print(f"      ⚠️  Kapanış kalıp ({_kap_issues[0]}) → yeniden üretiliyor...")
+        kapanis_raw = ask_gpt_only(kapanis_prompt, max_tokens=800)  # G6: GPT
+        kapanis_raw = clean_html(kapanis_raw)
+        kapanis_raw = fix_md_bold_italic(kapanis_raw)
+        kapanis_raw = auto_fix_gpt_output(kapanis_raw)
+    print("      ✅ Kapanış hazır")
+
+    # ════════════════════════════════════════════════════════════════════
+    # ADIM 8c: YOAST META OLUŞTUR (ADIM 9 öncesinde — schema için gerekli)
+    # ════════════════════════════════════════════════════════════════════
+    new_title = (
+        f"{dest} Nasıl Bir Yer? Nerede, Nasıl Gidilir, Gezi Planı"
+        if is_where else title
+    )
+    yoast_title, yoast_desc = build_yoast_meta(dest)
+    focuskw = f"{dest} nerede nasıl gidilir"
+    print(f"   🔍 ADIM 8c: Yoast meta hazır ({len(yoast_desc)} kar.)")
+    print(f"      📝 H1: {new_title}")
+    print(f"      📖 Meta: {yoast_desc[:65]}...")
+
+    # ════════════════════════════════════════════════════════════════════
+    # ADIM 9: SCHEMA + FAQ (Where.txt §12)
+    # ════════════════════════════════════════════════════════════════════
+    schema_faq = build_faq_schema(
+        dest, mode='where',
+        headline=new_title,
+        meta_desc=yoast_desc,
+        today=today
+    )
+    print("   📋 ADIM 9: Schema + FAQ eklendi (WHERE mod, 7 soru)")
+
+    # ════════════════════════════════════════════════════════════════════
+    # YAPI BİRLEŞTİR (Where.txt §15 uygulama sırası)
+    # ════════════════════════════════════════════════════════════════════
+    sections = [
+        giris_raw,                                              # §1   Giriş (2 paragraf)
+        first_img_html,                                         # §2   İlk fotoğraf
+        kisisel_raw,                                            # §3   Kişisel bakış
+        SEP + "\n" + nasil_bir_yer,                             # §4   HR → H2 Nasıl Bir Yer
+        SEP + "\n" + nerede_section,                            # §5   HR → H2 Nerede + Maps
+        SEP + "\n" + nasil_gidilir,                             # §6   HR → H2 Nasıl Gidilir
+        second_img_html,                                         # §7   2. fotoğraf (uçak bileti öncesi)
+        SEP + "\n" + flight_links,                             # §8   HR → H3 Uçak bileti listesi
+        SEP,                                                    # §10  Standalone HR
+        gezi_raw,                                               # §11  H2 Gezi Planı 🗓
+        SEP,                                                    # §12  Standalone HR
+        kapanis_raw,                                            # §13  Kapanış (2 paragraf)
+        schema_faq,                                             # §14  Schema + FAQ (HR YOK)
+    ]
+
+    # G2: Kalan fotoğrafları (3.+) bölümler arasına dağıt
+    if len(images) > 2:
+        sections = distribute_images(images, sections, start=2)
+        print(f"   🖼️  {len(images)-2} ek fotoğraf bölümler arasına dağıtıldı")
+
+    combined = "\n\n".join(s for s in sections if s.strip())
+
+    # ── H başlıkları bold ────────────────────────────────────────────────
+    combined = enforce_h_bold(combined)
+
+    # ── Gutenberg bloklara çevir ─────────────────────────────────────────
+    combined = wrap_gutenberg(combined)
+    combined = validate_gutenberg(combined)   # G4
+    combined = dedup_separators(combined)
+    combined = add_flag_to_first_h2(combined, flag)
+    combined = enforce_h2_emojis(combined, flag)       # S3+S4: Tüm H2 emoji kuralları
+    print("   🧱 Gutenberg bloklara çevrildi")
+
+    # ════════════════════════════════════════════════════════════════════
+    # ADIM 10: WP GÜNCELLE (Where.txt §13 & §14)
+    # new_title, yoast_title, yoast_desc → ADIM 8c'de hazırlandı
+    # ════════════════════════════════════════════════════════════════════
+
+    # Yerel kaydet
+    os.makedirs(cat_slug, exist_ok=True)
+    filename = f"{cat_slug}/{pid}-{today}-draft.html"
+    with open(filename, 'w', encoding='utf-8') as f:
+        f.write(combined)
+    print(f"   💾 Yerel: {filename}")
+
+    # WordPress güncelle
+    print("   📤 ADIM 10: Orijinal post güncelleniyor...")
+    try:
+        update_post_complete(
+            pid, new_title, combined,
+            close_comments=True,
+            update_date=True,
+            yoast_title=yoast_title,
+            yoast_desc=yoast_desc,
+            yoast_focuskw=focuskw,
+            categories=orig_cats or None
+        )
+        print(f"      ✅ Post ID {pid} güncellendi")
+        print(f"      📝 H1:    {new_title}")
+        print(f"      🔍 Yoast: {yoast_desc}")
+        print(f"      🔑 kw:    {focuskw}")
+        print(f"      📏 {len(yoast_desc)} karakter")
+        # Ayrı PATCH: Yoast meta alanları REST API'ye kayıtlı değilse
+        # ana istek silentle görmezden gelir; 2. istek bunu telafi eder
+        update_yoast_meta(pid, yoast_title, yoast_desc, focuskw)
+        deleted = delete_post_comments(pid)
+        if deleted: print(f"      🗑️  {deleted} yorum silindi")
+    except Exception as e:
+        print(f"      ⚠️  WordPress hatası: {e}")
+
+    # ── TEST KRİTERLERİ (Where.txt §TEST) ────────────────────────────────
+    print("\n   📋 TEST KRİTERLERİ:")
+    chk = [
+        ("İlk 2 paragraf giriş + blogger tonu",  len(giris_raw) > 100),
+        ("İlk fotoğraf 2. paragraf sonrası",      bool(first_img_html)),
+        ("Kişisel bakış olumlu+olumsuz",          len(kisisel_raw) > 80),
+        ("Ayıraç sadece H2 ÖNCESİNDE",           True),  # insert_separators yok, manuel §sections
+        ("Nasıl Bir Yer: konum+tarih+karakter",   'Nasıl Bir Yer' in combined),
+        ("Nerede: 2 paragraf + Maps box",          'google.com/maps' in combined),
+        ("Zengin harita kutusu (wp:html)",          combined.count('wp:html') >= 1),
+        ("Eski Maps kaldırıldı",                   combined.count('maps?q=') <= 1),
+        ("Nasıl Gidilir genişletildi",             'Nasıl Gidilir' in combined),
+        ("2. fotoğraf uçak bileti öncesinde",      len(images) < 2 or bool(second_img_html)),
+        ("Resimlerden border-radius kaldırıldı",   'border-radius: 12px' not in combined or 'yoa-faq' in combined),
+        ("Uçak bileti listesi (5 madde)",          flight_links.count('<li>') == 5),
+        ("Gezi Planı bölümü var",                  'Gezi Plan' in combined),
+        ("Kapanış 2 paragraf",                     len(kapanis_raw) > 80),
+        ("Schema (Article) var",                   'Article' in combined and 'FAQPage' in combined),
+        ("FAQ var (ne zaman sorusu)",               'ne zaman gidilmeli' in combined or 'ne zaman gidilir' in combined),
+        ("Yoast meta desc 120-158 karakter",       120 <= len(yoast_desc) <= 158),
+        ("Yoast meta desc tercihen 150+ karakter", len(yoast_desc) >= 150),
+        ("Yoast başlık H1 ile aynı",               yoast_title == new_title),
+        ("Dest adı meta içinde",                   dest.lower() in yoast_desc.lower()),
+        ("focuskw tanımlı",                         bool(focuskw)),
+        ("focuskw dest içeriyor",                   dest.lower() in focuskw.lower()),
+        ("Yoast 3 alan gönderiliyor",               bool(yoast_title and yoast_desc and focuskw)),
+        ("Yorumlar kapalı (WP payload)",           True),
+        ("Tüm resimler wrapper ile ortalandı",     'text-align: center' in combined or not images),
+    ]
+    passed = sum(1 for _, v in chk if v)
+    for label, ok in chk:
+        print(f"      {'✅' if ok else '❌'} {label}")
+
+    blocks = combined.count('<!-- wp:paragraph -->')
+    print(f"\n✅ TAMAMLANDI: {dest} {flag}  [{passed}/{len(chk)} test]")
+    print(f"   📏 {len(combined):,} karakter  |  {original_paras} para → {blocks} Gutenberg blok\n")
+    return combined
+
+
+# ─── DİĞER MODLAR ─────────────────────────────────────────────────────────────
+def revise_travel_post(post):
+    """
+    TRAVEL modu — 3 ADIM:
+      ADIM 1 (GPT)    : 2 paragraf giriş — Anlatı Mimarisi, hook + bağlam
+      ADIM 2 (Claude) : 2 paragraf kişisel bakış — somut +/-, özgün ses
+      ADIM 3 (GPT)    : Gövde — H2/H3 bölümler, Gutenberg blok formatı
+    """
+    content = post['content']['rendered']
+    title   = post['title']['rendered']
+    pid     = post.get('id', '?')
+    today   = datetime.now().strftime('%Y-%m-%d')
+
+    # Orijinal kategorileri al — tam hiyerarşik yol (turkiye/akdeniz/isparta)
+    try:
+        orig_cats = get_post_categories(pid) if isinstance(pid, int) else []
+        cat_slug  = get_category_path(orig_cats[0]) if orig_cats else "draft"
+    except Exception:
+        orig_cats, cat_slug = [], "draft"
+
+    print(f"\n   📌 Başlık: {title}")
+    print(f"   📦 Post ID: {pid}  |  Orijinal: {len(content):,} char\n")
+
+    # ── Orijinal HTML sıyır ───────────────────────────────────────────────
+    raw = re.sub(r'<!-- /?wp:[^>]+ -->', '', content)
+    raw = re.sub(r'<hr[^>]*/>', '', raw)
+    raw = re.sub(r'\n{3,}', '\n\n', raw).strip()
+
+    # ── M4: Renkli arka plan kutularını temizle ───────────────────────────
+    # style='background-color:...' veya class='has-background' içeren bloklar
+    raw = re.sub(
+        r'<p[^>]+background-color[^>]*>.*?</p>', '', raw,
+        flags=re.DOTALL|re.IGNORECASE
+    )
+    raw = re.sub(
+        r'<p[^>]+has-background[^>]*>.*?</p>', '', raw,
+        flags=re.DOTALL|re.IGNORECASE
+    )
+    raw = re.sub(
+        r'<div[^>]+(?:background-color|has-background)[^>]*>.*?</div>', '', raw,
+        flags=re.DOTALL|re.IGNORECASE
+    )
+
+    # ── M3: Google Maps iframe tespiti ve kaldırma ───────────────────────
+    _has_orig_maps = bool(re.search(r'google[.]com/maps', raw, re.IGNORECASE))
+    raw = re.sub(
+        r'<figure[^>]*>\s*<iframe[^>]*google[.]com/maps[^>]*>[^<]*</iframe>\s*</figure>',
+        '', raw, flags=re.DOTALL|re.IGNORECASE
+    )
+    raw = re.sub(
+        r'<iframe[^>]*google[.]com/maps[^>]*>[^<]*</iframe>',
+        '', raw, flags=re.DOTALL|re.IGNORECASE
+    )
+
+    # ── Paragrafları böl ──────────────────────────────────────────────────
+    # P1+P2 → giriş referansı (Claude)
+    # P3+P4 → kişisel bakış referansı (GPT)
+    # P5+   → gövde (GPT)
+    p_all = list(re.finditer(r'<p>.*?</p>', raw, re.DOTALL))
+    if len(p_all) >= 4:
+        intro_raw    = raw[:p_all[1].end()].strip()
+        kisisel_raw  = raw[p_all[2].start():p_all[3].end()].strip()
+        body_raw     = raw[p_all[3].end():].strip()
+    elif len(p_all) >= 2:
+        intro_raw    = raw[:p_all[1].end()].strip()
+        kisisel_raw  = ""
+        body_raw     = raw[p_all[1].end():].strip()
+    else:
+        intro_raw    = raw[:600]
+        kisisel_raw  = ""
+        body_raw     = raw[600:]
+
+    # ── Gutenberg <p> sarıcı ─────────────────────────────────────────────
+    def wrap_paras(html):
+        parts = []
+        for p in re.findall(r'<p>.*?</p>', html, re.DOTALL):
+            parts.append(f"<!-- wp:paragraph -->\n{p}\n<!-- /wp:paragraph -->")
+        if not parts:
+            return f"<!-- wp:paragraph -->\n<p>{html.strip()}</p>\n<!-- /wp:paragraph -->"
+        return "\n\n".join(parts)
+
+    # ══════════════════════════════════════════════════════════════════════
+    # ADIM 1 — Claude: 2 paragraf giriş (Anlatı Mimarisi sesi)
+    # ══════════════════════════════════════════════════════════════════════
+    print("   🔵 ADIM 1: Giriş (Claude — Anlatı Mimarisi)...")
+    giris_prompt = (
+        "SEN: yoldaolmak.com yazari Kemal Kaya.\n"
+        "GOREV: '" + title + "' icin ilk 2 giris paragrafi.\n\n"
+        + GIRIS_TRAINING
+        + "\nORIJINAL (referans al, tamamen yeniden yaz):\n"
+        + intro_raw
+        + "\n\nCIKTI: Sadece 2 <p>...</p>. Fazlasi degil."
+    )
+
+    giris_raw = ask_claude_only(giris_prompt, max_tokens=1500)    # Claude (WHERE ile aynı limit)
+    giris_raw = clean_html(giris_raw)
+    giris_raw = fix_md_bold_italic(giris_raw)
+    giris_raw = auto_fix_gpt_output(giris_raw)
+    kalip = check_giris_kalip(giris_raw, title)
+    if kalip:
+        import random as _rnd
+        _dest_k = title.split("Gezi")[0].split("Nerede")[0].strip()
+        _tip = _rnd.choice([
+            "İlk fark ettiğim şey " + _dest_k + " değildi. Başka bir şey vurdu:",
+            _dest_k + " için bir hafta önceden beklentim şuydu. Yanıldım.",
+            "Sabah 7'de " + _dest_k + "'te kimse yok. O boşlukta şehri gördüm:"
+        ])
+        _retry_prompt = (
+            giris_prompt
+            + "\n\n⚠️ RETRY — önceki deneme kalıp kullandığı için reddedildi."
+            + "\nZORUNLU: İlk cümle şu yapıyla başlamalı (sözcükleri değiştir):"
+            + "\n→ " + _tip
+            + "\nKALIP YASAK: herkes/haklıydılar/beklediğim gibi değildi/zaman yolculuğu"
+        )
+        print(f"      ⚠️  Kalıp tespit ({kalip[0]}) → farklı açılış zorlanıyor...")
+        giris_raw = ask_claude_only(_retry_prompt, max_tokens=1500)    # Claude
+        giris_raw = clean_html(giris_raw)
+        giris_raw = fix_md_bold_italic(giris_raw)
+    giris_out = wrap_paras(giris_raw)
+    print(f"      ✅ Giriş: {giris_out.count('<!-- wp:paragraph -->')} paragraf")
+
+    # ══════════════════════════════════════════════════════════════════════
+    # ADIM 2 — CLAUDE: 2 paragraf kişisel bakış (özgün ses, where ile tutarlı)
+    # ══════════════════════════════════════════════════════════════════════
+    print("   🔵 ADIM 2: Kişisel bakış (Claude — özgün ses)...")
+    kisisel_prompt = f"""SEN: yoldaolmak.com yazari Kemal Kaya.
+GOREV: "{title}" icin giris sonrasi 2 paragraf.
+
+{GIRIS_SONRASI_TRAINING}
+
+ORIJINAL REFERANS:
+{kisisel_raw or body_raw[:400]}
+
+CIKTI: Sadece 2 <p>...</p>. Gutenberg etiketi ekleme."""
+
+    kisisel_out_raw = ask_claude_only(kisisel_prompt, max_tokens=800)  # Token optimizasyonu
+    kisisel_out_raw = clean_html(kisisel_out_raw)
+    kisisel_out_raw = fix_md_bold_italic(kisisel_out_raw)
+    kisisel_out_raw = auto_fix_gpt_output(kisisel_out_raw)
+    kisisel_out = wrap_paras(kisisel_out_raw)
+    print(f"      ✅ Kişisel bakış: {kisisel_out.count('<!-- wp:paragraph -->')} paragraf")
+
+    # ══════════════════════════════════════════════════════════════════════
+    # ADIM 3 — GPT: Gövde (H2/H3 bölümler, tam Gutenberg)
+    # ══════════════════════════════════════════════════════════════════════
+    print("   🟢 ADIM 3: Gövde (GPT — H2/H3 bölümleri)...")
+    orig_h2s = re.findall(r'<h2[^>]*>(.*?)</h2>', raw, re.DOTALL)
+    h2_texts = [re.sub(r'<[^>]+>', '', h).strip() for h in orig_h2s]
+    h2_list  = "\n".join("  • " + h for h in h2_texts)
+    h2_hint  = f"\nORİJİNAL H2 BAŞLIKLARI (koru/iyileştir):\n{h2_list}" if h2_list else ""
+
+    # "Gezilecek yerler" H2 var mı? VEYA numaralı yer listesi var mı? → özel training ekle
+    has_gezilecek = (
+        any("gezilecek" in h.lower() or "gezip" in h.lower() or "görülecek" in h.lower()
+            for h in h2_texts)
+        or bool(re.search(r'^\s*[1-9]\.\s+[A-ZÇĞİÖŞÜa-zçğışöüI]', body_raw, re.MULTILINE))
+    )
+    gezilecek_extra = (
+        "\n\n" + GEZILECEK_TRAINING
+        if has_gezilecek else ""
+    )
+
+    # ── Destinasyon + Türkiye kontrolü ─────────────────────────────────
+    _draft_dest = extract_dest(title)
+    _draft_flag = get_flag(_draft_dest)
+    _is_turkey  = (_draft_flag == '')
+    _turkey_directive = ""
+    if _is_turkey:
+        _turkey_directive = (
+            "\n\n🇹🇷 TÜRKİYE DESTİNASYONU — KESİNLİKLE YASAK:\n"
+            "- Saat dilimi bilgisi VERME (UTC+3 vb.)\n"
+            "- Vize bilgisi VERME\n"
+            "- Pasaport kontrolü bilgisi VERME\n"
+        )
+
+    # Düz f-string — .format() YOK, {body_raw} ve {h2_hint} direkt
+    body_prompt_final = f"""{DRAFT_TRAINING}
+{GOVDE_MAD_TRAINING}{gezilecek_extra}{_turkey_directive}
+
+GÖREV: "{title}" — giriş paragrafları (P1-P2 ve P3-P4) YAZILDI, TEKRAR YAZMA.
+GPT'nin görevi: giriş sonrasındaki TÜM bölümleri (H2, H3, paragraflar) yeniden yaz ve geliştir.{h2_hint}
+
+ORİJİNAL GÖVDE (yeniden yaz, geliştir):
+{body_raw}
+
+ZORUNLU FORMAT:
+
+H2 (her H2 önünde separator):
+  <!-- wp:separator -->
+  <hr class="wp-block-separator has-alpha-channel-opacity"/>
+  <!-- /wp:separator -->
+  <!-- wp:heading {{"level":2}} -->
+  <h2 class="wp-block-heading"><strong>✈️ [Başlık]</strong></h2>
+  <!-- /wp:heading -->
+
+H3 Standart:
+  <!-- wp:heading {{"level":3}} -->
+  <h3 class="wp-block-heading"><strong>[Alt Başlık]</strong></h3>
+  <!-- /wp:heading -->
+
+H3 Gezilecek Yer (ZORUNLU — numara ile başlayan her yer):
+  <!-- wp:heading {{"level":3}} -->
+  <h3 class="wp-block-heading"><strong>N. Yer Adı — Kısa tematik/mimari tanım</strong></h3>
+  <!-- /wp:heading -->
+
+Paragraf:
+  <!-- wp:paragraph -->
+  <p>İçerik.</p>
+  <!-- /wp:paragraph -->
+
+YASAK: ## ### markdown | <ul><li> liste | metin içi tire "—" | yasak sıfatlar
+
+NASIL GİDİLİR BÖLÜMÜ İÇİN ÖZEL KURALLAR (varsa):
+- Sadece gerçekten var olan ulaşım seçeneklerini yaz
+- Tren yoksa "tren bağlantısı yoktur" diye de yazma, o başlığı hiç açma
+- Feribot yoksa aynı şekilde
+- Koordinat, enlem, boylam hiçbir şekilde ekleme
+- Her ulaşım türü için 1 paragraf, pratik bilgi, gerçek şirket/havalimanı adları
+
+ÇIKTI: SADECE Gutenberg HTML. Açıklama ekleme."""
+
+    body_raw_gpt = safe_ai(body_prompt_final, body_raw, max_tokens=8000,
+                           min_ratio=0.65, min_chars=len(body_raw)//2)
+    body_raw_gpt = auto_fix_gpt_output(body_raw_gpt)
+    body_raw_gpt = fix_md_bold_italic(body_raw_gpt)
+    body_out     = wrap_gutenberg(body_raw_gpt)
+
+    # Validasyon
+    h2_c  = body_out.count('<!-- wp:heading {"level":2}')
+    h3_c  = body_out.count('<!-- wp:heading {"level":3}')
+    sep_c = body_out.count('<!-- wp:separator')
+    md_l  = len(re.findall(r'^#{1,3} ', body_out, re.MULTILINE))
+    _body_no_h3 = re.sub(r'<h3[^>]*>.*?</h3>', '', body_out,
+                         flags=re.DOTALL | re.IGNORECASE)
+    tire = _body_no_h3.count('\u2014') + _body_no_h3.count('\u2013')
+    print(f"      ✅ Gövde: {len(body_out):,} char  H2:{h2_c} H3:{h3_c} Sep:{sep_c}")
+    if md_l:  print(f"      ⚠️  Markdown kalıntı: {md_l}")
+    if tire:  print(f"      ⚠️  Tire kalıntı: {tire}")
+    if sep_c < h2_c: print(f"      ⚠️  Separator eksik: {h2_c} H2, {sep_c} sep")
+
+    # ── BİRLEŞTİR ────────────────────────────────────────────────────────
+    result = giris_out + "\n\n" + kisisel_out + "\n\n" + body_out
+    result = clean_html(result)
+    result = dedup_separators(result)
+
+    # ── M3: Google Maps iframe → Rich Maps Box ────────────────────────
+    _has_maps_result = bool(re.search(r'google[.]com/maps', result, re.IGNORECASE))
+    _maps_injected   = False
+    if _has_orig_maps or _has_maps_result:
+        try:
+            _rich_map = get_rich_maps_box(_draft_dest)
+            # Gutenberg wp:html bloğu içindeki iframe'i değiştir
+            result, _n1 = re.subn(
+                r'<!-- wp:html -->.*?google[.]com/maps.*?<!-- /wp:html -->',
+                _rich_map, result, flags=re.DOTALL|re.IGNORECASE
+            )
+            # Direkt iframe
+            result, _n2 = re.subn(
+                r'<iframe[^>]*google[.]com/maps[^>]*>.*?</iframe>',
+                _rich_map, result, flags=re.DOTALL|re.IGNORECASE
+            )
+            _maps_injected = (_n1 + _n2) > 0
+            if not _maps_injected:
+                # Fallback 1: Nerede/Konum/Harita H2'sinden sonra
+                _nerede_m = re.search(
+                    r'(<!-- wp:heading \{"level":2\} -->\s*<h2[^>]*>[^<]*(?:[Nn]erede|[Kk]onum|[Hh]arita)[^<]*</h2>\s*<!-- /wp:heading -->)',
+                    result, re.DOTALL
+                )
+                if _nerede_m:
+                    _ins = _nerede_m.end()
+                    result = result[:_ins] + "\n\n" + _rich_map + result[_ins:]
+                    _maps_injected = True
+                else:
+                    # Fallback 2: Nasıl Gidilir H2'sinden sonra
+                    _gidilir_m = re.search(
+                        r'(<!-- wp:heading \{"level":2\} -->\s*<h2[^>]*>[^<]*(?:[Nn]asıl\s*[Gg]idilir|[Uu]laşım)[^<]*</h2>\s*<!-- /wp:heading -->)',
+                        result, re.DOTALL
+                    )
+                    if _gidilir_m:
+                        _ins = _gidilir_m.end()
+                        result = result[:_ins] + "\n\n" + _rich_map + result[_ins:]
+                        _maps_injected = True
+                    else:
+                        # Fallback 3: İlk separator'dan sonra (gövde başı)
+                        _sep_m = re.search(r'(<!-- wp:separator -->.*?<!-- /wp:separator -->)',
+                                          result, re.DOTALL)
+                        if _sep_m:
+                            _ins = _sep_m.end()
+                            result = result[:_ins] + "\n\n" + _rich_map + result[_ins:]
+                            _maps_injected = True
+            print(f"   🗺️  M3: Rich Maps Box {'enjekte edildi' if _maps_injected else 'yerleştirme başarısız'}")
+        except Exception as _me:
+            print(f"   ⚠️  M3: Maps box hatası: {_me}")
+
+    # ── M5: H başlıklarını Türkçe title case'e çevir ─────────────────
+    result = capitalize_h_titles(result)
+    print(f"   🔤 M5: H başlıkları capitalize edildi")
+
+    # ── İlk H2'ye bayrak ─────────────────────────────────────────────
+    result = add_flag_to_first_h2(result, _draft_flag)
+    result = enforce_h2_emojis(result, _draft_flag)     # S3+S4: Tüm H2 emoji kuralları
+
+    # ── Banned check ──────────────────────────────────────────────────
+    issues = check_banned(result)
+    if issues:
+        print(f"\n   ⚠️  BANNED: {', '.join(issues[:5])}")
+
+    # ── Schema + FAQ ──────────────────────────────────────────────────
+    try:
+        schema_faq_d = build_faq_schema(
+            _draft_dest, "draft",
+            headline=title,
+            today=today
+        )
+        result = result + "\n\n" + schema_faq_d
+        print("   📋 Schema + FAQ eklendi (DRAFT mod)")
+    except Exception as _se:
+        print(f"   ⚠️  Schema hatasi: {_se}")
+
+    # ════════════════════════════════════════════════════════════════════
+    # ADIM 8c: YOAST META (DRAFT mod)
+    # ════════════════════════════════════════════════════════════════════
+    yoast_title_d, yoast_desc_d = build_yoast_meta(_draft_dest)
+    focuskw_d   = f"{_draft_dest} nerede nasıl gidilir"
+    # G1: Bayrak + G2: OK! suffix — clawdbot.py ikinci kayıt YOK
+    _title_flag  = get_flag(_draft_dest)
+    new_title_d  = title
+    # Bayrak henüz başlıkta yoksa ekle
+    if _title_flag and _title_flag not in new_title_d:
+        new_title_d = new_title_d + " " + _title_flag
+    # Aynı başlıklı eski draftlardan ayırt etmek için OK! suffix
+    if not new_title_d.endswith(" OK!"):
+        new_title_d = new_title_d + " OK!"
+    print(f"   🔍 ADIM 8c: Yoast meta hazır ({len(yoast_desc_d)} kar.)")
+    print(f"      📝 H1:    {new_title_d}")
+    print(f"      📖 Meta:  {yoast_desc_d[:65]}...")
+    print(f"      🔑 kw:    {focuskw_d}")
+
+    # ════════════════════════════════════════════════════════════════════
+    # ADIM 10: YEREL KAYDET + WP YENİ DRAFT POST OLUŞTUR
+    # Orijinal post (pid) değiştirilmez.
+    # Aynı kategoriye yeni status=draft post açılır.
+    # ════════════════════════════════════════════════════════════════════
+    os.makedirs(cat_slug, exist_ok=True)
+    local_file = f"{cat_slug}/{pid}-{today}-draft.html"
+    with open(local_file, 'w', encoding='utf-8') as _f:
+        _f.write(result)
+    print(f"   💾 Yerel: {local_file}")
+
+    _new_draft_id = None
+    print(f"   📤 ADIM 10: WordPress'e yeni DRAFT post yazılıyor (kategori: {cat_slug})...")
+    try:
+        _resp = save_as_draft(
+            pid,               # sadece kategori referansı için
+            new_title_d,
+            result,
+            categories=orig_cats or None,
+            yoast_title=yoast_title_d,
+            yoast_desc=yoast_desc_d,
+            yoast_focuskw=focuskw_d,
+        )
+        _new_draft_id = _resp.get('id')
+        _draft_link   = _resp.get('link', '')
+        print(f"      ✅ Yeni draft oluşturuldu — ID: {_new_draft_id}")
+        print(f"      📂 Kategori: {cat_slug}  (orijinal ID {pid} dokunulmadı)")
+        print(f"      🔗 {_draft_link}")
+        # Ayrı PATCH: Yoast meta alanları yeni draft'a yazılsın
+        if _new_draft_id:
+            update_yoast_meta(_new_draft_id, yoast_title_d, yoast_desc_d, focuskw_d)
+    except Exception as _we:
+        print(f"      ⚠️  WordPress hatası: {_we}")
+
+    # ════════════════════════════════════════════════════════════════════
+    # M6: KONTROL — 6 madde validation
+    # ════════════════════════════════════════════════════════════════════
+    _renkli_ok = (
+        'background-color' not in result.split('<script')[0] and
+        'has-background'   not in result.split('<script')[0]
+    )
+    _nasil_ok  = bool(re.search(r'nasil\s*gidilir|nasıl\s*gidilir', result, re.I))
+    _h2_lower  = bool(re.search(r'<h2[^>]*>\s*(?:<[^>]+>)*\s*[a-zçğışöü]{3,}', result, re.DOTALL))
+    _h3_lower  = bool(re.search(r'<h3[^>]*>\s*(?:<[^>]+>)*\s*[a-zçğışöü]{3,}', result, re.DOTALL))
+
+    _checks = [
+        ("M1 Yeni draft oluşturuldu",      _new_draft_id is not None),
+        ("M1 Kategori orijinal ile aynı",  bool(orig_cats)),
+        ("M2 Giriş ≥2 paragraf",           giris_out.count('<!-- wp:paragraph -->') >= 2),
+        ("M2 Giriş Claude yazdı",          True),
+        ("M3 Maps box işlendi",            not _has_orig_maps or _maps_injected),
+        ("M4 Renkli box yok",              _renkli_ok),
+        ("M4 Nasıl Gidilir var",           _nasil_ok),
+        ("M5 H2 capitalize",               not _h2_lower),
+        ("M5 H3 capitalize",               not _h3_lower),
+        ("Yoast desc var",                 len(yoast_desc_d) >= 80),
+        ("Schema/FAQ var",                 'FAQPage' in result or 'yoa-faq' in result),
+    ]
+    _all_ok = all(v for _, v in _checks)
+    total   = len(result)
+    g_blok  = result.count('<!-- wp:')
+
+    print(f"\n   {'✅' if _all_ok else '⚠️ '} Draft tamam: {total:,} char | {g_blok} blok | {cat_slug}/")
+    print(f"   📋 M6 KONTROL ({sum(v for _,v in _checks)}/{len(_checks)}):")
+    for lbl, ok in _checks:
+        print(f"      {'✅' if ok else '❌'} {lbl}")
+    return result
+
+
+
+# ══════════════════════════════════════════════════════════════════════════════
+# GUIDE MOD — Gezi Rehberi Formatı
+# ══════════════════════════════════════════════════════════════════════════════
+def wrap_paras_inline(html):
+    """Basit <p> taglarını Gutenberg bloklarına sar"""
+    parts = []
+    for p in re.findall(r'<p[^>]*>.*?</p>', html, re.DOTALL):
+        parts.append(f"<!-- wp:paragraph -->\n{p}\n<!-- /wp:paragraph -->")
+    if not parts:
+        return f"<!-- wp:paragraph -->\n<p>{html.strip()}</p>\n<!-- /wp:paragraph -->"
+    return "\n\n".join(parts)
+
+
+# GUIDE için özel Yoast meta
+def build_yoast_meta_guide(dest: str) -> tuple[str, str]:
+    """GUIDE mod için Yoast meta title + description"""
+    yoast_title = f"{dest} Gezi Rehberi: Gezilecek Yerler, Konaklama, Pratik Bilgiler"
+    yoast_desc = (
+        f"{dest} gezi rehberi: mutlaka görülmesi gereken yerler, ne yenir, "
+        f"nerede kalınır, alışveriş önerileri ve pratik bilgiler."
+    )
+    # 158 karakteri geçmesin
+    if len(yoast_desc) > 158:
+        yoast_desc = yoast_desc[:155] + '...'
+    return yoast_title, yoast_desc
+
+
+def revise_guide_post(post):
+    """
+    GUIDE modu — Destinasyon Gezi Rehberi formatı (YENİ):
+    - H1: {Destinasyon} Gezi Rehberi {🇹🇷}
+    - Giriş 2§ (Claude)
+    - İlk fotoğraf
+    - Kişisel Bakış 2§ (Claude)
+    - H2: Gezi Rehberi (GPT, 7-8 paragraf)
+    - H2: Gezilecek Yerler (GPT, paragraf + H3 listesi)
+    - H2: Yeme İçme Rehberi (GPT)
+    - H2: Konaklama Önerileri (GPT)
+    - H2: Alışveriş Rehberi (GPT)
+    - H2: Pratik Bilgiler (GPT)
+    - Kapanış 2§ (GPT)
+    - FAQ + Schema (7 soru, GPT)
+    """
+    pid     = post['id']
+    title   = post['title']['rendered']
+    content = post['content']['rendered']
+    today   = datetime.now().strftime('%Y-%m-%d')
+    images  = extract_all_images(content)
+
+    dest = extract_dest(title)
+    flag = get_flag(dest)
+    _is_turkey = (flag == '')
+
+    # Orijinal kategorileri al
+    try:
+        orig_cats = get_post_categories(pid)
+        cat_slug  = get_category_path(orig_cats[0]) if orig_cats else 'draft'
+    except Exception:
+        orig_cats, cat_slug = [], 'draft'
+
+    print(f"\n📖 GUIDE MODE: {dest} {flag}")
+    print(f"   📦 Post ID: {pid}")
+    print(f"   🖼️  Fotoğraflar: {len(images)}\n")
+
+    # ══════════════════════════════════════════════════════════════════════
+    # ADIM 1: GİRİŞ 2 PARAGRAF (Claude)
+    # ══════════════════════════════════════════════════════════════════════
+    print("   🔵 ADIM 1: Giriş paragrafları (Claude)...")
+    giris_prompt = f"""{GIRIS_TRAINING}
+
+SEN: yoldaolmak.com yazarı Kemal Kaya
+GÖREV: {dest} Gezi Rehberi için giriş 2 paragrafı.
+
+ÇIKTI: 2 adet <p>...</p>
+"""
+    giris_raw = ask_ai(giris_prompt, max_tokens=1500)  # Claude
+    giris_raw = clean_html(giris_raw)
+    giris_raw = fix_md_bold_italic(giris_raw)
+    giris_raw = auto_fix_gpt_output(giris_raw)
+    giris_raw = wrap_paras_inline(giris_raw)
+    print(f"      ✅ Giriş: {giris_raw.count('<p>')} paragraf")
+
+    # ══════════════════════════════════════════════════════════════════════
+    # ADIM 2: İLK FOTOĞRAF
+    # ══════════════════════════════════════════════════════════════════════
+    first_img_html = ""
+    if images:
+        first_img_html = img_wrapper(
+            images[0]['src'],
+            images[0]['alt'] or f"{dest} şehir manzarası"
+        )
+        print(f"   🖼️  ADIM 2: İlk fotoğraf eklendi")
+    else:
+        print(f"   ⚠️  ADIM 2: Fotoğraf bulunamadı")
+
+    # ══════════════════════════════════════════════════════════════════════
+    # ADIM 3: KİŞİSEL BAKIŞ 2 PARAGRAF (Claude)
+    # ══════════════════════════════════════════════════════════════════════
+    print("   🔵 ADIM 3: Kişisel Bakış (Claude)...")
+    kisisel_prompt = f"""{GIRIS_SONRASI_TRAINING}
+
+{dest} hakkında kişisel bakış ve yorum: olumlu + olumsuz + özet.
+
+ÇIKTI: 2 adet <p>...</p>
+"""
+    kisisel_raw = ask_ai(kisisel_prompt, max_tokens=800)  # Claude
+    kisisel_raw = clean_html(kisisel_raw)
+    kisisel_raw = auto_fix_gpt_output(kisisel_raw)
+    kisisel_raw = wrap_paras_inline(kisisel_raw)
+    print(f"      ✅ Kişisel Bakış: {kisisel_raw.count('<p>')} paragraf")
+
+    SEP = '<!-- wp:separator -->\n<hr class="wp-block-separator has-alpha-channel-opacity"/>\n<!-- /wp:separator -->'
+
+    # ══════════════════════════════════════════════════════════════════════
+    # ADIM 5: H2 "{Destinasyon} Gezi Rehberi" (GPT, 7-8 paragraf)
+    # ══════════════════════════════════════════════════════════════════════
+    print("   🟢 ADIM 5: Gezi Rehberi bölümü (GPT)...")
+    
+    _turkey_directive = ""
+    if _is_turkey:
+        _turkey_directive = (
+            "\n🚫 TÜRKİYE DESTİNASYONU:\n"
+            "   ❌ Saat dilimi bilgisi VERME\n"
+            "   ❌ Vize bilgisi VERME\n"
+            "   ❌ Pasaport kontrolü VERME\n"
+            "   ❌ Saat farkı sorusu SORMA\n"
+        )
+    
+    gezi_rehberi_prompt = f"""{_turkey_directive}
+{DIL_KURALLARI}
+
+GÖREV: {dest} Gezi Rehberi — "Nasıl Bir Yer" benzeri, ama daha kapsamlı
+
+BAŞLIK: <h2 class="wp-block-heading"><strong>{dest} Gezi Rehberi {flag}</strong></h2>
+
+İÇERİK (7-8 paragraf):
+1. Coğrafi Lokasyon: Nerede, hangi ülke/bölge, nehir/dağ/deniz ilişkisi
+2. Tarihi Önem: Neden önemliydi? Stratejik konum, ticaret yolları, medeniyetler için değeri, başkentlik
+   (Tarihi hikaye değil — kim kimi öldürdü anlatma. Tarihin önemini anlat: Neden stratejikti?)
+3. İnsanı: Yerel halk nasıl? Misafirperver mi, ilgisiz mi? Somut gözlem.
+4. Kültür Özellikleri: Mimari, sanat, müzik, festival, yerel yaşam tarzı
+5. İlk Gezginler İçin: Hafızada tablo oluşturacak ülke profili, ilgi çekici bilgiler
+6. Destinasyona Neden Gidilmeli: Soft mesaj, çekici yanları (abartısız)
+7. Vize/Saat Farkı: {f"Türkiye ile saat farkı, vize durumu (kısa)" if not _is_turkey else "Türkiye içi, saat farkı/vize bilgisi VERME"}
+
+ÇIKTI: H2 + 7-8 paragraf (HTML)
+"""
+    gezi_rehberi_raw = ask_gpt_only(gezi_rehberi_prompt, max_tokens=2500)
+    gezi_rehberi_raw = clean_html(gezi_rehberi_raw)
+    gezi_rehberi_raw = auto_fix_gpt_output(gezi_rehberi_raw)
+    gezi_rehberi_out = wrap_gutenberg(gezi_rehberi_raw)
+    print(f"      ✅ Gezi Rehberi hazır")
+
+    # ══════════════════════════════════════════════════════════════════════
+    # ADIM 7: H2 "GEZİLECEK YERLER" (Paragraf + H3 listesi)
+    # ══════════════════════════════════════════════════════════════════════
+    print("   📸 ADIM 7: Gezilecek Yerler...")
+    gezilecek_prompt = f"""{DIL_KURALLARI}
+
+GÖREV: {dest} için "GEZİLECEK YERLER" bölümü
+
+BAŞLIK: <h2 class="wp-block-heading"><strong>{dest} Gezilecek Yerler 📸</strong></h2>
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+BÖLÜM 1 — GEZİ TAVSİYELERİ (3-5 paragraf)
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+Destinasyon nasıl gezilir? Pratik ipuçları:
+
+PARAGRAF 1: Genel gezi stratejisi
+- Şehir merkezi yürüyerek gezilir mi?
+- Araç kiralama gerekli mi?
+- Hangi bölgelerden başlamalı?
+
+PARAGRAF 2: Kaç gün yeterli?
+- Minimum/ideal/uzun süre ayrımı
+- Her gün için ne kadar zaman
+
+PARAGRAF 3: Ulaşım ipuçları
+- Toplu taşıma bileti/kartı
+- Taksi/Uber durumu
+- Tur seçenekleri (sightseeing, hop-on-hop-off)
+
+PARAGRAF 4-5: Zamanlama ve bilet tavsiyeleri
+- En iyi gezi saatleri (sabah/akşam)
+- Hangi yerler için önceden bilet
+- Kaçınılması gereken zamanlar (tatil, pazar günü vb.)
+
+ÖNEMLİ: Mutlaka görülmesi gereken yerleri sadece SAY, detaylandırma (H3'te anlatılacak)
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+BÖLÜM 2 — H3 LİSTESİ (5-7 yer, her biri 2-3 paragraf)
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+H3 FORMAT (ZORUNLU):
+### {{Sıra}}. {{Yer Adı}} - {{Kısa tanıtım}}
+
+Örnek: ### 1. Karl Köprüsü - Prag'ın en ünlü simgesi
+
+HER YER İÇİN 2-3 PARAGRAF (ZORUNLU):
+
+PARAGRAF 1 (Karakter ve Özellikler):
+Şu soruları cümle içinde yanıtla:
+- Nasıl bir yer? (atmosfer, doku, karakter)
+- Ne özellikleri var? (mimari, tarih, doğa, ilginç detaylar)
+Örnek: "**Karl Köprüsü**, Prag'ın Vltava Nehri üzerindeki 14. yüzyıldan kalma 
+taş köprüsü. 516 metre uzunluğunda, her iki tarafında 30 aziz heykeli var. 
+Sabah erken saatlerde tenha, öğleden sonra turist kalabalığıyla doluyor."
+
+PARAGRAF 2 (Neden Görülmeli + Ne Yapılır):
+- Neden görülmeli? (öne çıkan yön, eşsiz özellik, deneyim vaadi)
+- Ne yapılır? (içinde gezilecek noktalar, aktiviteler)
+Örnek: "Köprü Prag'ın en ikonik noktası. Eski Şehir ile Prag Kalesi'ni bağlıyor, 
+yürürken şehrin panoraması görünüyor. Heykellere yakından bakılmalı, özellikle 
+Aziz Jan Nepomuk heykeli (sol tarafta) turistler için şans getiriyor deniliyor."
+
+PARAGRAF 3 (Pratik Bilgiler — cümle içinde, liste DEĞİL):
+- Giriş ücreti (varsa)
+- Açılış saatleri
+- Gezmek için önerilen süre
+- Ulaşım (nereden, nasıl)
+Örnek: "Köprü ücretsiz, 24 saat açık. Sabah 7-8 arası gitmek ideal, kalabalık 
+olmuyor. Yürüyerek geçmek 8-10 dakika. Eski Şehir Meydanı'ndan yürüyerek 
+5 dakika mesafede. Akşam aydınlatması güzel, gün batımından sonra da gezebilirsiniz."
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+HER H3 ARASINA SEPARATOR:
+<!-- wp:separator -->
+<hr class="wp-block-separator has-alpha-channel-opacity"/>
+<!-- /wp:separator -->
+
+ÇIKTI: H2 + giriş paragrafları + H3'ler + separator'lar (HTML)
+"""
+    gezilecek_raw = ask_gpt_only(gezilecek_prompt, max_tokens=6000)
+    gezilecek_raw = clean_html(gezilecek_raw)
+    gezilecek_raw = auto_fix_gpt_output(gezilecek_raw)
+    gezilecek_out = wrap_gutenberg(gezilecek_raw)
+    print(f"      ✅ Gezilecek Yerler hazır")
+
+    # ══════════════════════════════════════════════════════════════════════
+    # ADIM 8: H2 "YEME İÇME REHBERİ"
+    # ══════════════════════════════════════════════════════════════════════
+    print("   🍽️  ADIM 8: Yeme İçme Rehberi...")
+    yeme_icme_prompt = f"""{DIL_KURALLARI}
+
+GÖREV: {dest} için "YEME İÇME REHBERİ" bölümü
+
+BAŞLIK: <h2 class="wp-block-heading"><strong>{dest} Yeme İçme Rehberi 🍽️</strong></h2>
+
+İÇERİK (4-5 paragraf):
+- Yerel mutfak karakteri, meşhur yemekler (somut isimler)
+- Sokak lezzetleri (nerede, ne kadar)
+- Restoran önerileri: bütçe/orta/lüks (isim ver, konum belirt)
+- Ne nerede yenir? (bölge bazında)
+
+ÇIKTI: H2 + paragraflar (HTML)
+"""
+    yeme_icme_raw = ask_gpt_only(yeme_icme_prompt, max_tokens=1800)
+    yeme_icme_raw = clean_html(yeme_icme_raw)
+    yeme_icme_raw = auto_fix_gpt_output(yeme_icme_raw)
+    yeme_icme_out = wrap_gutenberg(yeme_icme_raw)
+    print(f"      ✅ Yeme İçme hazır")
+
+    # ══════════════════════════════════════════════════════════════════════
+    # ADIM 9: H2 "KONAKLAMA ÖNERİLERİ"
+    # ══════════════════════════════════════════════════════════════════════
+    print("   🏨 ADIM 9: Konaklama Önerileri...")
+    konaklama_prompt = f"""{DIL_KURALLARI}
+
+GÖREV: {dest} için "KONAKLAMA ÖNERİLERİ" bölümü
+
+BAŞLIK: <h2 class="wp-block-heading"><strong>{dest} Konaklama Önerileri 🏨</strong></h2>
+
+İÇERİK (3-4 paragraf):
+- Hangi bölgede kalınmalı? (şehir merkezi / sahil / sakin bölge)
+- Bütçe seçenekleri: Hostel, apart, otel (fiyat aralığı ver)
+- Önerilen oteller: İsim ver, kısa açıkla, hangi bölgede
+
+ÇIKTI: H2 + paragraflar (HTML)
+"""
+    konaklama_raw = ask_gpt_only(konaklama_prompt, max_tokens=1400)
+    konaklama_raw = clean_html(konaklama_raw)
+    konaklama_raw = auto_fix_gpt_output(konaklama_raw)
+    konaklama_out = wrap_gutenberg(konaklama_raw)
+    print(f"      ✅ Konaklama hazır")
+
+    # ══════════════════════════════════════════════════════════════════════
+    # ADIM 10: H2 "ALIŞVERİŞ REHBERİ"
+    # ══════════════════════════════════════════════════════════════════════
+    print("   🛍️  ADIM 10: Alışveriş Rehberi...")
+    alisveris_prompt = f"""{DIL_KURALLARI}
+
+GÖREV: {dest} için "ALIŞVERİŞ REHBERİ" bölümü
+
+BAŞLIK: <h2 class="wp-block-heading"><strong>{dest} Alışveriş Rehberi 🛍️</strong></h2>
+
+İÇERİK (3 paragraf):
+- Ne alınır? (yerel ürünler, hediyelikler — somut isimler)
+- Nereden alınır? (çarşı, pazar, AVM — isim ver)
+- Pazarlık yapılır mı? Fiyat aralıkları
+
+ÇIKTI: H2 + paragraflar (HTML)
+"""
+    alisveris_raw = ask_gpt_only(alisveris_prompt, max_tokens=1200)
+    alisveris_raw = clean_html(alisveris_raw)
+    alisveris_raw = auto_fix_gpt_output(alisveris_raw)
+    alisveris_out = wrap_gutenberg(alisveris_raw)
+    print(f"      ✅ Alışveriş hazır")
+
+    # ══════════════════════════════════════════════════════════════════════
+    # ADIM 11: H2 "PRATİK BİLGİLER"
+    # ══════════════════════════════════════════════════════════════════════
+    print("   💡 ADIM 11: Pratik Bilgiler...")
+    
+    if _is_turkey:
+        _pratik_icerik = (
+            "- En iyi seyahat zamanı (ay bazında, mevsim özellikleri)\n"
+            "- Güvenlik durumu (gerçekçi, abartısız)\n"
+            "- Elektrik voltaj, priz tipi (varsa özel durum)\n"
+            "- Acil numaralar (polis, ambulans, itfaiye)\n"
+            "- 5-7 kısa ipucu (her biri 1 paragraf, pratik bilgi)"
+        )
+    else:
+        _pratik_icerik = (
+            "- En iyi seyahat zamanı (ay bazında, mevsim özellikleri)\n"
+            "- Güvenlik durumu (gerçekçi, abartısız)\n"
+            "- Türk vatandaşları için özel notlar (vize, giriş şartları)\n"
+            "- Elektrik voltaj, priz tipi\n"
+            "- Acil numaralar (polis, ambulans, itfaiye)\n"
+            "- 5-7 kısa ipucu (her biri 1 paragraf, pratik bilgi)"
+        )
+    
+    pratik_prompt = f"""{DIL_KURALLARI}
+
+GÖREV: {dest} için "PRATİK BİLGİLER" bölümü
+
+BAŞLIK: <h2 class="wp-block-heading"><strong>{dest} Pratik Bilgiler ve İpuçları 💡</strong></h2>
+
+İÇERİK (6-8 paragraf):
+{_pratik_icerik}
+
+{_turkey_directive}
+
+ÇIKTI: H2 + paragraflar (HTML)
+"""
+    pratik_raw = ask_gpt_only(pratik_prompt, max_tokens=1800)
+    pratik_raw = clean_html(pratik_raw)
+    pratik_raw = auto_fix_gpt_output(pratik_raw)
+    pratik_out = wrap_gutenberg(pratik_raw)
+    print(f"      ✅ Pratik Bilgiler hazır")
+
+    # ══════════════════════════════════════════════════════════════════════
+    # ADIM 12: KAPANIŞ 2 PARAGRAF (GPT)
+    # ══════════════════════════════════════════════════════════════════════
+    print("   📝 ADIM 12: Kapanış...")
+    alisveris_prompt = f"""GÖREV: {dest} için "ALIŞVERİŞ REHBERİ" bölümü
+
+BAŞLIK: <h2 class="wp-block-heading"><strong>{dest} Alışveriş Rehberi 🛍️</strong></h2>
+
+İÇERİK:
+- Ne alınır? (yerel ürünler, hediyelikler)
+- Nereden alınır? (çarşı, pazar, AVM)
+- Pazarlık var mı?
+
+BOLD: Ürün adları, çarşı/pazar adları
+ÇIKTI: H2 + paragraflar (HTML)
+"""
+    alisveris_raw = ask_gpt_only(alisveris_prompt, max_tokens=1000)
+    alisveris_raw = clean_html(alisveris_raw)
+    alisveris_raw = auto_fix_gpt_output(alisveris_raw)
+    alisveris_out = wrap_gutenberg(alisveris_raw)
+    print(f"      ✅ Alışveriş hazır")
+
+    # ══════════════════════════════════════════════════════════════════════
+    print(f"      ✅ Kapanış hazır")
+
+    # ══════════════════════════════════════════════════════════════════════
+    # ADIM 13: FAQ + SCHEMA (7 soru)
+    # ══════════════════════════════════════════════════════════════════════
+    print("   ❓ ADIM 13: FAQ + Schema...")
+    yoast_title, yoast_desc = build_yoast_meta_guide(dest)
+    faq_schema_html = build_faq_schema(dest, "guide", yoast_title, yoast_desc, today)
+    print(f"      ✅ FAQ + Schema hazır")
+
+    # ══════════════════════════════════════════════════════════════════════
+    # BİRLEŞTİR + H1 + EMOJI FİX
+    # ══════════════════════════════════════════════════════════════════════
+    combined = (
+        giris_raw + "\n\n"
+        + first_img_html + "\n\n"
+        + kisisel_raw + "\n\n"
+        + SEP + "\n\n"
+        + gezi_rehberi_out + "\n\n"
+        + SEP + "\n\n"
+        + gezilecek_out + "\n\n"
+        + yeme_icme_out + "\n\n"
+        + konaklama_out + "\n\n"
+        + alisveris_out + "\n\n"
+        + pratik_out + "\n\n"
+        + kapanis_raw + "\n\n"
+        + faq_schema_html
+    )
+
+    combined = clean_html(combined)
+    combined = dedup_separators(combined)
+    combined = enforce_h2_emojis(combined, flag)
+
+    new_title = f"{dest} Gezi Rehberi {flag}"
+    focuskw = f"{dest} gezi rehberi"
+
+    # ══════════════════════════════════════════════════════════════════════
+    # ADIM 14: WP GÜNCELLE
+    # ══════════════════════════════════════════════════════════════════════
+    print("   📤 ADIM 14: WordPress'e yazılıyor...")
+    try:
+        update_post_complete(
+            pid, new_title, combined,
+            close_comments=True,
+            update_date=True,
+            yoast_title=yoast_title,
+            yoast_desc=yoast_desc,
+            yoast_focuskw=focuskw,
+            categories=orig_cats or None
+        )
+        print(f"      ✅ Post ID {pid} güncellendi")
+        print(f"      📝 H1: {new_title}")
+        update_yoast_meta(pid, yoast_title, yoast_desc, focuskw)
+        deleted = delete_post_comments(pid)
+        if deleted: print(f"      🗑️  {deleted} yorum silindi")
+    except Exception as e:
+        print(f"      ⚠️  WordPress hatası: {e}")
+
+    print(f"\n   ✅ GUIDE MOD TAMAMLANDI")
+    return combined
+
+
+# Yardımcı fonksiyon: wrap_paras_inline (basit paragraf sarma)
+    """
+    GUIDE modu — Destinasyon Gezi Rehberi formatı:
+    - H1: {Destinasyon} Gezi Rehberi {🇹🇷}
+    - Giriş 2§
+    - H2: Hakkında Bilgiler
+    - H2: Nerede? Nasıl Gidilir?
+    - H2: Gezilecek Yerler (H3 listesi)
+    - H2: Gezi Planı
+    - H2: Yeme İçme Rehberi
+    - H2: Konaklama Önerileri
+    - H2: Alışveriş Rehberi
+    - H2: Pratik Bilgiler ve İpuçları
+    - Kapanış 2§
+    - FAQ + Schema (7 soru)
+    """

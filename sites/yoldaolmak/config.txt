@@ -1,0 +1,55 @@
+site_name: yoldaolmak
+language: tr
+
+mode: review_and_improve
+work_scope: existing_posts_priority
+
+existing_content:
+  drafts: 109
+  pending: 163
+  published: many
+
+daily_review_limit: 5
+daily_new_content_limit: 0
+
+priority_order:
+  - pending
+  - drafts
+  - published
+review_mode:
+  source_author: Hamal
+  do_not_modify_original: yes
+  create_new_post: yes
+  reference_original_post_id: yes
+  title_suffix: " OK!"
+  note_in_content: "Bu içerik, yayındaki bir yazı referans alınarak editör tarafından yeniden hazırlanmıştır."
+
+comparison_purpose:
+  enabled: yes
+  goal: editor_training
+
+output_status: pending
+mark_completed_with: " OK!"
+
+content_rules:
+  - editör gibi davran
+  - yazıyı baştan yazma, iyileştir
+  - gereksiz cümleleri at
+  - deneyim ekle
+  - blogger dili koru
+  - SEO şişirmesi yapma
+
+image_handling:
+  required: yes
+  source: depositphotos
+  size: 1200x600
+  only_if_missing: yes
+
+publishing:
+  auto_publish: no
+  send_to_wordpress: yes
+  visibility: wp-admin
+
+activity_mode: continuous
+training_run_limit: 5
+

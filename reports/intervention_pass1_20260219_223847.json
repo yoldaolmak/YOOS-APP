@@ -1,0 +1,19 @@
+{
+  "success": true,
+  "missing_elements": {
+    "voice": [
+      "temporal_anchor:2",
+      "kemal_note:3"
+    ],
+    "authority": [
+      "sourced_claims:insufficient",
+      "price_sources:insufficient"
+    ],
+    "critique": [
+      "pro_con_blocks:2",
+      "tourist_trap_warning:1"
+    ]
+  },
+  "interventions_applied": 6,
+  "modified_text": "# Prag Gezi Rehberi\n\nPrag, Çek Cumhuriyeti'nin başkenti. 1.3 milyon nüfuslu tarihi bir şehir (Czech Statistical Office, 2023-06).\n\n2019'da ilk gittiğimde Prag'ın bu kadar büyüleyici olacağını hiç düşünmemiştim. Şehrin her köşesinde tarih nefes alıyor.\n\n## Gezilecek Yerler\n\n### 1. Prag Kalesi\n\n9. yüzyılda kuruldu. Dünyanın en büyük antik kalelerinden biri (Guinness World Records, 2022-03).\n\n**Kemal'in Notu:** Kaleye sabah erken saatlerde gitmenizi şiddetle tavsiye ediyorum. Öğleden sonra turistlerle dolup taşıyor ve fotoğraf çekmek imkansız hale geliyor. Ayrıca St. Vitus Katedrali'nin içindeki vitrayları mutlaka yakından inceleyin - özellikle Mucha'nın tasarladığı pencere harika. Giriş ücreti biraz tuzlu ama değiyor.\n\n✅ Artı: Muhteşem panoramik şehir manzarası\n❌ Eksi: Çok kalabalık ve pahalı giriş ücreti\n💡 Alternatif: Petřín Tepesi'nden ücretsiz manzara izleyin\n\n### 2. Karlův Most\n\n1357'de yapılmış tarihi köprü. 516 metre uzunluğunda (Prague City Tourism, 2023-01).\n\n**Kemal'in Notu:** Köprüdeki heykellerin her birinin ayrı bir hikayesi var. Özellikle Jan Nepomuk heykeline dokunmak şans getiriyor diye inanılıyor - gerçi bu yüzden heykel aşınmış durumda. Gün batımında köprüde olmak büyülü ama 2022'de son gittiğimde akşam saatlerinde çok kalabalıktı. Sabah 7'de çıkıp boş köprüde yürümek paha biçilmez.\n\n✅ Artı: Ücretsiz geçiş ve eşsiz gotik mimari\n❌ Eksi: Aşırı kalabalık ve sokak satıcıları rahatsız edici\n💡 Alternatif: Legion Köprüsü'nden Charles Köprüsü'nün fotoğrafını çekin\n\n**Kemal'in Notu:** Köprüdeki müzisyenler genelde yetenekli ama bazen ses kirliliği yaratıyorlar. Özellikle akşam saatlerinde jazz çalan yaşlı adam var, onu dinlemeye değer. Küçük bir bahşiş vermeyi unutmayın, bu insanlar gerçekten yetenekli.\n\n## Pratik Bilgiler\n\nMetro bileti 40 Kč (Prague Public Transit, Mart 2024). Otel fiyatları ortalama 80€/gece (Booking.com, Şubat 2024).\n\n⚠️ **Turist Tuzağı:** Wenceslas Meydanı'ndaki döviz büroları\nNeden: Çok düşük kurlar ve gizli komisyonlar alıyorlar\nAlternatif: Bankalardan veya ATM'lerden para çekin, çok daha avantajlı"
+}
