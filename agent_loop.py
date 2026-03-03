@@ -203,3 +203,70 @@ def run_with_quality_gate(html,
         "attempts": patch_counter,
         "final_validation": best_result
     }
+
+# ═══════════════════════════════════════════════════════════════════════════════
+# RAPOR FORMATLAYICI (Backward Compatibility)
+# ═══════════════════════════════════════════════════════════════════════════════
+
+def format_agent_report(loop_result: dict) -> str:
+    """
+    where_engine uyumluluğu için korunmuştur.
+    """
+    r = loop_result
+    icon = "✅" if r.get("passed") else "⚠️"
+    lines = [
+        "\n" + "─"*50,
+        "Agent Loop Raporu:",
+        f"  Sonuç   : {icon} {'GEÇTİ' if r.get('passed') else 'BAŞARISIZ'}",
+        f"  Skor    : {r.get('score',0)}/100",
+        f"  Eylem   : {r.get('action','?').upper()}",
+        f"  Deneme  : {r.get('attempts',0)}",
+    ]
+
+    fv = r.get("final_validation")
+    if fv and getattr(fv, "failures", None):
+        lines.append("  Kalan Sorunlar:")
+        for f in fv.failures[:4]:
+            lines.append(f"    - [{f.axis}] {f.code}: {f.detail[:55]}")
+
+    lines.append("─"*50)
+    return "\n".join(lines)
+
+# ═══════════════════════════════════════════════════════════════════════════════
+# BACKWARD COMPATIBILITY REPORT
+# ═══════════════════════════════════════════════════════════════════════════════
+
+def format_agent_report(loop_result: dict) -> str:
+    """
+    where_engine uyumluluğu için korunmuştur.
+    """
+
+    r = loop_result or {}
+    passed = r.get("passed", False)
+    score = r.get("score", 0)
+    action = r.get("action", "?")
+    attempts = r.get("attempts", 0)
+
+    icon = "✅" if passed else "⚠️"
+
+    lines = [
+        "\n" + "─" * 50,
+        "Agent Loop Raporu:",
+        f"  Sonuç   : {icon} {'GEÇTİ' if passed else 'BAŞARISIZ'}",
+        f"  Skor    : {score}/100",
+        f"  Eylem   : {str(action).upper()}",
+        f"  Deneme  : {attempts}",
+    ]
+
+    fv = r.get("final_validation")
+    if fv and hasattr(fv, "failures") and fv.failures:
+        lines.append("  Kalan Sorunlar:")
+        for f in fv.failures[:4]:
+            lines.append(
+                f"    - [{getattr(f, 'axis','?')}] "
+                f"{getattr(f, 'code','?')}: "
+                f"{getattr(f, 'detail','')[:55]}"
+            )
+
+    lines.append("─" * 50)
+    return "\n".join(lines)
