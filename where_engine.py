@@ -671,7 +671,7 @@ def generate_where(post: dict) -> tuple:
     from agent_loop import run_with_quality_gate, format_agent_report
     from content_validator import print_audit_report
     loop_result = run_with_quality_gate(
-        html=full_html, mode='where', city=city,
+        html=full_html, mode='where', city=city, post_id=post.get("id", 0),
         max_retries=2, pass_threshold=82, verbose=True,
     )
     full_html = loop_result['html']

@@ -17,10 +17,12 @@ import time
 from pathlib import Path
 from content_validator import validate, auto_fix
 from multi_ai import ask_gpt_mini_strict, ask_claude_haiku
+from rag.router.router_rag_bridge import RAGBridge
 
 # ═══════════════════════════════════════════════════════════════════════════════
 # RUNTIME TELEMETRY
 # ═══════════════════════════════════════════════════════════════════════════════
+rag = RAGBridge()
 
 _RUNTIME_DB = Path(os.path.dirname(__file__)) / "runtime.db"
 
@@ -163,6 +165,7 @@ def run_with_quality_gate(html,
     for attempt in range(1, max_retries + 1):
 
         content = html
+        rag_context = rag.query(content, top_k=2)
         if result.action == "full_rewrite":
             fixed_html = ask_gpt_mini_strict(content)
         else:

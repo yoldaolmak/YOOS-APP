@@ -2,3 +2,7 @@
 __pycache__/
 venv/
 Antigravity-Manager/
+runtime.db
+failure_memory.json
+__pycache__/
+*.pyc
