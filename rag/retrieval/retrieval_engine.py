@@ -1,17 +1,21 @@
-import math
+from qdrant_client import QdrantClient
 
-def cosine(a, b):
-    dot = sum(x*y for x,y in zip(a,b))
-    na = math.sqrt(sum(x*x for x in a))
-    nb = math.sqrt(sum(x*x for x in b))
-    if na == 0 or nb == 0:
-        return 0
-    return dot/(na*nb)
+client = QdrantClient("http://localhost:6333")
+COLLECTION = "kemal_voice_travel"
 
-def retrieve(query_vec, items, top_k=3):
-    scored = []
-    for it in items:
-        s = cosine(query_vec, it["vector"])
-        scored.append((s, it))
-    scored.sort(reverse=True, key=lambda x: x[0])
-    return [x[1] for x in scored[:top_k]]
+def retrieve(query_vec, top_k=3):
+    results = client.query_points(
+        collection_name=COLLECTION,
+        query=query_vec,
+        limit=top_k
+    )
+
+    out = []
+    for r in results.points:
+        out.append({
+            "title": r.payload.get("title"),
+            "text": r.payload.get("text"),
+            "post_id": r.payload.get("post_id")
+        })
+
+    return out
