@@ -1,8 +1,7 @@
-.env
-__pycache__/
-venv/
-Antigravity-Manager/
 runtime.db
 failure_memory.json
+*.bak
 __pycache__/
 *.pyc
+rag/storage/_vector_store_disabled.py
+.env
