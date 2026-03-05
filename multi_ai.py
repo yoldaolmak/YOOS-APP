@@ -617,3 +617,4 @@ def mechanical_only(gpt_html: str, section_label: str = "") -> str:
     result = mechanical_clean(gpt_html, verbose=True)
     print(f"   🔧 mechanical_only({section_label or 'genel'}) — Claude çağrısı yapılmadı")
     return result
+# fix: fallback order reversed
