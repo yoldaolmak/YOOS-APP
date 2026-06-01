@@ -1,0 +1,22 @@
+{
+  "author_name": "Mark Twain (Demo)",
+  "language": "en",
+  "text_count": 3,
+  "avg_sentence_words": 11.4,
+  "first_person_rate": 0.26,
+  "question_rate": 0.0,
+  "avg_paragraph_sentences": 4.1,
+  "top_transitions": [
+    "yet",
+    "but"
+  ],
+  "signature_phrases": [],
+  "forbidden_patterns": [],
+  "sample_sentences": [
+    "We are a crowd of steamship passengers, and we have been to Europe and the Holy Land.",
+    "We have returned, our heads filled with pleasant memories of the journey, and our pockets filled with unpaid bills.",
+    "The Azores are a group of nine volcanic islands scattered about in the mid-Atlantic Ocean.",
+    "They are a possession of Portugal, and they are so far from that country that they always seem to be in another world.",
+    "One of them was covered, from the water's edge to the mountain summit, with a dense green forest."
+  ]
+}

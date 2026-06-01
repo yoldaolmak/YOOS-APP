@@ -1,134 +1,119 @@
 # YOOS-APP
 
-> **YO Operating System** — AI-powered editorial engine for [example.com](https://example.com)
+> **Universal Author Voice Engine** — analyze any author's writing style, generate new content in their voice.
 
-An autonomous content intelligence system that audits, rewrites, and optimizes long-form travel content — preserving a specific authorial voice across 1,500+ articles while enforcing EEAT and SEO standards.
+Give YOOS-APP a set of texts from any writer. It extracts their voice profile — sentence rhythm, transitions, first-person rate, signature phrases — and uses an LLM to write new content in that exact style for any topic and genre.
 
----
-
-## What This Is
-
-YOOS-APP is the backend brain of a travel publication that has been running since 2011 with 685+ days of on-the-road content. It is not a generic CMS plugin or a prompt wrapper.
-
-It is a multi-pass editorial pipeline that:
-
-1. **Audits** existing content against EEAT, SEO, and voice standards
-2. **Rewrites** weak sections using RAG-retrieved context
-3. **Enforces** a specific authorial voice via embedding similarity
-4. **Publishes** directly to WordPress via REST API
+No embeddings. No vector database. Portable, forkable, runs on any machine.
 
 ---
 
-## Architecture
+## Quick Start
+
+```bash
+git clone https://github.com/example/YOOS-APP.git
+cd YOOS-APP
+pip install -r requirements.txt
+cp .env.example .env  # add your OPENAI_API_KEY
+python -m yoos_app.demo
+```
+
+Demo runs without an API key (mock output). Set `OPENAI_API_KEY` for real generation.
+
+---
+
+## How It Works
 
 ```
-YOOS-APP/
-├── modules/
-│   ├── editorial/
-│   │   ├── audit_patch.py          # Section-level audit engine
-│   │   ├── full_rewrite.py         # Full post rewrite pipeline
-│   │   ├── semantic_blueprint.py   # Content structure planner
-│   │   ├── editorial_brief.py      # Per-article editorial brief
-│   │   └── state_ledger.py         # Cross-section state tracking
-│   ├── rewrite/
-│   │   ├── section_rewrite_engine.py  # Section-by-section rewriter
-│   │   ├── html_assembler.py          # Gutenberg HTML output builder
-│   │   ├── html_section_splitter.py   # DOM-aware section parser
-│   │   └── rag_adapter.py             # RAG context injector
-│   ├── voice/
-│   │   ├── voice_enforcer.py       # Voice consistency enforcement
-│   │   ├── voice_embedder.py       # Author voice embeddings
-│   │   └── voice_similarity.py     # Cosine similarity scoring
-│   ├── llm_router.py               # Multi-provider LLM routing
-│   ├── cache_manager.py            # Disk-based API call cache
-│   └── batch_runner.py             # Parallel job orchestration
-├── rag/
-│   ├── retrieval/                  # Qdrant vector retrieval
-│   ├── embedding/                  # Embedding pipeline
-│   └── split/                      # Semantic chunk splitter
-├── prompts/
-│   ├── voice_profile.py            # Alex Rivera voice system (single source)
-│   ├── pass1_audit.py              # Pass 1: content audit
-│   └── pass2_rewrite.py            # Pass 2: full rewrite pipeline
-├── wp.py                           # WordPress REST API client
-├── audit_engine.py                 # Top-level audit orchestrator
-├── rewrite_engine.py               # Top-level rewrite orchestrator
-└── priority_engine.py              # Content priority scoring
+Your texts (PDF/HTML/TXT)
+        ↓
+  Voice Analyzer
+  → sentence length, transitions,
+    first-person rate, signature phrases
+        ↓
+  VoiceProfile (portable JSON)
+        ↓
+  Content Generator (OpenAI / Ollama / Codex)
+  + content type structure (blog / guide / news…)
+        ↓
+  Output → Downloads / Desktop / Google Drive / WordPress
 ```
 
 ---
 
-## Pipeline
+## Content Types
 
-```
-WordPress Post (REST API)
-    ↓
-first_edit() — HTML cleanup, deduplication
-    ↓
-Pass 1 — Audit (EEAT, SEO, voice, yasak kelime scan)
-    ↓
-Editorial Brief — one-time semantic intent extraction
-    ↓
-Pass 2 — Section-by-section rewrite
-    │   ├── RAG retrieval (Qdrant: top-3 voice examples)
-    │   ├── State ledger (cross-section consistency)
-    │   └── Voice enforcer (cosine similarity gate)
-    ↓
-Checklist validator (14 criteria, retry if < 10/14)
-    ↓
-WordPress draft via REST API
+| Key | Label |
+|-----|-------|
+| `travel_blog` | Seyahat Blogu / Travel Blog |
+| `travel_guide` | Seyahat Rehberi / Travel Guide |
+| `magazine` | Dergi Yazısı / Magazine Article |
+| `news` | Haber / News |
+| `story` | Hikaye / Story |
+| `column` | Köşe Yazısı / Column |
+
+---
+
+## CLI Usage
+
+```bash
+# Step 1 — Analyze author voice from a folder of texts
+yoos-app analyze --corpus ./my-author-texts/ --author "Author Name" --out profile.json
+
+# Step 2 — Generate content
+yoos-app generate --profile profile.json --type travel_blog --topic "Lisbon" --backend openai
+
+# Step 3 — Export
+yoos-app export --input output.txt --title "Lisbon Guide" --format html --dest downloads
+
+# Full pipeline in one command
+yoos-app run --corpus ./texts/ --type travel_guide --topic "Tokyo" --backend openai --dest wordpress
 ```
 
 ---
 
-## Key Capabilities
+## LLM Backends
 
-| Capability | Details |
-|---|---|
-| **Voice enforcement** | Author voice embedded via multilingual-e5-large; rewrites below similarity threshold are rejected |
-| **RAG context** | Qdrant vector DB with curated gold corpus of approved author texts |
-| **Editorial brief** | One-time per-post semantic extraction: thesis, timeline lock, cliché list |
-| **State ledger** | Tracks used openings, personal claims, and comparisons across H2 sections |
-| **Multi-LLM routing** | Provider-agnostic router: local (LM Studio/Qwen), cloud (Codex, Kimi), fallback chain |
-| **WP integration** | Direct REST publish, Gutenberg HTML output, meta updates |
-| **Telemetry** | SQLite job tracking, cost logging, failure memory |
+| Backend | How to use |
+|---------|-----------|
+| `openai` | Set `OPENAI_API_KEY` in `.env` |
+| `ollama` | Run `ollama serve` locally, set `YOOS_BACKEND=ollama` |
+| `codex` | OpenAI Codex CLI (`codex` in PATH) |
+
+---
+
+## Output Destinations
+
+| Destination | Value |
+|------------|-------|
+| Downloads folder | `--dest downloads` |
+| Desktop | `--dest desktop` |
+| Custom path | `--dest /path/to/folder` |
+| Google Drive | `--dest google_drive` + `GOOGLE_DRIVE_TOKEN` |
+| WordPress | `--dest wordpress` + `WP_URL`, `WP_USER`, `WP_APP_PASSWORD` |
+
+Output formats: `--format html`, `--format pdf`, `--format txt`
+
+---
+
+## Copyright Note
+
+YOOS-APP does not store, redistribute, or train on any uploaded texts. Voice analysis runs locally. You are responsible for ensuring you have the right to use any texts you provide as corpus input.
 
 ---
 
 ## Stack
 
-- **Python 3.10** — core engine
-- **Qdrant** — vector database for voice RAG
-- **intfloat/multilingual-e5-large** — embedding model (local, Turkish-capable)
-- **WordPress REST API** — content publishing (Gutenberg blocks)
-- **SQLite** — job state, telemetry, failure memory
-- **LM Studio / Qwen3** — local LLM inference
-- **HashiCorp Vault** — secrets management
-
----
-
-## Setup
-
-```bash
-git clone git@github.com:example/YOOS-APP.git
-cd YOOS-APP
-python3.10 -m venv venv && source venv/bin/activate
-pip install -r requirements.txt   # or install from imports
-
-# Copy and configure environment
-cp .env.example .env
-# Fill in: example_URL, WP_USER, WP_APP_PASSWORD
-
-# Start Qdrant and ingest voice corpus
-./qdrant &
-python3 rebuild_qdrant_gold.py
-
-# Run pipeline on a post
-python3 prompts/pass2_rewrite.py <POST_ID>
-```
+- Python 3.10+
+- OpenAI API / Ollama / Codex CLI (your choice)
+- pdfplumber — PDF parsing
+- reportlab — PDF export
+- BeautifulSoup4 — HTML parsing
+- Google Drive API (optional)
+- WordPress REST API (optional)
 
 ---
 
 ## Related
 
-- **[example.com](https://example.com)** — live publication (1,500+ travel articles)
+- **[example.com](https://example.com)** — live publication powered by this engine

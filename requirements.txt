@@ -1,0 +1,18 @@
+# Core (always required)
+openai>=1.0.0
+
+# PDF support
+pdfplumber>=0.10.0
+
+# HTML parsing
+beautifulsoup4>=4.12.0
+
+# PDF export
+reportlab>=4.0.0
+
+# HTTP (WordPress + Ollama)
+requests>=2.31.0
+
+# Google Drive (optional)
+google-api-python-client>=2.100.0
+google-auth>=2.23.0
