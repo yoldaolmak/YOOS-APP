@@ -42,7 +42,7 @@ def _read_html(path: str) -> str:
         raise RuntimeError("HTML support requires: pip install beautifulsoup4")
 
 
-def read_corpus(paths: list[str]) -> list[str]:
+def read_corpus(paths) -> list:
     """Read multiple files, return list of text strings."""
     texts = []
     for path in paths:

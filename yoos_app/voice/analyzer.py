@@ -47,7 +47,7 @@ EN_TRANSITIONS = [
 ]
 
 
-def _sentences(text: str) -> list[str]:
+def _sentences(text: str) -> list:
     return [s.strip() for s in re.split(r"(?<=[.!?])\s+", text) if len(s.split()) > 3]
 
 
@@ -56,7 +56,7 @@ def _detect_language(text: str) -> str:
     return "tr" if tr_chars > 5 else "en"
 
 
-def analyze(texts: list[str], author_name: str = "unknown") -> VoiceProfile:
+def analyze(texts, author_name: str = "unknown") -> VoiceProfile:
     all_text = "\n\n".join(texts)
     lang = _detect_language(all_text)
     transitions = TR_TRANSITIONS if lang == "tr" else EN_TRANSITIONS

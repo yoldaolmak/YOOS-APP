@@ -1,9 +1,8 @@
 """
 Content generator — LLM + VoiceProfile → content in author's voice.
-Supports: OpenAI API, local Ollama, Codex CLI
+Supports: OpenAI API, Anthropic Claude, OpenRouter, local Ollama, Codex CLI
 """
 import os
-import json
 import subprocess
 from .analyzer import VoiceProfile
 from ..content_types.registry import get as get_type
@@ -101,16 +100,87 @@ def generate_codex(profile: VoiceProfile, content_type: str, topic: str) -> str:
     return result.stdout.strip()
 
 
+def generate_anthropic(profile: VoiceProfile, content_type: str, topic: str,
+                       model: str = "claude-sonnet-4-6", api_key: str = None) -> str:
+    try:
+        import anthropic
+    except ImportError:
+        raise RuntimeError("Anthropic support requires: pip install anthropic")
+
+    key = api_key or os.environ.get("ANTHROPIC_API_KEY")
+    if not key:
+        raise RuntimeError("ANTHROPIC_API_KEY environment variable not set")
+
+    client = anthropic.Anthropic(api_key=key)
+    system, user = _build_prompt(profile, content_type, topic)
+
+    response = client.messages.create(
+        model=model,
+        max_tokens=4096,
+        system=system,
+        messages=[{"role": "user", "content": user}],
+    )
+    return response.content[0].text.strip()
+
+
+def generate_openrouter(profile: VoiceProfile, content_type: str, topic: str,
+                        model: str = "openai/gpt-4o", api_key: str = None) -> str:
+    try:
+        import requests
+    except ImportError:
+        raise RuntimeError("OpenRouter support requires: pip install requests")
+
+    key = api_key or os.environ.get("OPENROUTER_API_KEY")
+    if not key:
+        raise RuntimeError("OPENROUTER_API_KEY environment variable not set")
+
+    system, user = _build_prompt(profile, content_type, topic)
+    resp = requests.post(
+        "https://openrouter.ai/api/v1/chat/completions",
+        headers={"Authorization": f"Bearer {key}", "Content-Type": "application/json"},
+        json={
+            "model": model,
+            "messages": [
+                {"role": "system", "content": system},
+                {"role": "user", "content": user},
+            ],
+            "temperature": 0.8,
+        },
+        timeout=300,
+    )
+    resp.raise_for_status()
+    return resp.json()["choices"][0]["message"]["content"].strip()
+
+
 def generate(profile: VoiceProfile, content_type: str, topic: str,
-             backend: str = "openai", **kwargs) -> str:
+             backend: str = "auto", **kwargs) -> str:
     """
-    backend: "openai" | "ollama" | "codex"
+    backend: "auto" | "openai" | "anthropic" | "openrouter" | "ollama" | "codex"
+    "auto" tries available keys in order: anthropic → openrouter → openai → ollama
     """
-    if backend == "openai":
+    if backend == "auto":
+        if os.environ.get("ANTHROPIC_API_KEY"):
+            return generate_anthropic(profile, content_type, topic, **kwargs)
+        if os.environ.get("OPENROUTER_API_KEY"):
+            return generate_openrouter(profile, content_type, topic, **kwargs)
+        if os.environ.get("OPENAI_API_KEY"):
+            return generate_openai(profile, content_type, topic, **kwargs)
+        try:
+            return generate_ollama(profile, content_type, topic)
+        except Exception:
+            raise RuntimeError(
+                "No LLM backend available. Set ANTHROPIC_API_KEY, OPENROUTER_API_KEY, "
+                "or OPENAI_API_KEY, or run Ollama locally."
+            )
+    elif backend == "openai":
         return generate_openai(profile, content_type, topic, **kwargs)
+    elif backend == "anthropic":
+        return generate_anthropic(profile, content_type, topic, **kwargs)
+    elif backend == "openrouter":
+        return generate_openrouter(profile, content_type, topic, **kwargs)
     elif backend == "ollama":
         return generate_ollama(profile, content_type, topic, **kwargs)
     elif backend == "codex":
         return generate_codex(profile, content_type, topic)
     else:
-        raise ValueError(f"Unknown backend: {backend}. Use: openai, ollama, codex")
+        raise ValueError(f"Unknown backend: {backend}")
