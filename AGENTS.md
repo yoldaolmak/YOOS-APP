@@ -1,62 +1,57 @@
-# AGENTS.md — Codex Integration Guide
+# AGENTS.md — LLM Integration Guide
 
-This file describes how AI agents (primarily OpenAI Codex) interact with this repository.
+This file describes how AI agents interact with the YOOS-APP codebase.
 
-## How Codex Is Used
+## Architecture Overview
 
-YOOS-APP uses **Codex as the primary content rewrite agent** in its editorial pipeline. Codex handles the core writing task — rewriting travel articles section by section — while the system provides:
-
-- Editorial brief (semantic intent, destination character, thesis)
-- Voice protocol (Alex Rivera's 16-year full-time authorial voice rules)
-- State ledger (cross-section consistency tracking)
-- RAG context (top-3 similar passages from approved author corpus)
+YOOS-APP uses LLMs as **generation backends only**. All analysis, profiling, auditing, and scoring is done locally with zero LLM calls. The LLM receives a fully-formed prompt built from the extracted voice profile and content type template.
 
 ```
-Codex receives:
-  - Section HTML (factual inventory)
-  - Editorial brief (thesis, audience, cliché list)
-  - Voice protocol (prohibited patterns, signature phrases)
-  - Previous section summary (state ledger)
-  - RAG examples (3 approved author passages from Qdrant)
-
-Codex outputs:
-  - Gutenberg HTML (WordPress block format)
-  - Section rewrite in author's voice
+VoiceProfile (local) + ContentType template (local)
+            ↓
+    build_prompt()  ←  yoos_app/voice/generator.py
+            ↓
+      LLM API call  (one call per generation)
+            ↓
+    audit() + score()  (local, no LLM)
 ```
 
-## Codex Workflow
-
-```bash
-# Codex is invoked per H2 section via multi_ai.py
-USE_CODEX=true python3 prompts/pass2_rewrite.py <POST_ID>
-
-# Codex runs in ephemeral, read-only mode
-codex exec --ephemeral --skip-git-repo-check -s read-only -C /path/to/yoos-app
-```
-
-## What Codex Should Know
-
-- **Working directory:** project root
-- **Entry point:** `prompts/pass2_rewrite.py`
-- **Voice rules:** `prompts/voice_profile.py` — single source of truth, read before writing
-- **Architecture docs:** `GPT.md` — full system context
-- **Do not modify:** `.env`, `data/gold/`, `corpus/`
-
-## Codex Constraints
-
-- Never hallucinate personal experiences — only use what's in the editorial brief
-- Timeline lock: if brief says `explicit_year_allowed=false`, do not invent years
-- Output must be valid Gutenberg HTML — no markdown, no code fences
-- Voice threshold: similarity score ≥ 0.45 against `Alex_voice_travel` Qdrant collection
-
-## Repository Structure for Agents
+## Prompt Structure
 
 ```
-prompts/voice_profile.py     ← READ FIRST: voice rules + prohibited word list
-prompts/pass2_rewrite.py     ← main pipeline entry point
-modules/editorial/           ← editorial brief + state ledger
-modules/voice/               ← voice enforcement via Qdrant RAG
-modules/llm_router.py        ← LLM provider routing (Codex → Kimi → fallback)
-data/gold/                   ← approved author texts (read-only reference)
-GPT.md                       ← full system context for AI assistants
+SYSTEM:
+  - Author identity from VoiceProfile
+  - Style rules (sentence length, first-person rate, transitions)
+  - Sample sentences from corpus (3 examples — tone reference, not copy)
+  - Content type structure (numbered sections)
+  - Hard rules (no AI clichés, no fabrication, output only)
+
+USER:
+  - Topic: "..."
+  - Instruction to write in voice + structure
 ```
+
+## Supported Backends
+
+| Backend | Module | Config |
+|---------|--------|--------|
+| OpenAI | `generate_openai()` | `OPENAI_API_KEY` |
+| Anthropic Claude | `generate_anthropic()` | `ANTHROPIC_API_KEY` |
+| OpenRouter | `generate_openrouter()` | `OPENROUTER_API_KEY` |
+| Ollama (local) | `generate_ollama()` | `ollama serve` |
+| OpenAI Codex CLI | `generate_codex()` | `codex login` |
+
+## Adding a New Backend
+
+1. Add `generate_mybackend(profile, content_type, topic, **kwargs)` in `yoos_app/voice/generator.py`
+2. Add a branch in `generate()` dispatch
+3. Add to CLI `--backend` choices in `yoos_app/cli.py`
+4. Add to `YOOS_BACKEND` docs in `.env.example`
+
+## Working with This Repo (Codex/Claude)
+
+- Entry point: `yoos_app/cli.py` → `main()`
+- Voice logic: `yoos_app/voice/`
+- No credentials in code — all via environment variables
+- Tests require no API key: `python -m pytest tests/`
+- Demo: `python -m yoos_app.demo`

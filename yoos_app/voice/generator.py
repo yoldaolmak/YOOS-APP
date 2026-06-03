@@ -11,33 +11,81 @@ from ..content_types.registry import get as get_type
 def _build_prompt(profile: VoiceProfile, content_type: str, topic: str) -> tuple[str, str]:
     ctype = get_type(content_type)
     structure = "\n".join(f"  {i+1}. {s}" for i, s in enumerate(ctype["structure"]))
-    samples = "\n".join(f"« {s} »" for s in profile.sample_sentences[:3])
+    samples = "\n".join(f"« {s} »" for s in profile.sample_sentences[:4])
+    lang = profile.language
 
-    system = f"""Sen bir içerik yazarısın. Aşağıdaki profil bilgileri ile belirlenen yazarın sesini, üslubunu ve anlatı tarzını kullanarak içerik üreteceksin.
+    # Build rich style fingerprint
+    rhythm_desc = (
+        f"Average {profile.avg_sentence_words} words per sentence "
+        f"(±{getattr(profile, 'sentence_std_dev', 0)}). "
+        f"{int(getattr(profile, 'short_sentence_rate', 0)*100)}% of sentences are short (<8 words), "
+        f"{int(getattr(profile, 'long_sentence_rate', 0)*100)}% are long (>20 words). "
+        f"Mix short punchy sentences with longer flowing ones in the same ratio."
+    )
 
-YAZAR PROFİLİ:
-- Dil: {profile.language}
-- Ortalama cümle uzunluğu: {profile.avg_sentence_words} kelime
-- Birinci şahıs oranı: %{int(profile.first_person_rate*100)}
-- Soru oranı: %{int(profile.question_rate*100)}
-- Kullanılan geçiş ifadeleri: {', '.join(profile.top_transitions[:5])}
+    voice_desc_parts = []
+    fp = profile.first_person_rate
+    if fp > 0.3:
+        voice_desc_parts.append(f"Very first-person ({int(fp*100)}% of sentences use I/me/my)")
+    elif fp > 0.15:
+        voice_desc_parts.append(f"Moderately first-person ({int(fp*100)}%)")
+    else:
+        voice_desc_parts.append(f"Rarely uses first person ({int(fp*100)}%)")
 
-ÖRNEK CÜMLELER (bu tonu yakala, kopyalama):
+    neg = getattr(profile, 'negative_rate', 0)
+    if neg > 0.2:
+        voice_desc_parts.append(f"favours negative constructions ('did not', 'could not') — {int(neg*100)}% rate")
+
+    q = profile.question_rate
+    if q > 0.05:
+        voice_desc_parts.append(f"asks questions rhetorically ({int(q*100)}% of sentences)")
+
+    em = getattr(profile, 'emdash_rate', 0)
+    if em > 5:
+        voice_desc_parts.append(f"uses em-dashes frequently ({em:.0f} per 100 sentences)")
+
+    vocab = getattr(profile, 'vocabulary_richness', 0)
+    if vocab > 0.6:
+        voice_desc_parts.append("rich, varied vocabulary")
+    elif vocab < 0.4:
+        voice_desc_parts.append("deliberately simple, repetitive vocabulary for effect")
+
+    voice_desc = "; ".join(voice_desc_parts) + "."
+
+    transitions_str = ", ".join(profile.top_transitions[:7])
+    sigs = ", ".join(f'"{p}"' for p in profile.signature_phrases[:5])
+
+    system = f"""You are a professional writer. Your task is to write new content in the exact voice, rhythm, and style of the author described below. Do NOT copy their text — capture their way of thinking and writing.
+
+AUTHOR VOICE PROFILE ({profile.author_name}):
+
+Sentence rhythm: {rhythm_desc}
+
+Voice character: {voice_desc}
+
+Favourite transition words (use these naturally): {transitions_str}
+
+Characteristic phrases to echo (not copy): {sigs if sigs else "none identified"}
+
+SAMPLE SENTENCES — study the rhythm and tone, do not reproduce:
 {samples}
 
-İÇERİK TÜRÜ: {ctype['label']}
-TON: {ctype['tone']}
-UZUNLUK: {ctype['length']}
+CONTENT TYPE: {ctype['label']}
+TONE: {ctype['tone']}
+TARGET LENGTH: {ctype['length']}
 
-YAPI:
+STRUCTURE TO FOLLOW:
 {structure}
 
-KURALLAR:
-- Sadece içeriği yaz, açıklama veya meta yorum ekleme
-- Yazarın sesini kullan, onu taklit etme
-- Gerçek olmayan bilgi uydurma"""
+ABSOLUTE RULES:
+1. Write ONLY the content — no preamble, no "Here is the article", no meta-commentary.
+2. Match the author's sentence length distribution: {int(getattr(profile,'short_sentence_rate',0)*100)}% short, {int(getattr(profile,'long_sentence_rate',0)*100)}% long.
+3. Do NOT use AI writing clichés: "delve into", "it's worth noting", "in conclusion", "furthermore", "moreover", "a testament to", "in today's world", "navigate", "tapestry".
+4. Do not fabricate specific facts, prices, or dates you cannot verify — write around them instead.
+5. Output language: {"Turkish" if lang == "tr" else "English"}.
+6. Write as the author would — their level of irony, warmth, distance, or directness."""
 
-    user = f"Konu: {topic}\n\nYukarıdaki yazarın sesiyle ve belirlenen yapıyla bu konuda yaz."
+    user = f"Topic: {topic}\n\nWrite this in the author's exact voice and the specified structure."
     return system, user
 
 

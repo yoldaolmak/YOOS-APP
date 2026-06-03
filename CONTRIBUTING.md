@@ -1,43 +1,50 @@
 # Contributing to YOOS-APP
 
-YOOS-APP is the editorial engine behind [example.com](https://example.com), a Turkish travel publication with 1,500+ long-form articles. Contributions that improve the editorial pipeline, voice enforcement, or WordPress integration are welcome.
+## What We Welcome
 
-## What We're Looking For
+- New content type templates (`yoos_app/content_types/registry.py`)
+- New LLM backend integrations (`yoos_app/voice/generator.py`)
+- New export destinations (`yoos_app/exporter/writer.py`)
+- Voice analyzer improvements (`yoos_app/voice/analyzer.py`)
+- Bug fixes and edge-case tests
 
-- **LLM routing improvements** — better provider fallback logic, cost optimization
-- **Voice enforcement** — improvements to the similarity scoring or RAG retrieval
-- **WordPress integration** — Gutenberg block handling, REST API edge cases
-- **Audit criteria** — new quality checks aligned with EEAT standards
-- **Performance** — batch processing, caching, embedding pipeline speed
+## What We Do NOT Accept
 
-## Getting Started
+- Contributions that include real author corpus data
+- Contributions that bypass the public/private data boundary
+- Changes to the audit scoring that would inflate scores artificially
+
+## Development Setup
 
 ```bash
-git clone git@github.com:example/YOOS-APP.git
+git clone https://github.com/example/YOOS-APP.git
 cd YOOS-APP
-python3.10 -m venv venv && source venv/bin/activate
-pip install openai anthropic python-dotenv qdrant-client sentence-transformers beautifulsoup4 requests gitpython
-cp .env.example .env  # fill in your credentials
+python -m venv .venv
+source .venv/bin/activate
+pip install -r requirements.txt
+python -m pytest tests/           # must pass before any PR
+python -m yoos_app.demo           # smoke test
 ```
+
+## Pull Request Rules
+
+1. All existing tests must pass (`python -m pytest tests/ -v`)
+2. New features need at least one test
+3. No API key required to run tests
+4. No secrets, credentials, or corpus files in commits
+5. Commit messages: `type: short description` (feat/fix/docs/test/refactor)
 
 ## Code Style
 
 - Python 3.10+
-- No type stubs required, but type hints encouraged
-- Keep functions focused — one responsibility per function
-- Comments only when the WHY is non-obvious
+- No external formatters required — match surrounding style
+- Type hints where they add clarity, not everywhere
+- Docstrings only for public-facing functions
 
-## Pull Request Process
+## Reporting Issues
 
-1. Open an issue first for significant changes
-2. Branch from `main`
-3. Keep PRs focused — one concern per PR
-4. Test against a real WordPress draft post (use `--no-save` flag for dry runs)
-
-## Voice Protocol
-
-The voice protocol in `prompts/voice_profile.py` is the single source of truth for editorial rules. Changes to the prohibited word list or voice system require strong justification — these rules are derived from 16 years of full-time travel writing.
-
-## License
-
-By contributing, you agree your contributions are licensed under the MIT License.
+Open a GitHub issue with:
+- Python version
+- Backend used
+- Minimal reproduction case
+- Expected vs actual output
