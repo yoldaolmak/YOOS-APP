@@ -1,269 +1,224 @@
-# YOOS-APP
+# Graphova
 
 [![CI](https://github.com/example/YOOS-APP/actions/workflows/ci.yml/badge.svg)](https://github.com/example/YOOS-APP/actions/workflows/ci.yml)
 [![Python 3.10+](https://img.shields.io/badge/python-3.10%2B-blue.svg)](https://python.org)
 [![License: MIT](https://img.shields.io/badge/License-MIT-green.svg)](LICENSE)
-[![Backends](https://img.shields.io/badge/LLM-OpenAI%20%7C%20Claude%20%7C%20Ollama%20%7C%20Codex-purple.svg)](#llm-backends)
+[![Tests](https://img.shields.io/badge/tests-155%20passing-brightgreen.svg)](#testing)
+[![Backends](https://img.shields.io/badge/LLM-Anthropic%20%7C%20OpenAI%20%7C%20OpenRouter%20%7C%20Ollama-purple.svg)](#llm-backends)
 
 > **Universal Author Voice Engine**
 >
-> Give YOOS-APP a set of texts from any writer. It extracts their voice — sentence rhythm, transitions, personal style — and generates new content in that exact voice for any topic and genre.
+> Feed Graphova any author's texts — it extracts their voice fingerprint and generates new content in that exact voice, across any genre.
 
-No embeddings. No vector database. No cloud dependency. Runs fully local with Ollama, or with any major LLM API.
+No embeddings. No vector database. No cloud lock-in. Runs fully local with Ollama, or with any major LLM API.
 
 ---
 
 ## What It Does
 
 ```
-Your texts (PDF / HTML / TXT)
-        │
-        ▼
-  ┌─────────────┐
-  │ VoiceAnalyzer│  ← sentence length, first-person rate,
-  │             │     transitions, signature phrases,
-  │             │     paragraph rhythm, vocabulary richness
-  └──────┬──────┘
-         │  VoiceProfile (portable JSON)
-         ▼
-  ┌─────────────┐     Content type:
-  │  Generator  │  ←  travel_blog / travel_guide / magazine
-  │             │     news / story / column
-  │ OpenAI      │
-  │ Claude      │
-  │ OpenRouter  │
-  │ Ollama      │
-  │ Codex CLI   │
-  └──────┬──────┘
+Your corpus (PDF / HTML / TXT)
          │
          ▼
-  ┌─────────────┐     Destination:
-  │  Exporter   │  →  Downloads / Desktop / custom path
-  │             │     Google Drive / WordPress (draft or publish)
-  └─────────────┘
+  ┌──────────────┐
+  │   Extractor  │  ← 25+ stylometric dimensions:
+  │              │    sentence length distribution (mean, std, quartiles)
+  │              │    vocabulary richness, lexical density
+  │              │    punctuation fingerprint (em-dash, semicolons)
+  │              │    personal pronoun rates, readability grade
+  │              │    transition words, paragraph openers
+  └──────┬───────┘
+         │  VoiceFingerprint (portable JSON)
+         ▼
+  ┌──────────────┐     Genre:
+  │  Generator   │  ←  travel_blog / travel_guide / magazine
+  │              │     news / story / column / essay / marketing
+  │  + LLM Router│  ←  Anthropic / OpenAI / OpenRouter / Ollama / Codex
+  └──────┬───────┘
          │
          ▼
-    HTML · PDF · TXT
+  Content in the author's voice + audit score (0–100)
 ```
 
 ---
 
 ## Quick Start
 
+### Web App (recommended)
+
 ```bash
 git clone https://github.com/example/YOOS-APP.git
 cd YOOS-APP
 pip install -r requirements.txt
-cp .env.example .env        # add your API key (or use Ollama)
-python -m yoos_app.demo     # runs without API key — mock output
+pip install anthropic  # or: pip install openai
+
+export ANTHROPIC_API_KEY=sk-ant-...   # or OPENAI_API_KEY / OPENROUTER_API_KEY
+
+python -m graphova.app
+# → open http://127.0.0.1:8000
 ```
 
-With a real API key, the demo:
-- Analyzes 3 Mark Twain travel texts (public domain, included)
-- Extracts his voice profile
-- Generates a 1,200–1,500 word travel blog post about Cappadocia
-- Exports HTML + PDF + TXT
-- Reports voice audit score (typically 82–92/100)
-
----
-
-## Installation
-
-### Requirements
-
-- Python 3.10+
-- One of: `OPENAI_API_KEY`, `ANTHROPIC_API_KEY`, `OPENROUTER_API_KEY`, or [Ollama](https://ollama.com) running locally
+### Docker
 
 ```bash
-pip install -r requirements.txt
-# or install as package:
-pip install -e .
+ANTHROPIC_API_KEY=sk-ant-... docker-compose up
+# → open http://localhost:8000
 ```
 
-### Environment
+### Command Line
 
 ```bash
-cp .env.example .env
-# edit .env and set your preferred backend key
+# Extract voice fingerprint from a folder of texts
+python -m graphova.cli analyze --corpus ./hemingway/ --author "Hemingway" --out hem.json
+
+# Generate content
+python -m graphova.cli generate \
+  --profile hem.json \
+  --genre travel_blog \
+  --topic "Havana in the rain" \
+  --backend anthropic
 ```
 
 ---
 
-## CLI Usage
+## Architecture
 
-### Full pipeline in one command
-
-```bash
-yoos-app run \
-  --corpus ./my-author-texts/ \
-  --author "Author Name" \
-  --type travel_blog \
-  --topic "Lisbon in three days" \
-  --backend openai \
-  --format html,pdf,txt \
-  --dest downloads
 ```
-
-### Step by step
-
-```bash
-# 1. Analyze — extract voice profile from a folder of texts
-yoos-app analyze \
-  --corpus ./texts/ \
-  --author "Ernest Hemingway" \
-  --out hemingway_profile.json
-
-# 2. Generate — write new content in that voice
-yoos-app generate \
-  --profile hemingway_profile.json \
-  --type magazine \
-  --topic "Fishing in Patagonia" \
-  --backend anthropic \
-  --out patagonia.txt
-
-# 3. Export — save to any destination in any format
-yoos-app export \
-  --input patagonia.txt \
-  --title "Fishing in Patagonia" \
-  --format pdf \
-  --dest desktop
-
-# Publish directly to WordPress
-yoos-app export \
-  --input patagonia.txt \
-  --title "Fishing in Patagonia" \
-  --format html \
-  --dest wordpress
+graphova/
+├── core/
+│   ├── extractor.py       Stylometric analysis (25+ dimensions, pure Python)
+│   ├── fingerprint.py     VoiceFingerprint dataclass — save/load/diff/distance
+│   ├── generator.py       Prompt construction from fingerprint
+│   ├── router.py          LLM provider router (Anthropic / OpenAI / OpenRouter / Ollama)
+│   ├── auditor.py         Voice quality scoring 0–100 with letter grades
+│   ├── scorer.py          Statistical voice similarity 0.0–1.0
+│   └── genres.py          8 content genre definitions
+├── api/
+│   ├── db.py              SQLite profile store (WAL mode)
+│   ├── models.py          Pydantic v2 request/response schemas
+│   └── routes.py          FastAPI endpoints
+├── exporter/
+│   └── writer.py          HTML / PDF / TXT export + WordPress / Google Drive
+├── utils/
+│   ├── file_handlers.py   PDF / HTML / TXT reader (with security checks)
+│   └── logger.py          Structured logger (JSON or human-readable)
+├── frontend/
+│   ├── index.html         Single-page app (no framework, no build step)
+│   ├── app.js             API client + UI logic
+│   └── style.css          Minimal design system
+├── app.py                 FastAPI entrypoint with lifespan
+└── cli.py                 CLI (serve / analyze / generate / demo)
 ```
 
 ---
 
-## Content Types
+## Voice Fingerprint — 25 Dimensions
 
-| Key | Description | Typical length |
-|-----|-------------|----------------|
-| `travel_blog` | First-person, personal, conversational | 800–1,500 words |
-| `travel_guide` | Authoritative, structured, practical | 1,500–3,000 words |
-| `magazine` | Narrative, deep, scene-setting | 1,200–2,500 words |
-| `news` | Objective, inverted pyramid | 400–800 words |
-| `story` | Narrative arc, character, scene | 1,000–3,000 words |
-| `column` | Opinion, argument, personal angle | 500–900 words |
+| Category | Dimensions |
+|----------|-----------|
+| **Sentence rhythm** | avg words, std dev, p25/p50/p75 quartiles, short rate (<8w), long rate (>20w) |
+| **Voice markers** | first/second/third-person rates, question rate, exclamation rate, negative construction rate |
+| **Vocabulary** | type-token richness, avg word length, lexical density |
+| **Readability** | Flesch-Kincaid grade (EN), avg syllables per word |
+| **Punctuation** | comma, semicolon, em-dash, parenthesis, ellipsis rates per sentence |
+| **Structure** | avg paragraph sentences, avg paragraph words, paragraph openers |
+| **Style** | top transition words, sentence openers, characteristic 2-grams, sample sentences |
+| **Tone** | declarative rate, imperative rate, function word density |
+
+---
+
+## API Reference
+
+| Method | Endpoint | Description |
+|--------|----------|-------------|
+| `GET` | `/api/health` | Server status + available backends |
+| `POST` | `/api/profiles` | Upload corpus → extract fingerprint |
+| `GET` | `/api/profiles` | List all profiles |
+| `GET` | `/api/profiles/{id}` | Profile detail + full fingerprint |
+| `DELETE` | `/api/profiles/{id}` | Delete profile |
+| `POST` | `/api/generate` | Generate content in author's voice |
+| `POST` | `/api/export` | Export as HTML / PDF / TXT |
+| `GET` | `/api/genres` | List available genres |
+
+Interactive docs: `http://localhost:8000/api/docs`
+
+### Example: Create Profile
+
+```bash
+curl -X POST http://localhost:8000/api/profiles \
+  -F "name=My Voice" \
+  -F "author=Me" \
+  -F "files=@blog_post_1.txt" \
+  -F "files=@blog_post_2.html" \
+  -F "files=@essay.pdf"
+```
+
+### Example: Generate
+
+```bash
+curl -X POST http://localhost:8000/api/generate \
+  -H "Content-Type: application/json" \
+  -d '{
+    "profile_id": "uuid-from-create",
+    "topic": "Solo travel in Cappadocia at dawn",
+    "genre": "travel_blog",
+    "backend": "anthropic"
+  }'
+```
 
 ---
 
 ## LLM Backends
 
-| Backend | Key required | How to set |
-|---------|-------------|------------|
-| `openai` | `OPENAI_API_KEY` | `.env` |
-| `anthropic` | `ANTHROPIC_API_KEY` | `.env` |
-| `openrouter` | `OPENROUTER_API_KEY` | `.env` |
-| `ollama` | None | Run `ollama serve` locally |
-| `codex` | Codex CLI login | `codex login` |
-| `auto` *(default)* | any | Uses first available key |
-
-`auto` mode tries keys in order: Anthropic → OpenRouter → OpenAI → Ollama.
+| Backend | Key Required | Notes |
+|---------|-------------|-------|
+| `anthropic` | `ANTHROPIC_API_KEY` | Default when available |
+| `openai` | `OPENAI_API_KEY` | |
+| `openrouter` | `OPENROUTER_API_KEY` | Access 100+ models |
+| `ollama` | none | Run locally: `ollama serve` |
+| `codex` | none | OpenAI Codex CLI |
+| `auto` | — | Tries available in priority order |
 
 ---
 
-## Output Destinations
+## Testing
 
-| Value | Where |
-|-------|-------|
-| `downloads` | `~/Downloads/` |
-| `desktop` | `~/Desktop/` |
-| `/any/path` | Custom absolute path |
-| `google_drive` | Google Drive root (requires `GOOGLE_DRIVE_TOKEN`) |
-| `wordpress` | WordPress draft or publish (requires `WP_URL`, `WP_USER`, `WP_APP_PASSWORD`) |
-
-Output formats: `html`, `pdf`, `txt` — or comma-separated for multiple.
-
----
-
-## Voice Profile
-
-After `yoos-app analyze`, a portable `voice_profile.json` captures:
-
-```json
-{
-  "author_name": "Mark Twain",
-  "language": "en",
-  "text_count": 3,
-  "avg_sentence_words": 11.4,
-  "first_person_rate": 0.26,
-  "question_rate": 0.04,
-  "avg_paragraph_sentences": 4.2,
-  "top_transitions": ["yet", "but", "still", "however"],
-  "signature_phrases": ["very large", "did not", "could not"],
-  "sample_sentences": [
-    "I have seen photographs of this place a hundred times, yet nothing had prepared me for the weight of standing inside it.",
-    "The food deserves its own chapter."
-  ]
-}
+```bash
+# All 155 tests, no API key required
+python -m pytest tests/test_graphova_extractor.py \
+                 tests/test_graphova_handlers.py \
+                 tests/test_graphova_auditor.py \
+                 tests/test_graphova_api.py \
+                 tests/test_core.py -v
 ```
 
-Profiles are portable — share them, version-control them, swap them between projects.
+Tests run in **~0.5 seconds**. No network calls, no mocks.
 
 ---
 
-## Voice Audit
+## Product Tiers
 
-Every generated output is scored against the source profile:
+| Tier | Target | Features |
+|------|--------|---------|
+| **Graphova Penova** | Individual | Single voice, local use |
+| **Graphova Penovate** | Professional | Multiple voices, API access, team sharing |
+| **Graphova Evowrite** | Enterprise | White-label, on-prem, unlimited |
 
-```
-Voice Audit: 87/100 [PASS]
-  Voice match:      34/40   ← sentence rhythm, first-person rate
-  Transition match: 18/20   ← shared transition words
-  Style match:      16/20   ← paragraph structure
-  No AI clichés:   19/20   ← penalises "delve into", "it's worth noting"…
+---
+
+## Requirements
+
+- Python 3.10+
+- At least one LLM API key (or Ollama running locally)
+- Optional: `pdfplumber` for PDF input, `reportlab` for PDF export
+
+```bash
+pip install -r requirements.txt
+pip install anthropic  # recommended
 ```
 
 ---
 
-## Demo Output
+## License
 
-Running `python -m yoos_app.demo` with an Anthropic key produces:
-
-> *Cappadocia sits in the heart of Turkey, in the Anatolian plateau, and it does not look like a place that belongs to the living world. It looks like something dreamed up by a geology that had grown tired of convention. We are travelers who arrive here with our cameras ready and our expectations high, and still the landscape manages to exceed them.*
-
-Voice audit: **87/100** · Similarity: **0.81** · Words: **1,314**
-
----
-
-## Copyright & Legal
-
-YOOS-APP does not store, redistribute, or train on uploaded texts. Voice analysis runs locally in-process. Generated text belongs to the user.
-
-You are responsible for ensuring you have the right to use any texts you provide as corpus input. Public domain texts (Gutenberg, pre-1928 works) are safe. See [LEGAL.md](LEGAL.md).
-
----
-
-## Project Structure
-
-```
-yoos_app/
-├── ingestion/          PDF, HTML, TXT reader
-│   └── reader.py
-├── voice/
-│   ├── analyzer.py     Voice profile extraction
-│   ├── generator.py    Multi-backend LLM generation
-│   └── scorer.py       Voice similarity scoring
-├── content_types/
-│   └── registry.py     6 content type templates
-├── exporter/
-│   └── writer.py       HTML/PDF/TXT + destinations
-├── audit.py            Voice quality audit (0-100)
-├── cli.py              Command-line interface
-└── demo/               Runnable demo, no API key needed
-examples/
-├── corpus/             Mark Twain public domain texts
-└── output/             Generated demo outputs
-tests/                  12+ tests, all API-free
-.github/workflows/      CI: Python 3.10/3.11/3.12
-```
-
----
-
-## Related
-
-- **[example.com](https://example.com)** — live travel publication powered by this engine
+MIT — see [LICENSE](LICENSE).
