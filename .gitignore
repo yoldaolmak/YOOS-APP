@@ -107,6 +107,7 @@ search_console_test.py
 setup_context_server.sh
 test_*.py
 !tests/
+!tests/*.py
 tier_chunker.py
 tools/
 train.py

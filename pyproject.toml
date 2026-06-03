@@ -3,27 +3,78 @@ requires = ["setuptools>=68"]
 build-backend = "setuptools.backends.legacy:build"
 
 [project]
-name = "yoos-app"
-version = "1.0.0"
-description = "Universal Author Voice Engine — analyze any author's style, generate content in their voice"
+name = "graphova"
+version = "0.1.0"
+description = "Universal Author Voice Engine — extract any writer's style fingerprint, generate content in their voice"
 readme = "README.md"
 license = {text = "MIT"}
 requires-python = ">=3.10"
+keywords = ["nlp", "stylometry", "voice", "writing", "ai", "content-generation"]
+classifiers = [
+    "Development Status :: 3 - Alpha",
+    "Intended Audience :: Developers",
+    "Intended Audience :: End Users/Desktop",
+    "License :: OSI Approved :: MIT License",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.10",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "Topic :: Text Processing :: Linguistic",
+    "Topic :: Scientific/Engineering :: Artificial Intelligence",
+]
 dependencies = [
-    "openai>=1.0.0",
+    # Web framework
+    "fastapi>=0.100.0",
+    "uvicorn[standard]>=0.23.0",
+    "python-multipart>=0.0.6",
+    "aiofiles>=23.0.0",
+    # Validation
+    "pydantic>=2.0.0",
+    # HTTP client (Ollama, OpenRouter)
     "requests>=2.31.0",
+    # File parsing
     "beautifulsoup4>=4.12.0",
     "pdfplumber>=0.10.0",
+    # PDF export
     "reportlab>=4.0.0",
 ]
 
 [project.optional-dependencies]
-gdrive = ["google-api-python-client>=2.100.0", "google-auth>=2.23.0"]
-dev = ["pytest>=7.0"]
+llm = [
+    "openai>=1.0.0",
+    "anthropic>=0.30.0",
+]
+gdrive = [
+    "google-api-python-client>=2.100.0",
+    "google-auth>=2.23.0",
+]
+dev = [
+    "pytest>=7.0",
+    "httpx>=0.24.0",   # TestClient dependency
+    "python-dotenv>=1.0.0",
+]
+all = [
+    "graphova[llm,gdrive,dev]",
+]
 
 [project.scripts]
-yoos-app = "yoos_app.cli:main"
+graphova = "graphova.app:run"
+graphova-server = "graphova.app:run"
+
+[project.urls]
+Homepage = "https://graphova.app"
+Repository = "https://github.com/example/YOOS-APP"
+Issues = "https://github.com/example/YOOS-APP/issues"
 
 [tool.setuptools.packages.find]
 where = ["."]
-include = ["yoos_app*"]
+include = ["graphova*", "yoos_app*"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+python_files = ["test_*.py"]
+python_classes = ["Test*"]
+python_functions = ["test_*"]
+filterwarnings = [
+    "ignore::DeprecationWarning",
+]

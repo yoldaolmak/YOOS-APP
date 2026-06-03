@@ -1,18 +1,29 @@
-# Core (always required)
-openai>=1.0.0
+# ── Web API ───────────────────────────────────────────────────────────────────
+fastapi>=0.100.0
+uvicorn[standard]>=0.23.0
+python-multipart>=0.0.6
+aiofiles>=23.0.0
 
-# PDF support
-pdfplumber>=0.10.0
+# ── Validation ────────────────────────────────────────────────────────────────
+pydantic>=2.0.0
 
-# HTML parsing
-beautifulsoup4>=4.12.0
-
-# PDF export
-reportlab>=4.0.0
-
-# HTTP (WordPress + Ollama)
+# ── HTTP client ───────────────────────────────────────────────────────────────
 requests>=2.31.0
 
-# Google Drive (optional)
-google-api-python-client>=2.100.0
-google-auth>=2.23.0
+# ── File parsing ──────────────────────────────────────────────────────────────
+beautifulsoup4>=4.12.0
+pdfplumber>=0.10.0
+
+# ── PDF export ────────────────────────────────────────────────────────────────
+reportlab>=4.0.0
+
+# ── Config ────────────────────────────────────────────────────────────────────
+python-dotenv>=1.0.0
+
+# ── LLM backends (optional — install the ones you use) ───────────────────────
+# openai>=1.0.0
+# anthropic>=0.30.0
+
+# ── Google Drive export (optional) ───────────────────────────────────────────
+# google-api-python-client>=2.100.0
+# google-auth>=2.23.0

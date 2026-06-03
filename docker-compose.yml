@@ -1,0 +1,34 @@
+version: "3.9"
+
+services:
+  graphova:
+    build: .
+    ports:
+      - "8000:8000"
+    volumes:
+      - graphova_data:/data
+    environment:
+      # LLM keys — set via .env file or shell environment
+      - ANTHROPIC_API_KEY=${ANTHROPIC_API_KEY:-}
+      - OPENAI_API_KEY=${OPENAI_API_KEY:-}
+      - OPENROUTER_API_KEY=${OPENROUTER_API_KEY:-}
+      # WordPress (optional)
+      - WP_URL=${WP_URL:-}
+      - WP_USER=${WP_USER:-}
+      - WP_APP_PASSWORD=${WP_APP_PASSWORD:-}
+      # Server config
+      - GRAPHOVA_HOST=0.0.0.0
+      - GRAPHOVA_PORT=8000
+      - GRAPHOVA_LOG_LEVEL=INFO
+      - GRAPHOVA_DATA_DIR=/data
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "python", "-c",
+             "import urllib.request; urllib.request.urlopen('http://localhost:8000/api/health')"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+volumes:
+  graphova_data:
+    driver: local
