@@ -93,17 +93,19 @@ def test_patch_profile_no_fields(client):
 # ══ EKSİK 2 — Rate limiting ══════════════════════════════════════════════════
 
 def test_rate_limit_check_raises_429(client):
-    """Exceed rate limit → HTTP 429 with Retry-After header."""
-    from starlette.testclient import TestClient as StarletteClient
-    from starlette.requests import Request as StarletteRequest
-    from graphova.api.routes import _check_rate_limit, _RATE_LIMIT, _ip_windows
+    """
+    Exceed rate limit → HTTP 429 with Retry-After header.
 
-    # Clear any previous state for test IP
+    Uses direct _check_rate_limit() calls (not full HTTP) so the test
+    completes in milliseconds regardless of LLM latency. This is the
+    correct approach: rate limit logic is synchronous; the slow part
+    (LLM API call) happens after the check passes.
+    """
+    from graphova.api.routes import _check_rate_limit, _RATE_LIMIT, _RATE_WINDOW, _ip_windows
+
     test_ip = "10.0.0.1"
     _ip_windows[test_ip] = []
 
-    # Simulate _RATE_LIMIT + 1 calls from same IP
-    # Build a minimal mock request
     class FakeClient:
         host = test_ip
 
@@ -120,11 +122,13 @@ def test_rate_limit_check_raises_429(client):
         except HTTPException as e:
             assert e.status_code == 429
             assert "Retry-After" in e.headers
+            retry_after = int(e.headers["Retry-After"])
+            assert 0 < retry_after <= _RATE_WINDOW
             hit_limit = True
             break
 
     assert hit_limit, f"Expected 429 after {_RATE_LIMIT} requests, never triggered"
-    _ip_windows[test_ip] = []  # cleanup
+    _ip_windows[test_ip] = []
 
 
 def test_rate_limit_resets_after_window():
