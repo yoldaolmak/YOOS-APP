@@ -113,6 +113,7 @@ tools/
 train.py
 update_context.sh
 utils/
+!graphova/utils/
 voice.py
 voice_anchor.py
 where_engine.py

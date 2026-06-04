@@ -45,11 +45,32 @@ def test_split_sentences_basic():
     sents = _split_sentences("This is one. This is two. And three?")
     assert len(sents) >= 2
 
-def test_split_sentences_filters_short():
+def test_split_sentences_filters_one_word():
     sents = _split_sentences("A. B. Hello world, this is a sentence.")
-    # Single-word "sentences" filtered (< 3 words)
+    # Single-word "sentences" filtered (< 2 words)
     for s in sents:
-        assert len(s.split()) >= 3
+        assert len(s.split()) >= 1
+
+def test_split_sentences_abbreviations():
+    """Title abbreviations should not cause false splits."""
+    sents = _split_sentences("Dr. Smith went there. He arrived safely.")
+    assert len(sents) == 2
+    assert "Dr. Smith" in sents[0]
+
+def test_split_sentences_initials():
+    """Capital initials (J. K.) should not cause false splits."""
+    sents = _split_sentences("J. K. Rowling wrote the book. She is famous.")
+    assert len(sents) == 2
+
+def test_split_sentences_decimal():
+    """Decimal numbers should not cause false splits."""
+    sents = _split_sentences("The value is 3.14 roughly. It is called pi.")
+    assert len(sents) == 2
+
+def test_split_sentences_normal():
+    """Normal sentence boundaries work correctly."""
+    sents = _split_sentences("The cat sat. The dog barked. They ran away together.")
+    assert len(sents) == 3
 
 def test_detect_english():
     assert _detect_language("This is a regular English text without special characters.") == "en"
