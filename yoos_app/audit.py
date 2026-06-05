@@ -39,7 +39,7 @@ AI_CLICHES = [
     "furthermore", "moreover", "in today's", "fast-paced world",
     "in this article", "i will explore", "let's explore",
     "as an ai", "as a language model",
-    # Turkish
+    # Turkish AI clichés (multilingual support)
     "bu makalede", "bu yazıda ele alacağız", "sonuç olarak",
     "öte yandan dikkat", "göz önünde bulundurulduğunda",
     "genel bir bakış", "kapsamlı bir şekilde",

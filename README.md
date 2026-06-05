@@ -1,224 +1,132 @@
-# Graphova
+# YOOS-APP — Bring Your Own Voice
 
-[![CI](https://github.com/example/YOOS-APP/actions/workflows/ci.yml/badge.svg)](https://github.com/example/YOOS-APP/actions/workflows/ci.yml)
+[![CI](https://github.com/yoldaolmak/YOOS-APP/actions/workflows/ci.yml/badge.svg)](https://github.com/yoldaolmak/YOOS-APP/actions/workflows/ci.yml)
 [![Python 3.10+](https://img.shields.io/badge/python-3.10%2B-blue.svg)](https://python.org)
 [![License: MIT](https://img.shields.io/badge/License-MIT-green.svg)](LICENSE)
-[![Tests](https://img.shields.io/badge/tests-155%20passing-brightgreen.svg)](#testing)
-[![Backends](https://img.shields.io/badge/LLM-Anthropic%20%7C%20OpenAI%20%7C%20OpenRouter%20%7C%20Ollama-purple.svg)](#llm-backends)
 
-> **Universal Author Voice Engine**
->
-> Feed Graphova any author's texts — it extracts their voice fingerprint and generates new content in that exact voice, across any genre.
+> **Feed it your own writing. It learns your voice. Then it writes in that voice — consistently, at scale.**
 
-No embeddings. No vector database. No cloud lock-in. Runs fully local with Ollama, or with any major LLM API.
+Most "AI writing" tools sound like everyone else's AI writing: flat, generic, instantly recognizable. YOOS-APP solves the opposite problem. You give it a folder of texts *you* have written; it builds a portable profile of *how you write* — your sentence rhythm, your punctuation habits, your vocabulary, your openings — and then generates new content that stays in **your** voice.
+
+It's built for people who **have something to publish but find writing slow or hard**: solo founders, bloggers, small brands, newsletter authors, anyone who needs a steady stream of on-brand content without sounding like a robot.
 
 ---
 
-## What It Does
+## Why it exists
+
+Writing consistently is the bottleneck. Not everyone can sit down and produce clean, on-voice copy every week — but everyone has a backlog of things worth saying. Generic LLM output doesn't help: it's correct but voiceless, and readers feel it.
+
+YOOS-APP turns *your existing writing* into a reusable voice asset. Analyze once, generate forever.
+
+- **No embeddings. No vector database. No cloud lock-in.** Voice is captured as plain, inspectable statistics in a portable JSON file.
+- **Runs fully local** with [Ollama](https://ollama.com), or with any major API (OpenAI, Anthropic).
+- **Auditable output** — every generation gets a 0–100 voice-match score so you know how close it landed.
+
+---
+
+## What it does
 
 ```
-Your corpus (PDF / HTML / TXT)
-         │
-         ▼
-  ┌──────────────┐
-  │   Extractor  │  ← 25+ stylometric dimensions:
-  │              │    sentence length distribution (mean, std, quartiles)
-  │              │    vocabulary richness, lexical density
-  │              │    punctuation fingerprint (em-dash, semicolons)
-  │              │    personal pronoun rates, readability grade
-  │              │    transition words, paragraph openers
-  └──────┬───────┘
-         │  VoiceFingerprint (portable JSON)
-         ▼
-  ┌──────────────┐     Genre:
-  │  Generator   │  ←  travel_blog / travel_guide / magazine
-  │              │     news / story / column / essay / marketing
-  │  + LLM Router│  ←  Anthropic / OpenAI / OpenRouter / Ollama / Codex
-  └──────┬───────┘
-         │
-         ▼
-  Content in the author's voice + audit score (0–100)
+   Your corpus (.txt / .pdf / .html)
+            │
+            ▼
+     ┌─────────────┐    25+ stylometric dimensions:
+     │   analyze   │    sentence-length distribution, first-person rate,
+     │             │    punctuation fingerprint, vocabulary richness,
+     └──────┬──────┘    paragraph rhythm, signature phrases…
+            │  voice profile  →  portable JSON
+            ▼
+     ┌─────────────┐    Genre templates: blog, guide, magazine,
+     │  generate   │    news, story, column, essay, marketing
+     │  + backend  │    Backends: OpenAI · Anthropic · Ollama (local)
+     └──────┬──────┘
+            │  draft + voice-match score (0–100)
+            ▼
+     ┌─────────────┐
+     │   export    │    → file · PDF · WordPress
+     └─────────────┘
 ```
 
 ---
 
-## Quick Start
-
-### Web App (recommended)
+## Quickstart
 
 ```bash
-git clone https://github.com/example/YOOS-APP.git
+git clone https://github.com/yoldaolmak/YOOS-APP.git
 cd YOOS-APP
 pip install -r requirements.txt
-pip install anthropic  # or: pip install openai
 
-export ANTHROPIC_API_KEY=sk-ant-...   # or OPENAI_API_KEY / OPENROUTER_API_KEY
-
-python -m graphova.app
-# → open http://127.0.0.1:8000
+# See it work end-to-end, no setup:
+python -m yoos_app demo
 ```
 
-### Docker
+### Use it on your own writing
 
 ```bash
-ANTHROPIC_API_KEY=sk-ant-... docker-compose up
-# → open http://localhost:8000
+# 1. Learn your voice from a folder of your texts
+yoos-app analyze --corpus ./my-articles/ --author "Me" --out my-voice.json
+
+# 2. Generate a new piece in that voice
+yoos-app generate --profile my-voice.json --type magazine \
+                  --topic "Three days in Lisbon" --backend openai
+
+# 3. Or run the whole pipeline at once and publish
+yoos-app run --corpus ./my-articles/ --type travel_blog \
+             --topic "Why I keep going back to Tokyo" --dest wordpress
 ```
 
-### Command Line
-
-```bash
-# Extract voice fingerprint from a folder of texts
-python -m graphova.cli analyze --corpus ./hemingway/ --author "Hemingway" --out hem.json
-
-# Generate content
-python -m graphova.cli generate \
-  --profile hem.json \
-  --genre travel_blog \
-  --topic "Havana in the rain" \
-  --backend anthropic
-```
+That's the whole loop: **analyze → generate → export.**
 
 ---
 
-## Architecture
+## Who it's for / what it unlocks
 
-```
-graphova/
-├── core/
-│   ├── extractor.py       Stylometric analysis (25+ dimensions, pure Python)
-│   ├── fingerprint.py     VoiceFingerprint dataclass — save/load/diff/distance
-│   ├── generator.py       Prompt construction from fingerprint
-│   ├── router.py          LLM provider router (Anthropic / OpenAI / OpenRouter / Ollama)
-│   ├── auditor.py         Voice quality scoring 0–100 with letter grades
-│   ├── scorer.py          Statistical voice similarity 0.0–1.0
-│   └── genres.py          8 content genre definitions
-├── api/
-│   ├── db.py              SQLite profile store (WAL mode)
-│   ├── models.py          Pydantic v2 request/response schemas
-│   └── routes.py          FastAPI endpoints
-├── exporter/
-│   └── writer.py          HTML / PDF / TXT export + WordPress / Google Drive
-├── utils/
-│   ├── file_handlers.py   PDF / HTML / TXT reader (with security checks)
-│   └── logger.py          Structured logger (JSON or human-readable)
-├── frontend/
-│   ├── index.html         Single-page app (no framework, no build step)
-│   ├── app.js             API client + UI logic
-│   └── style.css          Minimal design system
-├── app.py                 FastAPI entrypoint with lifespan
-└── cli.py                 CLI (serve / analyze / generate / demo)
-```
+| You are… | YOOS-APP gives you… |
+|----------|---------------------|
+| A solo founder / indie brand | On-voice blog & marketing copy without hiring a writer |
+| A blogger or newsletter author | A way to keep publishing on the weeks you can't write |
+| An agency | One reusable voice profile per client, consistent across drafts |
+| A non-native or reluctant writer | Your ideas, in clean prose that still sounds like you |
+
+The opportunity is **consistency at scale**: capture a voice once, then produce dozens of pieces that read like the same human wrote them.
 
 ---
 
-## Voice Fingerprint — 25 Dimensions
+## How the voice profile works
 
-| Category | Dimensions |
-|----------|-----------|
-| **Sentence rhythm** | avg words, std dev, p25/p50/p75 quartiles, short rate (<8w), long rate (>20w) |
-| **Voice markers** | first/second/third-person rates, question rate, exclamation rate, negative construction rate |
-| **Vocabulary** | type-token richness, avg word length, lexical density |
-| **Readability** | Flesch-Kincaid grade (EN), avg syllables per word |
-| **Punctuation** | comma, semicolon, em-dash, parenthesis, ellipsis rates per sentence |
-| **Structure** | avg paragraph sentences, avg paragraph words, paragraph openers |
-| **Style** | top transition words, sentence openers, characteristic 2-grams, sample sentences |
-| **Tone** | declarative rate, imperative rate, function word density |
+The analyzer is pure, transparent text statistics — no black-box embeddings. It measures things like:
 
----
+- Sentence-length distribution (mean, spread, short/long ratio)
+- First-person, question, and exclamation rates
+- Paragraph rhythm (sentences per paragraph)
+- Punctuation style (em-dash, semicolon, parenthesis use)
+- Vocabulary richness (type–token ratio)
+- Signature 2-gram phrases and typical openings
 
-## API Reference
-
-| Method | Endpoint | Description |
-|--------|----------|-------------|
-| `GET` | `/api/health` | Server status + available backends |
-| `POST` | `/api/profiles` | Upload corpus → extract fingerprint |
-| `GET` | `/api/profiles` | List all profiles |
-| `GET` | `/api/profiles/{id}` | Profile detail + full fingerprint |
-| `DELETE` | `/api/profiles/{id}` | Delete profile |
-| `POST` | `/api/generate` | Generate content in author's voice |
-| `POST` | `/api/export` | Export as HTML / PDF / TXT |
-| `GET` | `/api/genres` | List available genres |
-
-Interactive docs: `http://localhost:8000/api/docs`
-
-### Example: Create Profile
-
-```bash
-curl -X POST http://localhost:8000/api/profiles \
-  -F "name=My Voice" \
-  -F "author=Me" \
-  -F "files=@blog_post_1.txt" \
-  -F "files=@blog_post_2.html" \
-  -F "files=@essay.pdf"
-```
-
-### Example: Generate
-
-```bash
-curl -X POST http://localhost:8000/api/generate \
-  -H "Content-Type: application/json" \
-  -d '{
-    "profile_id": "uuid-from-create",
-    "topic": "Solo travel in Cappadocia at dawn",
-    "genre": "travel_blog",
-    "backend": "anthropic"
-  }'
-```
+The result is a small JSON file you can read, diff, version, and reuse anywhere.
 
 ---
 
-## LLM Backends
+## Backends
 
-| Backend | Key Required | Notes |
-|---------|-------------|-------|
-| `anthropic` | `ANTHROPIC_API_KEY` | Default when available |
-| `openai` | `OPENAI_API_KEY` | |
-| `openrouter` | `OPENROUTER_API_KEY` | Access 100+ models |
-| `ollama` | none | Run locally: `ollama serve` |
-| `codex` | none | OpenAI Codex CLI |
-| `auto` | — | Tries available in priority order |
+| Backend | Use it when |
+|---------|-------------|
+| **Ollama** (local) | You want zero API cost and full privacy |
+| **OpenAI** | You want top-tier quality out of the box |
+| **Anthropic** | You prefer Claude models |
 
----
-
-## Testing
-
-```bash
-# All 155 tests, no API key required
-python -m pytest tests/test_graphova_extractor.py \
-                 tests/test_graphova_handlers.py \
-                 tests/test_graphova_auditor.py \
-                 tests/test_graphova_api.py \
-                 tests/test_core.py -v
-```
-
-Tests run in **~0.5 seconds**. No network calls, no mocks.
+Set your key in `.env` (see `.env.example`). No key needed for the local Ollama path or the demo.
 
 ---
 
-## Product Tiers
+## Project status & sibling project
 
-| Tier | Target | Features |
-|------|--------|---------|
-| **Graphova Penova** | Individual | Single voice, local use |
-| **Graphova Penovate** | Professional | Multiple voices, API access, team sharing |
-| **Graphova Evowrite** | Enterprise | White-label, on-prem, unlimited |
+YOOS-APP is the **accessible, bring-your-own-voice** entry point: give it your texts, get consistent content in your voice.
 
----
-
-## Requirements
-
-- Python 3.10+
-- At least one LLM API key (or Ollama running locally)
-- Optional: `pdfplumber` for PDF input, `reportlab` for PDF export
-
-```bash
-pip install -r requirements.txt
-pip install anthropic  # recommended
-```
+> **graphova** is its more advanced sibling — a voice-print engine for writing in *any* author's tone. YOOS-APP is the simple front door; graphova is the deep end.
 
 ---
 
 ## License
 
-MIT — see [LICENSE](LICENSE).
+MIT — see [LICENSE](LICENSE). Use it, fork it, build on it.
