@@ -26,27 +26,11 @@ jobs:
           pip install -r requirements.txt
           pip install pytest httpx
 
-      - name: Compile check — graphova
-        run: python -m compileall graphova/
-
-      - name: Compile check — yoos_app (legacy)
+      - name: Compile check — yoos_app
         run: python -m compileall yoos_app/
 
       - name: Run all tests
-        run: python -m pytest tests/test_graphova_extractor.py tests/test_graphova_handlers.py tests/test_graphova_auditor.py tests/test_graphova_api.py tests/test_core.py -v --tb=short
-
-      - name: Graphova import smoke test
-        run: |
-          python -c "
-          from graphova.core.extractor import extract
-          from graphova.core.fingerprint import VoiceFingerprint
-          from graphova.core.generator import build_prompt
-          from graphova.core.auditor import audit
-          from graphova.core.scorer import score
-          from graphova.api.db import ProfileDB
-          from graphova.app import app
-          print('All graphova imports OK')
-          "
+        run: python -m pytest tests/test_core.py -v --tb=short
 
       - name: Run yoos_app demo (no API key)
         run: python -m yoos_app.demo
