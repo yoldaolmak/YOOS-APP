@@ -119,11 +119,13 @@ Set your key in `.env` (see `.env.example`). No key needed for the local Ollama 
 
 ---
 
-## Project status & sibling project
+## Project status and relationship to YOOS
 
 YOOS-APP is the **accessible, bring-your-own-voice** entry point: give it your texts, get consistent content in your voice.
 
-> **graphova** is its more advanced sibling — a voice-print engine for writing in *any* author's tone. YOOS-APP is the simple front door; graphova is the deep end.
+YOOS-APP is the owner's earlier public author-voice prototype. The separate private **YOOS** venture develops whole-site content intelligence for travel publishers: understanding the publication and search demand, then supporting editorial decisions about what to improve, consolidate, create, or leave unchanged. Those are product goals, not capabilities demonstrated by this prototype. YOOS-APP is not a runtime dependency of YOOS, and private YOOS source-code access is not offered with application materials.
+
+The initial publication for YOOS is [yoldaolmak.com](https://yoldaolmak.com/). Its [About page](https://yoldaolmak.com/hakkinda) dates its launch to June 2011; the homepage describes 1,600+ pieces of content based on travel across 72 countries and 395 cities (checked 2026-10-08). These publisher-reported figures describe the publication, not software efficacy, customer traction, or the venture's incorporation date.
 
 ---
 
