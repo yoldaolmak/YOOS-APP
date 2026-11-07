@@ -1,8 +1,6 @@
 """URL and paste inputs must work through the existing analysis/pipeline CLI."""
 import io
 import sys
-from pathlib import Path
-
 import pytest
 import requests
 
