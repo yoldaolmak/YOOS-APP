@@ -17,6 +17,7 @@ Pennovia's package metadata currently identifies version **0.2.0 alpha**. Entrie
 - Make corpus ingestion deterministic and CLI diagnostics accurate ([#9](https://github.com/yoldaolmak/Pennovia/pull/9)).
 
 ### Voice analysis and profile reliability
+- Count one bounded negative-construction observation per sentence; prevent substring matches and use both language lists when detection abstains.
 - Cover the complete corpus tail in vocabulary metrics and prevent cross-document signature phrases.
 - Prevent short drafts from passing heuristic review despite high scores; avoid impossible transition warnings.
 - Count complete transition expressions, not word fragments ([#5](https://github.com/yoldaolmak/Pennovia/pull/5)).

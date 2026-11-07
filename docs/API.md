@@ -50,7 +50,7 @@ print(profile.summary())
 | `long_sentence_rate` | float | Proportion of sentences > 20 words |
 | `first_person_rate` | float | Share of sentences with supported singular first-person pronouns (English/Turkish, language-aware). Does not infer inflected Turkish verbs or first-person plural |
 | `question_rate` | float | Proportion of sentences ending with ? |
-| `negative_rate` | float | Rate of negative constructions |
+| `negative_rate` | float | Share of sentences containing at least one listed negation marker (0–1 for newly analyzed profiles); not a full Turkish morphological negation detector |
 | `avg_paragraph_sentences` | float | Mean sentences per paragraph |
 | `vocabulary_richness` | float | Mean type-token ratio over complete 500-word windows (including the final window), or the complete shorter corpus; words count Unicode letter tokens of 3+ characters |
 | `emdash_rate` | float | Em-dashes per 100 sentences |
@@ -66,7 +66,7 @@ For loss prevention, pass `profile.save(path, overwrite=False)` when writing a n
 
 `VoiceProfile.load()` checks that the root is an object, known fields have appropriate JSON types, numeric fields are finite and non-negative, rate fields stay in the 0–1 range, and language is `auto`, `en`, or `tr`. It raises `ValueError` for invalid profile contents. The format is not a proof of writer identity or scoring quality. Profiles may contain verbatim source excerpts; treat them as private user data.
 
-The built-in detector handles **English and Turkish only**. It combines function-word evidence with Turkish-specific letters; ambiguous, short and mixed-language texts produce `"auto"` rather than inventing a language. `analyze(..., language="tr"|"en")`, `pennovia analyze --language tr`, and `pennovia run --language tr` override the detector. This is a deliberately limited heuristic, not language identification for arbitrary text. A profile with unresolved language prompts the model to follow its source samples instead of presuming English.
+The built-in detector handles **English and Turkish only**. It combines function-word evidence with Turkish-specific letters; ambiguous, short and mixed-language texts produce `"auto"` rather than inventing a language. `analyze(..., language="tr"|"en")`, `pennovia analyze --language tr`, and `pennovia run --language tr` override the detector. This is a deliberately limited heuristic, not language identification for arbitrary text. A profile with unresolved language prompts the model to follow its source samples instead of presuming English. In this state, analysis checks observed Turkish and English transition and explicit negation markers instead of silently using the English-only list.
 
 ## voice.generator
 
