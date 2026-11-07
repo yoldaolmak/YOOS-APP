@@ -13,9 +13,11 @@ text: str = read_file("/path/to/file.pdf")
 # Supports: .pdf, .html, .htm, .txt
 
 texts: list[str] = read_corpus(["/path/file1.txt", "/path/file2.pdf"])
-# Skips unreadable files with a warning
-# Returns only texts with > 50 words
+# Skips unreadable, unsupported and short files, warning on stderr
+# Returns only texts with > 50 whitespace-delimited words
 ```
+
+`read_file()` raises `ValueError` for unsupported extensions. The CLI scans a corpus directory non-recursively in sorted filename order and reports both candidate and usable file counts. For direct API use, `read_corpus()` remains best-effort: check the number of returned texts against your inputs.
 
 ## voice.analyzer
 
