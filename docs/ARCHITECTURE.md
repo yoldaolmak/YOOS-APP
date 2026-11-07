@@ -1,5 +1,7 @@
 # Architecture
 
+YOOS-APP is a standalone CLI. No HTTP server is shipped. Local metrics are diagnostic heuristics, not independently calibrated quality or authorship measures.
+
 ## Overview
 
 YOOS-APP is designed as a single-responsibility pipeline. Each module does exactly one thing and is independently testable without any API key.
@@ -92,7 +94,7 @@ The prompt is backend-agnostic — the same prompt works with OpenAI, Anthropic,
 - **Style match (0–20)**: paragraph structure similarity
 - **No AI clichés (0–20)**: penalty for known AI writing patterns
 
-Pass threshold: ≥ 70/100.
+Diagnostic threshold: ≥ 70/100. This is uncalibrated and is not editorial acceptance.
 
 ## Adding a Backend
 
@@ -107,3 +109,7 @@ Pass threshold: ≥ 70/100.
 1. Add entry to `CONTENT_TYPES` dict in `content_types/registry.py`
 2. Keys: `label`, `structure` (list), `tone`, `length`
 3. No other changes needed — the generator and CLI pick it up automatically
+
+## Data boundary
+
+Voice profiles can include verbatim source excerpts. Optional cloud LLM generation transmits prompt material to the chosen provider. Google Drive and WordPress exports are separate network actions; WordPress drafts are the default and HTTPS is mandatory.

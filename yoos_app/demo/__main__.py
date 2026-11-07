@@ -15,12 +15,11 @@ import sys
 import os
 from pathlib import Path
 
-ROOT = Path(__file__).parent.parent.parent
-CORPUS_DIR = ROOT / "examples" / "corpus"
-OUTPUT_DIR = ROOT / "examples" / "output"
+CORPUS_DIR = Path(__file__).parent / "corpus"
+# Outputs belong to the invoking user, never to the installed package directory.
+OUTPUT_DIR = Path(os.environ.get("YOOS_DEMO_OUTPUT_DIR", str(Path.cwd() / "examples" / "output")))
 OUTPUT_DIR.mkdir(parents=True, exist_ok=True)
 
-sys.path.insert(0, str(ROOT))
 
 from yoos_app.ingestion.reader import read_corpus
 from yoos_app.voice.analyzer import analyze
@@ -79,7 +78,7 @@ def run():
 
     result = run_audit(content, profile)
     similarity = voice_score(content, profile)
-    print(f"      Voice audit: {result.total_score}/100")
+    print(f"      Heuristic voice audit (uncalibrated): {result.total_score}/100")
     print(f"      Voice similarity: {similarity:.2f}")
     if result.issues:
         print(f"      Issues: {', '.join(result.issues)}")
@@ -95,7 +94,7 @@ def run():
     print(f"      PDF:  {pdf_path}")
 
     print("=" * 40)
-    print(f"Demo complete. Voice audit: {result.total_score}/100, similarity: {similarity:.2f}")
+    print(f"Demo complete. Heuristic audit: {result.total_score}/100, similarity: {similarity:.2f} (uncalibrated)")
     print()
     print("To use real LLM generation:")
     print("  export ANTHROPIC_API_KEY=sk-ant-...")

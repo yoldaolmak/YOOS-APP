@@ -185,7 +185,8 @@ def main():
         formatter_class=argparse.RawDescriptionHelpFormatter,
         epilog=__doc__,
     )
-    parser.add_argument("--version", action="version", version="yoos-app 1.0.0")
+    from yoos_app import __version__
+    parser.add_argument("--version", action="version", version=f"yoos-app {__version__}")
     sub = parser.add_subparsers(dest="command", metavar="command")
 
     p_a = sub.add_parser("analyze", help="Extract voice profile from corpus folder")

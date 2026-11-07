@@ -1,5 +1,7 @@
 # Python API Reference
 
+YOOS-APP 0.1.0 provides a Python API and CLI, not a maintained HTTP service. The numerical voice scores below are uncalibrated heuristics.
+
 All public functions are importable from `yoos_app.*`.
 
 ## ingestion.reader
@@ -82,7 +84,7 @@ result.transition_match  # int 0–20
 result.style_match    # int 0–20
 result.no_ai_cliches  # int 0–20
 result.issues         # list[str]
-result.passed()       # bool (score >= 70)
+result.passed()       # bool: diagnostic threshold >= 70, not calibrated
 result.report()       # str — formatted report
 ```
 
@@ -114,7 +116,7 @@ link: str = save_google_drive(content, title, fmt="html")
 
 # Publish to WordPress
 url: str = save_wordpress(content, title,
-                          wp_url=None,       # falls back to WP_URL env var
+                          wp_url=None,       # HTTPS URL; falls back to WP_URL env var
                           wp_user=None,      # WP_USER
                           wp_password=None,  # WP_APP_PASSWORD
                           publish=False)     # True = publish, False = draft

@@ -1,134 +1,67 @@
-# YOOS-APP — Bring Your Own Voice
+# YOOS-APP
 
-[![CI](https://github.com/yoldaolmak/YOOS-APP/actions/workflows/ci.yml/badge.svg)](https://github.com/yoldaolmak/YOOS-APP/actions/workflows/ci.yml)
-[![Python 3.10+](https://img.shields.io/badge/python-3.10%2B-blue.svg)](https://python.org)
-[![License: MIT](https://img.shields.io/badge/License-MIT-green.svg)](LICENSE)
+[![CI](https://github.com/yoldaolmak/YOOS-APP/actions/workflows/ci.yml/badge.svg)](https://github.com/yoldaolmak/YOOS-APP/actions/workflows/ci.yml) · Python 3.10+ · MIT License
 
-> **Feed it your own writing. It learns your voice. Then it writes in that voice — consistently, at scale.**
+**Bring your own writing. Inspect your voice. Generate a draft for review.**
 
-Most "AI writing" tools sound like everyone else's AI writing: flat, generic, instantly recognizable. YOOS-APP solves the opposite problem. You give it a folder of texts *you* have written; it builds a portable profile of *how you write* — your sentence rhythm, your punctuation habits, your vocabulary, your openings — and then generates new content that stays in **your** voice.
+YOOS-APP is an independent open-source Python CLI for local author-voice profiling and AI-assisted drafting. It reads text supplied by the user, extracts inspectable writing statistics into a portable JSON profile, supports optional language-model drafting, and exports text to local files, WordPress drafts, or Google Drive.
 
-It's built for people who **have something to publish but find writing slow or hard**: solo founders, bloggers, small brands, newsletter authors, anyone who needs a steady stream of on-brand content without sounding like a robot.
+**Status: 0.1.0 alpha.** This is not a hosted service. Its 0–100 voice audit and 0–1 similarity result are uncalibrated heuristics, not proof of authorship, originality, factual quality, or fidelity to a human writer.
 
----
+## Features
 
-## Why it exists
+- Analyze TXT, HTML, or PDF corpus files into an inspectable `VoiceProfile` JSON file.
+- Compare sentence rhythm, punctuation, transition expressions, and paragraph style.
+- Draft with configured OpenAI, Anthropic, OpenRouter, Codex CLI, or local Ollama backend.
+- Save TXT, standalone HTML, or PDF output; optionally export to Google Drive or WordPress.
+- WordPress exports create a **draft by default**; publication requires an explicit `--publish` flag and HTTPS endpoint.
 
-Writing consistently is the bottleneck. Not everyone can sit down and produce clean, on-voice copy every week — but everyone has a backlog of things worth saying. Generic LLM output doesn't help: it's correct but voiceless, and readers feel it.
-
-YOOS-APP turns *your existing writing* into a reusable voice asset. Analyze once, generate forever.
-
-- **No embeddings. No vector database. No cloud lock-in.** Voice is captured as plain, inspectable statistics in a portable JSON file.
-- **Runs fully local** with [Ollama](https://ollama.com), or with any major API (OpenAI, Anthropic).
-- **Auditable output** — every generation gets a 0–100 voice-match score so you know how close it landed.
-
----
-
-## What it does
-
-```
-   Your corpus (.txt / .pdf / .html)
-            │
-            ▼
-     ┌─────────────┐    25+ stylometric dimensions:
-     │   analyze   │    sentence-length distribution, first-person rate,
-     │             │    punctuation fingerprint, vocabulary richness,
-     └──────┬──────┘    paragraph rhythm, signature phrases…
-            │  voice profile  →  portable JSON
-            ▼
-     ┌─────────────┐    Genre templates: blog, guide, magazine,
-     │  generate   │    news, story, column, essay, marketing
-     │  + backend  │    Backends: OpenAI · Anthropic · Ollama (local)
-     └──────┬──────┘
-            │  draft + voice-match score (0–100)
-            ▼
-     ┌─────────────┐
-     │   export    │    → file · PDF · WordPress
-     └─────────────┘
-```
-
----
-
-## Quickstart
+## Quick start
 
 ```bash
 git clone https://github.com/yoldaolmak/YOOS-APP.git
 cd YOOS-APP
-pip install -r requirements.txt
-
-# See it work end-to-end, no setup:
-python -m yoos_app demo
+python -m venv .venv
+source .venv/bin/activate
+python -m pip install -e ".[dev]"
+python -m yoos_app.demo
+python -m pytest -q
 ```
 
-### Use it on your own writing
+The demo analyzes bundled sample excerpts and creates demonstration files in `examples/output/`. Without API credentials it uses explicitly labeled mock text; it does **not** test live model quality.
+
+Analyze your own writing:
 
 ```bash
-# 1. Learn your voice from a folder of your texts
-yoos-app analyze --corpus ./my-articles/ --author "Me" --out my-voice.json
-
-# 2. Generate a new piece in that voice
-yoos-app generate --profile my-voice.json --type magazine \
-                  --topic "Three days in Lisbon" --backend openai
-
-# 3. Or run the whole pipeline at once and publish
-yoos-app run --corpus ./my-articles/ --type travel_blog \
-             --topic "Why I keep going back to Tokyo" --dest wordpress
+yoos-app analyze --corpus ./my-articles --author "Example Writer" --out voice.json
+yoos-app generate --profile voice.json --type travel_guide --topic "Lisbon" --backend ollama --out draft.txt
+yoos-app export --input draft.txt --title "Lisbon" --format html --dest downloads
 ```
 
-That's the whole loop: **analyze → generate → export.**
+Optional cloud backends require credentials and may require `pip install -e ".[llm]"`. `--backend auto` may select an available cloud provider. Local generation requires a running Ollama service.
 
----
+For WordPress draft export configure `WP_URL`, `WP_USER` and `WP_APP_PASSWORD`. The endpoint must use HTTPS. Do not commit keys, private corpus files, generated text, or profile JSON containing sample sentences.
 
-## Who it's for / what it unlocks
+## Container
 
-| You are… | YOOS-APP gives you… |
-|----------|---------------------|
-| A solo founder / indie brand | On-voice blog & marketing copy without hiring a writer |
-| A blogger or newsletter author | A way to keep publishing on the weeks you can't write |
-| An agency | One reusable voice profile per client, consistent across drafts |
-| A non-native or reluctant writer | Your ideas, in clean prose that still sounds like you |
+```bash
+docker build -t yoos-app .
+docker run --rm yoos-app demo
+```
 
-The opportunity is **consistency at scale**: capture a voice once, then produce dozens of pieces that read like the same human wrote them.
+The image runs the CLI, not a web API. The demo runs in an ephemeral container; persistent files require an explicitly mounted output directory. `docker compose run --rm demo` provides the same one-off demonstration.
 
----
+## Data handling and limitations
 
-## How the voice profile works
+Local analysis does not call a language model. Voice profiles may contain verbatim sample sentences; cloud generation sends sample excerpts in a prompt to the selected provider. Google Drive and WordPress exports make separate outbound network requests. Keep original corpus files and profiles private.
 
-The analyzer is pure, transparent text statistics — no black-box embeddings. It measures things like:
+Generated personal accounts and facts can be invented. Review every draft before publishing. Heuristic scores are diagnostic indicators only; a high score is not a guarantee of writing quality.
 
-- Sentence-length distribution (mean, spread, short/long ratio)
-- First-person, question, and exclamation rates
-- Paragraph rhythm (sentences per paragraph)
-- Punctuation style (em-dash, semicolon, parenthesis use)
-- Vocabulary richness (type–token ratio)
-- Signature 2-gram phrases and typical openings
+## References
 
-The result is a small JSON file you can read, diff, version, and reuse anywhere.
-
----
-
-## Backends
-
-| Backend | Use it when |
-|---------|-------------|
-| **Ollama** (local) | You want zero API cost and full privacy |
-| **OpenAI** | You want top-tier quality out of the box |
-| **Anthropic** | You prefer Claude models |
-
-Set your key in `.env` (see `.env.example`). No key needed for the local Ollama path or the demo.
-
----
-
-## Project status and relationship to YOOS
-
-YOOS-APP is the **accessible, bring-your-own-voice** entry point: give it your texts, get consistent content in your voice.
-
-YOOS-APP is the owner's earlier public author-voice prototype. The separate private **YOOS** venture develops whole-site content intelligence for travel publishers: understanding the publication and search demand, then supporting editorial decisions about what to improve, consolidate, create, or leave unchanged. Those are product goals, not capabilities demonstrated by this prototype. YOOS-APP is not a runtime dependency of YOOS, and private YOOS source-code access is not offered with application materials.
-
-The initial publication for YOOS is [yoldaolmak.com](https://yoldaolmak.com/). Its [About page](https://yoldaolmak.com/hakkinda) dates its launch to June 2011; the homepage describes 1,600+ pieces of content based on travel across 72 countries and 395 cities (checked 2026-10-08). These publisher-reported figures describe the publication, not software efficacy, customer traction, or the venture's incorporation date.
-
----
-
-## License
-
-MIT — see [LICENSE](LICENSE). Use it, fork it, build on it.
+- [Architecture](docs/ARCHITECTURE.md)
+- [Python API](docs/API.md)
+- [Contributing](CONTRIBUTING.md)
+- [Security](SECURITY.md)
+- [Legal notes](LEGAL.md)
+- [MIT License](LICENSE)

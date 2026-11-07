@@ -1,57 +1,20 @@
-# AGENTS.md — LLM Integration Guide
+# YOOS-APP contributor and agent guide
 
-This file describes how AI agents interact with the YOOS-APP codebase.
+This repository is a standalone public Python CLI. Keep product code, tests, documentation, and release metadata self-contained; do not introduce references to other products, unrelated repositories, private corpora, or proprietary runtime dependencies.
 
-## Architecture Overview
+Actual flow: user corpus -> local text reader -> local `VoiceProfile` -> optional provider generation -> heuristic audit -> user-selected export.
 
-YOOS-APP uses LLMs as **generation backends only**. All analysis, profiling, auditing, and scoring is done locally with zero LLM calls. The LLM receives a fully-formed prompt built from the extracted voice profile and content type template.
+Core modules: `yoos_app/ingestion/reader.py`, `yoos_app/voice/analyzer.py`, `yoos_app/voice/generator.py`, `yoos_app/voice/scorer.py`, `yoos_app/audit.py`, `yoos_app/exporter/writer.py` and `yoos_app/cli.py`.
 
-```
-VoiceProfile (local) + ContentType template (local)
-            ↓
-    build_prompt()  ←  yoos_app/voice/generator.py
-            ↓
-      LLM API call  (one call per generation)
-            ↓
-    audit() + score()  (local, no LLM)
-```
+Commands:
 
-## Prompt Structure
-
-```
-SYSTEM:
-  - Author identity from VoiceProfile
-  - Style rules (sentence length, first-person rate, transitions)
-  - Sample sentences from corpus (3 examples — tone reference, not copy)
-  - Content type structure (numbered sections)
-  - Hard rules (no AI clichés, no fabrication, output only)
-
-USER:
-  - Topic: "..."
-  - Instruction to write in voice + structure
+```bash
+python -m pip install -e ".[dev]"
+python -m compileall -q yoos_app
+python -m pytest -q
+python -m yoos_app.demo
 ```
 
-## Supported Backends
+Tests and demo must work without provider keys. Use synthetic or properly licensed fixtures, never private author corpora. The score is uncalibrated: preserve uncertainty rather than claiming human voice fidelity. WordPress must remain draft-by-default and HTTPS-only. The supported user interface is the CLI, not an HTTP service.
 
-| Backend | Module | Config |
-|---------|--------|--------|
-| OpenAI | `generate_openai()` | `OPENAI_API_KEY` |
-| Anthropic Claude | `generate_anthropic()` | `ANTHROPIC_API_KEY` |
-| OpenRouter | `generate_openrouter()` | `OPENROUTER_API_KEY` |
-| Ollama (local) | `generate_ollama()` | `ollama serve` |
-| OpenAI Codex CLI | `generate_codex()` | `codex login` |
-
-## Adding a New Backend
-
-1. Add `generate_mybackend(profile, content_type, topic, **kwargs)` in `yoos_app/voice/generator.py`
-2. Add a branch in `generate()` dispatch
-3. Add to CLI `--backend` choices in `yoos_app/cli.py`
-4. Add to `YOOS_BACKEND` docs in `.env.example`
-
-## Working with This Repo (Codex/Claude)
-
-- Entry point: `yoos_app/cli.py` → `main()`
-- Voice logic: `yoos_app/voice/`
-- No credentials in code — all via environment variables
-- Tests require no API key: `python -m pytest tests/`
-- Demo: `python -m yoos_app.demo`
+Before a public release compare README, package version, CLI, CI, security documentation, and container entrypoint against runnable code.
