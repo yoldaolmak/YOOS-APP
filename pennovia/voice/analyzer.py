@@ -59,6 +59,9 @@ class VoiceProfile:
     forbidden_patterns: list = field(default_factory=list)
     sample_sentences: list = field(default_factory=list)
 
+    # Appended to preserve positional construction of older VoiceProfile instances.
+    schema_version: int = 1
+
     def to_json(self) -> str:
         return json.dumps(asdict(self), ensure_ascii=False, indent=2)
 
@@ -68,11 +71,55 @@ class VoiceProfile:
 
     @classmethod
     def load(cls, path: str) -> "VoiceProfile":
-        with open(path, encoding="utf-8") as f:
-            data = json.load(f)
-        # Forward-compat: ignore unknown fields from older profile versions
-        known = {f.name for f in cls.__dataclass_fields__.values()}
-        return cls(**{k: v for k, v in data.items() if k in known})
+        """Read a v1 JSON profile, rejecting invalid known fields.
+
+        Old files without schema_version remain compatible. Unknown keys are
+        ignored so optional metadata does not break a valid v1 profile.
+        """
+        with open(path, encoding="utf-8") as source:
+            data = json.load(source)
+
+        if not isinstance(data, dict):
+            raise ValueError("Voice profile must be a JSON object")
+
+        version = data.get("schema_version", 1)
+        if type(version) is not int or version != 1:
+            raise ValueError(f"Unsupported voice profile schema_version: {version!r}")
+
+        defaults = cls()
+        known = cls.__dataclass_fields__
+        values = {key: value for key, value in data.items() if key in known}
+        for key, value in values.items():
+            expected = getattr(defaults, key)
+            if isinstance(expected, list):
+                valid = isinstance(value, list) and all(
+                    isinstance(item, str) for item in value
+                )
+            elif type(expected) is int:
+                valid = type(value) is int and value >= 0
+            elif type(expected) is float:
+                valid = (
+                    type(value) in (int, float)
+                    and math.isfinite(value)
+                    and value >= 0
+                )
+            else:
+                valid = isinstance(value, str)
+            if not valid:
+                raise ValueError(f"Invalid voice profile field: {key}")
+
+        rates = (
+            "short_sentence_rate", "long_sentence_rate",
+            "first_person_rate", "question_rate", "exclamation_rate",
+            "vocabulary_richness",
+        )
+        if any(values.get(name, 0) > 1 for name in rates):
+            raise ValueError("Voice profile rate fields must be between 0 and 1")
+
+        if values.get("language", "auto") not in ("auto", "en", "tr"):
+            raise ValueError("Voice profile language must be auto, en or tr")
+
+        return cls(**values)
 
     def summary(self) -> str:
         lines = [

@@ -39,6 +39,7 @@ print(profile.summary())
 
 | Field | Type | Description |
 |-------|------|-------------|
+| `schema_version` | int | Profile format version; currently `1` |
 | `author_name` | str | As provided |
 | `language` | str | "en" or "tr" (auto-detected) |
 | `text_count` | int | Number of input texts |
@@ -56,6 +57,12 @@ print(profile.summary())
 | `top_transitions` | list[str] | Most-used transition words |
 | `signature_phrases` | list[str] | Recurring 2-gram phrases |
 | `sample_sentences` | list[str] | Representative sentences |
+
+### Profile JSON contract
+
+`VoiceProfile.save()` writes JSON with `schema_version: 1`. Files written before this field existed remain loadable as version 1. Unknown extra keys are ignored, but a file explicitly declaring another version is rejected to prevent silent interpretation of an incompatible format.
+
+`VoiceProfile.load()` checks that the root is an object, known fields have appropriate JSON types, numeric fields are finite and non-negative, rate fields stay in the 0–1 range, and language is `auto`, `en`, or `tr`. It raises `ValueError` for invalid profile contents. The format is not a proof of writer identity or scoring quality. Profiles may contain verbatim source excerpts; treat them as private user data.
 
 ## voice.generator
 
