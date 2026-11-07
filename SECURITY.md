@@ -16,5 +16,9 @@ Use the repository's private GitHub vulnerability-reporting feature if enabled. 
 - The offline demo uses labeled mock output when no API key is configured.
 - Local exports are written to unique files rather than overwriting an earlier export with the same title; generated temporary PDF files are cleaned up on failure or after Google Drive upload preparation.
 
-This policy is not a claim of a full independent security audit.
 - The opt-in Codex CLI backend invokes `codex exec` with an explicit read-only sandbox, never with approval or sandbox bypass flags. This limits write operations but does not make untrusted corpus instructions harmless; run with a least-privilege local account and avoid exposing secrets to the model process.
+- Local output files use filesystem permissions provided by the operating system; voice profiles are not encrypted at rest.
+
+The `.env.example` file documents variable names but is not automatically loaded. Use a secret manager or your shell, not a public repository, to store credentials.
+
+This policy is not a claim of a full independent security audit.
