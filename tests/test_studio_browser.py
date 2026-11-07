@@ -117,10 +117,36 @@ def test_real_chromium_full_studio_flow_and_mobile_layout(monkeypatch, tmp_path)
         )
         assert calls[-1] == ("wordpress", "Walkable neighborhoods", False)
 
+        # Capture the true initial layout, not the sticky sidebar at the
+        # last scrolled position or a transient publishing notification.
+        page.locator("#notice").evaluate("(el) => { el.hidden = true; }")
+        page.evaluate("document.documentElement.style.scrollBehavior = 'auto'; window.scrollTo(0, 0)")
+        page.wait_for_function("window.scrollY === 0")
+        source_y = page.locator(".source-card").bounding_box()["y"]
+        profile_y = page.locator(".profile-card").bounding_box()["y"]
+        assert abs(source_y - profile_y) < 8
+
+        # Small informational labels must remain readable on paper surfaces.
+        assert page.evaluate("""() => {
+          function luminance(rgb) {
+            const v = rgb.match(/[\\d.]+/g).slice(0, 3).map(Number).map(x => x / 255);
+            const linear = v.map(x => x <= .04045 ? x / 12.92 : ((x + .055) / 1.055) ** 2.4);
+            return linear[0] * .2126 + linear[1] * .7152 + linear[2] * .0722;
+          }
+          const white = 1;
+          return ['.card-kicker', '.input-hint', '.muted-note', '.metric > span',
+                  '.editor-footer'].every(sel => {
+            const foreground = getComputedStyle(document.querySelector(sel)).color;
+            return (white + .05) / (luminance(foreground) + .05) >= 4.5;
+          });
+        }""")
+
         shots = Path(os.environ.get("RUNNER_TEMP", str(tmp_path))) / "studio-screenshots"
         shots.mkdir(parents=True, exist_ok=True)
         page.screenshot(path=str(shots / "desktop.png"), full_page=True)
         page.set_viewport_size({"width": 390, "height": 844})
+        page.evaluate("window.scrollTo(0, 0)")
+        page.wait_for_function("window.scrollY === 0")
         page.screenshot(path=str(shots / "mobile.png"), full_page=True)
         assert page.evaluate("document.documentElement.scrollWidth <= window.innerWidth + 2")
         assert page.locator("#draft").is_visible()
