@@ -8,7 +8,7 @@ Use the repository's private GitHub vulnerability-reporting feature if enabled. 
 
 ## Local Studio security boundary
 
-`pennovia studio` serves its UI on 127.0.0.1 only. Host and Origin checks, a session-specific request header token, a strict Content Security Policy, a bounded JSON body and per-file size limits reduce accidental exposure to other browser origins. No remote hosting, user accounts or server-side profile database are provided. Avoid exposing the Studio port through tunnels, port-forwarding or reverse proxies. Browser state is not persisted automatically. Optional WordPress actions are **draft-only**; publication remains a CLI-only explicit action.
+`pennovia studio` serves its UI on 127.0.0.1 only. Host and Origin checks, a session-specific request header token, a strict Content Security Policy, a bounded JSON body and per-file size limits reduce accidental exposure to other browser origins. No remote hosting, user accounts or server-side profile database are provided. Avoid exposing the Studio port through tunnels, port-forwarding or reverse proxies. Browser state is not persisted automatically. Studio's WordPress action is **draft-only**. The CLI offers explicit `--publish`; Python developers can also request publication through the documented `save_wordpress(..., publish=True)` API.
 
 This local UI is not a containment sandbox for untrusted network sources; URLs still contact user-specified remote sites and model generation may forward samples to the chosen provider.
 
@@ -16,7 +16,7 @@ This local UI is not a containment sandbox for untrusted network sources; URLs s
 
 - Local files and pasted writing are analyzed locally, but user-selected `--url` inputs download public HTTPS articles over the network. The reader rejects obvious local/IP addresses, bounds response size, and does not follow unsafe redirects. This is **not** a sandbox for adversarial URL sources. Profiles can retain verbatim corpus excerpts and generated drafts can contain input-derived material.
 - Configured cloud model generation sends prompt text, including representative source sentences, to that provider.
-- Google Drive and WordPress exports make network requests only when invoked.
+- Google Drive and WordPress exports make network requests only when invoked. Studio asks for confirmation before a WordPress draft; CLI publishing requires explicit `--publish`.
 - WordPress export requires HTTPS with certificate verification enabled and defaults to a draft. The REST request does not follow HTTP redirects or accept malformed success responses; configure the canonical HTTPS base URL.
 - Keys come from environment variables. Do not commit them or private generated files.
 - The offline demo uses labeled mock output when no API key is configured.
