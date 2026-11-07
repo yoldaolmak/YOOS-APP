@@ -15,7 +15,7 @@ Studio creates WordPress **drafts only**. Publishing requires explicit `--publis
 - Local files and pasted text are analyzed locally. Selected HTTPS URLs are fetched from their sites (2 MB cap). DNS answers must be public IP addresses; the connection pins the checked IP and retains hostname verification. Redirect hops are rechecked and environment proxies are disabled. This is still **not** a complete sandbox for hostile sources.
 - Voice profiles may store source sentences verbatim. Keep profile JSON private.
 - Cloud generation sends selected profile excerpts and prompts to the chosen provider. Never put API keys in browser fields or committed files.
-- WordPress and Google Drive connect only on explicit export. WordPress requires canonical HTTPS, verifies TLS and rejects redirects.
+- WordPress and Google Drive connect only on explicit export. WordPress requires canonical HTTPS, verifies TLS and rejects redirects. If a remote response is lost, Pennovia reports an **unknown outcome** rather than a confirmed failure; check the destination before retrying. Neither remote service provides a Pennovia-controlled exactly-once guarantee. Studio's same-draft repeat confirmation lasts only for that browser session.
 - Local exports use distinct filenames. CLI profiles/drafts use restricted file permissions where supported and atomic replacement when overwrite is explicit; they are **not encrypted**.
 - Codex CLI runs in a read-only sandbox. This does not eliminate prompt-injection risks in source material.
 

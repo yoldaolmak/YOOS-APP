@@ -44,6 +44,8 @@ Files / HTTPS URLs / pasted text
 
 Analysis and review run locally without a model. Studio permits browser downloads and **WordPress drafts only**; the CLI and Python API support explicit publishing. No automatic account or database is involved.
 
+Studio keeps source, profile and draft revisions separate. Source or analysis-setting changes invalidate the profile and review without discarding the editable draft. While a request is active, inputs are locked and async results are checked against their starting revision. A remote export may end as confirmed, rejected or **outcome unknown**; the last state requires the user to verify the destination before explicitly retrying. Remote writes cannot be rolled back by the local process.
+
 ## Voice profile
 
 `VoiceProfile` stores sentence length, first-person use, questions, negatives, paragraph rhythm, vocabulary and punctuation statistics, transitions, recurring phrases and up to five representative sentences. The portable JSON format uses `schema_version: 1`; old unversioned profiles remain readable.

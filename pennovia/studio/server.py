@@ -18,6 +18,7 @@ from urllib.parse import urlsplit
 from pennovia.content_types.registry import list_types
 from pennovia.ingestion.reader import MIN_CORPUS_WORDS, SUPPORTED_EXTENSIONS, read_file, read_url
 from pennovia.voice.analyzer import VoiceProfile, analyze
+from pennovia.exporter.writer import RemoteOutcomeUnknown
 
 
 _MAX_REQUEST_BYTES = 12 * 1024 * 1024
@@ -117,9 +118,14 @@ def _handle_api(path: str, payload: dict) -> dict | tuple[str, bytes, str]:
         return {**_summary(profile), "accepted": len(texts),
                 "words": profile.total_words, "warnings": warnings}
     if path == "/api/profile":
-        return _summary(VoiceProfile.from_dict(payload.get("profile")))
+        profile = VoiceProfile.from_dict(payload.get("profile"))
+        if profile.total_words == 0 or profile.text_count == 0:
+            raise ValueError("Profile has no analyzed writing samples")
+        return _summary(profile)
     if path in ("/api/generate", "/api/review", "/api/export"):
         profile = VoiceProfile.from_dict(payload.get("profile"))
+        if profile.total_words == 0 or profile.text_count == 0:
+            raise ValueError("Profile has no analyzed writing samples")
         if path == "/api/generate":
             from pennovia.voice.generator import generate
 
@@ -274,8 +280,10 @@ class _StudioHandler(BaseHTTPRequestHandler):
                 self._send(200, blob, mime, filename=f"pennovia-draft.{extension}")
             else:
                 self._json(200, result)
+        except RemoteOutcomeUnknown as exc:
+            self._json(409, {"error": str(exc), "outcome": "unknown"})
         except (ValueError, RuntimeError, OSError, json.JSONDecodeError) as exc:
-            self._json(400, {"error": str(exc)})
+            self._json(400, {"error": str(exc), "outcome": "failed"})
         except Exception:
             self._json(500, {"error": "Studio could not complete this action"})
 

@@ -15,7 +15,7 @@ Studio opens at **http://127.0.0.1:8765**. Use `--port 8766` to change the port 
 
 In Studio: **Sources → Profile → Draft → Review → Export**. Add HTTPS article links, pasted writing or TXT/HTML/PDF files; each sample needs at least 51 words. Studio accepts up to 20 samples, files up to 4 MB each. Save or import a profile as JSON. Edit drafts and run *Review edited draft* to refresh style scores.
 
-Studio initially selects **Ollama**. Choose a configured provider before generating. It does not fall back to mock content. Browser state is temporary: download your profile and draft before reloading the page.
+Studio initially selects **Ollama**. Choose a configured provider before generating. It does not fall back to mock content. Changing samples, author or language invalidates the old profile and review; the draft text is preserved. Inputs are locked during active requests to prevent stale results. Importing a saved profile clears the current unsent sample list, not the draft. Browser state is temporary: download your work before reloading the page.
 
 ## CLI examples
 
@@ -49,7 +49,7 @@ Pennovia **does not load** `.env` files automatically. Export credentials in you
 | OpenRouter | Set `OPENROUTER_API_KEY` |
 | Codex CLI | Install and authenticate Codex separately |
 
-Cloud backends send prompts, including selected source sentences, to the provider. CLI `--backend auto` selects Anthropic → OpenRouter → OpenAI → Ollama based on credentials; it may send writing to a cloud service. Studio requires an explicit provider selection.
+Cloud backends send prompts, including selected source sentences, to the provider. CLI `--backend auto` selects Anthropic → OpenRouter → OpenAI → Ollama based on credentials; it may send writing to a cloud service. Studio requires an explicit provider selection. CLI `auto` selects one provider; if it fails, Pennovia does **not** silently retry with another provider.
 
 Example:
 
@@ -72,6 +72,8 @@ pennovia export --input draft.txt --title "A draft" \
 ```
 
 WordPress creates a **draft** by default. The CLI publishes only with `--publish`; Studio has no publish action. WordPress accepts one HTML export per command.
+
+**Uncertain remote result:** A WordPress/Drive timeout, server error or unreadable success response may mean the write succeeded without an acknowledgment. Pennovia does not retry automatically. Check the remote account before retrying. Studio requires explicit confirmation for an identical repeat in the same browser session; this is not persistent or server-side exactly-once protection. For CLI multi-format exports, completed remote uploads are reported; failed local multi-format exports remove files created by that attempt. The CLI saves an optional profile only after model generation succeeds.
 
 ## Checks
 

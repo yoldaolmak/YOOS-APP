@@ -2,8 +2,17 @@
 
 const $ = (id) => document.getElementById(id);
 const token = document.querySelector('meta[name="pennovia-token"]').content;
-const state = { sources: [], profile: null, draft: "", busy: false, review: null };
+const state = {
+  sources: [], profile: null, draft: "", busy: false, review: null,
+  sourceRevision: 0, profileRevision: 0, draftRevision: 0,
+};
 const buttons = ["analyze", "generate", "review", "download", "wordpress", "drive", "profile-save"];
+const editableFields = [
+  "url-input", "paste-input", "file-input", "author", "language", "profile-import",
+  "topic", "content-type", "backend", "model", "draft", "export-title-input",
+  "export-format", "add-urls", "add-text",
+];
+const remoteAttempts = new Map(); // Browser-session only; remote exactly-once is not guaranteed.
 let noticeTimeout;
 
 function notify(message, kind = "info") {
@@ -34,6 +43,25 @@ function updateControls() {
     "profile-save": hasProfile,
   };
   for (const id of buttons) $(id).disabled = state.busy || !enabled[id];
+  for (const id of editableFields) $(id).disabled = state.busy || (id === "model" && $("backend").value === "codex");
+  for (const button of document.querySelectorAll("[data-source-tab], .source-remove")) {
+    button.disabled = state.busy;
+  }
+}
+
+function clearProfile() {
+  state.sourceRevision++;
+  if (!state.profile) return;
+  state.profile = null;
+  state.profileRevision++;
+  $("profile-empty").hidden = false;
+  $("profile-results").hidden = true;
+  $("profile-state").textContent = "Reanalysis needed";
+  $("profile-state").classList.remove("ready");
+  clearReview();
+  // Preserve the author's draft; losing a profile must never delete writing.
+  notify("Sources or analysis settings changed. Analyze again before drafting or exporting.");
+  updateControls();
 }
 
 async function api(path, payload, binary = false) {
@@ -44,9 +72,15 @@ async function api(path, payload, binary = false) {
   });
   if (!response.ok) {
     let message = "Studio could not complete this action.";
-    try { const error = await response.json(); message = error.error || message; }
-    catch (_) { /* No readable error body. */ }
-    throw new Error(message);
+    let outcome = response.status >= 500 ? "unknown" : "failed";
+    try {
+      const error = await response.json();
+      message = error.error || message;
+      outcome = error.outcome || outcome;
+    } catch (_) { /* No readable error body. */ }
+    const failure = new Error(message);
+    failure.outcome = outcome;
+    throw failure;
   }
   return binary ? response.blob() : response.json();
 }
@@ -65,6 +99,7 @@ function addSource(entry) {
     return false;
   }
   state.sources.push(entry);
+  clearProfile();
   renderSources();
   return true;
 }
@@ -97,6 +132,7 @@ function renderSources() {
     remove.addEventListener("click", () => {
       if (state.busy) return;
       state.sources.splice(index, 1);
+      clearProfile();
       renderSources();
     });
     row.append(icon, label, remove);
@@ -106,6 +142,7 @@ function renderSources() {
 }
 
 function selectTab(name) {
+  if (state.busy) return;
   for (const button of document.querySelectorAll("[data-source-tab]")) {
     const active = button.dataset.sourceTab === name;
     button.classList.toggle("is-active", active);
@@ -118,6 +155,7 @@ for (const button of document.querySelectorAll("[data-source-tab]")) {
   button.addEventListener("click", () => selectTab(button.dataset.sourceTab));
 }
 $("add-urls").addEventListener("click", () => {
+  if (state.busy) return;
   const links = $("url-input").value.split(/\r?\n/).map((s) => s.trim()).filter(Boolean);
   if (!links.length) return notify("Paste one or more article links.", "error");
   let added = 0;
@@ -135,6 +173,7 @@ $("add-urls").addEventListener("click", () => {
 });
 
 $("add-text").addEventListener("click", () => {
+  if (state.busy) return;
   const value = $("paste-input").value.trim();
   if (value.split(/\s+/).length < 51) return notify("Add at least 51 words to each sample.", "error");
   const summary = value.replace(/\s+/g, " ").slice(0, 62);
@@ -176,8 +215,17 @@ $("file-input").addEventListener("change", (event) => perform(async () => {
   if (added) notify(added + " file" + (added === 1 ? "" : "s") + " added.", "success");
 }));
 
+for (const event of ["input"]) {
+  $("author").addEventListener(event, () => { if (!state.busy) { clearProfile(); updateControls(); } });
+}
+$("language").addEventListener("change", () => {
+  if (!state.busy) { clearProfile(); updateControls(); }
+});
+
 function renderProfile(data) {
   state.profile = data.profile;
+  state.profileRevision++;
+  clearReview();
   $("profile-empty").hidden = true;
   $("profile-results").hidden = false;
   $("profile-state").textContent = "Profile ready";
@@ -237,15 +285,10 @@ function renderReview(review) {
     : "No automated issues flagged.";
 }
 
-function resetDraft() {
-  $("draft").value = "";
-  state.draft = "";
-  $("draft-words").textContent = "0 words";
-  clearReview();
-  updateControls();
-}
 $("draft").addEventListener("input", () => {
+  if (state.busy) return;
   const text = $("draft").value.trim();
+  state.draftRevision++;
   state.draft = text;
   $("draft-words").textContent = (text ? text.split(/\s+/).length : 0) + " words";
   clearReview();
@@ -254,18 +297,19 @@ $("draft").addEventListener("input", () => {
 $("topic").addEventListener("input", updateControls);
 $("backend").addEventListener("change", () => {
   const codex = $("backend").value === "codex";
-  $("model").disabled = codex;
   if (codex) $("model").value = "";
+  updateControls();
 });
 
 $("analyze").addEventListener("click", () => perform(async () => {
+  const revision = state.sourceRevision;
   const data = await api("/api/analyze", {
     sources: state.sources.map(({ type, value, name, data }) => ({ type, value, name, data })),
     author: $("author").value.trim() || "My writing",
     language: $("language").value,
   });
+  if (revision !== state.sourceRevision) throw new Error("Sources changed during analysis; analyze again.");
   renderProfile(data);
-  resetDraft();
   $("profile-title").scrollIntoView({ behavior: "smooth", block: "start" });
   notify("Voice profile ready from " + data.accepted + " sample(s).", "success");
 }));
@@ -276,15 +320,30 @@ $("profile-save").addEventListener("click", () => {
 $("profile-import").addEventListener("change", (event) => perform(async () => {
   const file = event.target.files[0];
   if (!file) return;
-  if (file.size > 2 * 1024 * 1024) throw new Error("Profile exceeds 2 MB.");
-  const json = JSON.parse(await file.text());
-  const data = await api("/api/profile", { profile: json });
-  renderProfile(data);
-  resetDraft();
-  notify("Voice profile loaded.", "success");
-  $("profile-import").value = "";
+  try {
+    if (file.size > 2 * 1024 * 1024) throw new Error("Profile exceeds 2 MB.");
+    const json = JSON.parse(await file.text());
+    const data = await api("/api/profile", { profile: json });
+    // Imported profiles are independent of any unsubmitted source collection.
+    state.sources = [];
+    clearProfile();
+    renderSources();
+    $("author").value = data.profile.author_name;
+    $("language").value = data.profile.language;
+    renderProfile(data);
+    notify("Voice profile loaded. Existing draft preserved; review it again.", "success");
+  } finally {
+    $("profile-import").value = ""; // Re-selecting the same file must work after a failure.
+  }
 }));
-$("generate").addEventListener("click", () => perform(async () => {
+$("generate").addEventListener("click", () => {
+  if (state.busy) return;
+  if ($("draft").value.trim() && !window.confirm(
+    "Replace the current draft with a new model response? Download it first if needed."
+  )) return;
+  perform(async () => {
+  const profileRevision = state.profileRevision;
+  const draftRevision = state.draftRevision;
   const result = await api("/api/generate", {
     profile: state.profile,
     topic: $("topic").value.trim(),
@@ -292,7 +351,11 @@ $("generate").addEventListener("click", () => perform(async () => {
     backend: $("backend").value,
     model: $("model").value.trim(),
   });
+  if (profileRevision !== state.profileRevision || draftRevision !== state.draftRevision) {
+    throw new Error("Profile or draft changed during generation; response discarded.");
+  }
   $("draft").value = result.draft;
+  state.draftRevision++;
   $("draft-words").textContent = result.draft.trim().split(/\s+/).length + " words";
   state.draft = result.draft;
   if (!$("export-title-input").value) $("export-title-input").value = $("topic").value.trim();
@@ -300,9 +363,16 @@ $("generate").addEventListener("click", () => perform(async () => {
   updateControls();
   $("draft").scrollIntoView({ behavior: "smooth", block: "center" });
   notify("Draft ready for your editorial review.", "success");
-}));
+  });
+});
 $("review").addEventListener("click", () => perform(async () => {
-  renderReview(await api("/api/review", { profile: state.profile, draft: $("draft").value }));
+  const profileRevision = state.profileRevision;
+  const draftRevision = state.draftRevision;
+  const reviewed = await api("/api/review", { profile: state.profile, draft: $("draft").value });
+  if (profileRevision !== state.profileRevision || draftRevision !== state.draftRevision) {
+    throw new Error("Text changed during review; old score discarded.");
+  }
+  renderReview(reviewed);
   notify("Style review updated.", "success");
 }));
 
@@ -331,15 +401,35 @@ $("download").addEventListener("click", () => perform(async () => {
   downloadBlob(blob, "pennovia-draft." + format);
   notify("Downloaded " + format.toUpperCase() + " draft.", "success");
 }));
-$("wordpress").addEventListener("click", () => {
-  if (!window.confirm("Create a WordPress DRAFT using the credentials configured on this computer? This does not publish the post.")) return;
+function sendRemote(destination) {
+  if (state.busy) return;
+  const payload = exportPayload(destination);
+  const key = JSON.stringify(payload);
+  const previous = remoteAttempts.get(key);
+  if (previous && !window.confirm(
+    previous === "unknown"
+      ? "The previous request may have succeeded. Check your " + destination +
+        " account before retrying; another submission may create a duplicate. Retry?"
+      : "This exact draft was already sent to " + destination + ". Send another copy?"
+  )) return;
+  if (destination === "wordpress" && !window.confirm(
+    "Create a WordPress DRAFT? This does not publish the post."
+  )) return;
   perform(async () => {
-    const result = await api("/api/export", exportPayload("wordpress"));
-    notify(result.message + ": " + result.url, "success");
+    remoteAttempts.set(key, "unknown"); // Network loss can hide a successful remote write.
+    try {
+      const result = await api("/api/export", payload);
+      remoteAttempts.set(key, "confirmed");
+      notify(result.message + ": " + result.url, "success");
+    } catch (error) {
+      if (error.outcome === "failed") remoteAttempts.delete(key);
+      if (!error.outcome || error.outcome === "unknown") {
+        error.message += " Check the remote destination before trying again.";
+      }
+      throw error;
+    }
   });
-});
-$("drive").addEventListener("click", () => perform(async () => {
-  const result = await api("/api/export", exportPayload("google_drive"));
-  notify(result.message + ": " + result.url, "success");
-}));
+}
+$("wordpress").addEventListener("click", () => sendRemote("wordpress"));
+$("drive").addEventListener("click", () => sendRemote("google_drive"));
 updateControls();

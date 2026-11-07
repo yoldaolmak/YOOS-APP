@@ -12,6 +12,10 @@ from pathlib import Path
 import tempfile
 
 
+class RemoteOutcomeUnknown(RuntimeError):
+    """The remote service may have committed a write without returning its ID."""
+
+
 def _slug(text: str) -> str:
     return re.sub(r"[^\w-]", "-", text.lower())[:60]
 
@@ -152,17 +156,29 @@ def save_google_drive(content: str, title: str, fmt: str) -> str:
     timestamp = datetime.now().strftime("%Y%m%d-%H%M")
     name = f"pennovia-{_slug(title)}-{timestamp}.{fmt}"
 
-    file = service.files().create(
-        body={"name": name, "mimeType": mime},
-        media_body=MediaInMemoryUpload(data, mimetype=mime),
-        fields="id,webViewLink",
-    ).execute()
+    try:
+        file = service.files().create(
+            body={"name": name, "mimeType": mime},
+            media_body=MediaInMemoryUpload(data, mimetype=mime),
+            fields="id,webViewLink",
+        ).execute()
+    except Exception as exc:
+        # Drive's HttpError exposes resp.status. A rejected 4xx is a known
+        # failure; a timeout, 5xx or unknown exception may follow a write.
+        status = getattr(getattr(exc, "resp", None), "status", None)
+        if isinstance(status, int) and 400 <= status < 500:
+            raise RuntimeError("Google Drive rejected the upload; check access and permissions") from exc
+        raise RemoteOutcomeUnknown(
+            "Google Drive upload outcome unknown; check Drive before retrying"
+        ) from exc
 
     if not isinstance(file, dict):
-        raise RuntimeError("Google Drive returned an invalid file response")
+        raise RemoteOutcomeUnknown("Google Drive returned an invalid file response; check Drive before retrying")
     link = file.get("webViewLink") or file.get("id")
     if not isinstance(link, str) or not link.strip():
-        raise RuntimeError("Google Drive returned an invalid file response")
+        raise RemoteOutcomeUnknown(
+            "Google Drive returned an invalid file response; check Drive before retrying"
+        )
     return link
 
 
@@ -200,20 +216,34 @@ def save_wordpress(content: str, title: str,
             timeout=30,
             allow_redirects=False,
         )
-        if 300 <= resp.status_code < 400:
-            raise RuntimeError(
-                "WordPress redirected the REST request; set WP_URL to its canonical HTTPS URL"
-            )
+    except requests.RequestException as exc:
+        raise RemoteOutcomeUnknown(
+            "WordPress export failed; outcome unknown. Check drafts before retrying"
+        ) from exc
+
+    if 300 <= resp.status_code < 400:
+        raise RuntimeError(
+            "WordPress redirected the REST request; set WP_URL to its canonical HTTPS URL"
+        )
+    if resp.status_code >= 500:
+        raise RemoteOutcomeUnknown(
+            "WordPress export failed; server error leaves outcome unknown. Check drafts before retrying"
+        )
+    try:
         resp.raise_for_status()
     except requests.RequestException as exc:
         raise RuntimeError(
-            "WordPress export failed; check HTTPS URL, credentials and connectivity"
+            "WordPress export failed; check HTTPS URL, credentials and permissions"
         ) from exc
 
     try:
         result = resp.json()
     except ValueError as exc:
-        raise RuntimeError("WordPress returned an invalid post response") from exc
+        raise RemoteOutcomeUnknown(
+            "WordPress returned an invalid post response; check drafts before retrying"
+        ) from exc
     if not isinstance(result, dict) or not isinstance(result.get("link"), str) or not result["link"].strip():
-        raise RuntimeError("WordPress returned an invalid post response")
+        raise RemoteOutcomeUnknown(
+            "WordPress returned an invalid post response; check drafts before retrying"
+        )
     return result["link"]

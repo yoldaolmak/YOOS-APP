@@ -2,6 +2,12 @@
 
 Version **0.2.0 alpha**. GitHub release details are recorded separately in [release notes](release/v0.2.0-alpha.md); the release must pass the live-model and CI gates.
 
+## State transition hardening — 7 November 2026
+
+- Invalidate stale Studio profiles and reviews when samples or analysis parameters change. Preserve the draft, guard in-flight edits and stale async responses, and confirm identical remote re-submissions.
+- Distinguish uncertain WordPress/Drive writes from confirmed rejections. Roll back outputs created by an incomplete local CLI export batch; report completed remote writes and delay optional CLI profile saving until generation succeeds.
+- Add real-browser state transitions and focused Python regression tests. No new state framework, hosted service or change to the tagged v0.2.0 release.
+
 ## Post-release maintenance — 7 November 2026
 
 - Refine README introduction and publish precise live Ollama results, including the neutral-control comparison.
