@@ -42,6 +42,19 @@ pennovia generate --profile my-voice.json --type travel_guide --topic "Three day
 pennovia export --input draft.txt --title "Lisbon guide" --format html --dest downloads
 ```
 
+You can also supply article links or paste writing without saving files first. Repeat \`--url\` or \`--text\` for multiple source documents; mix them with \`--corpus\` if needed:
+
+```bash
+pennovia analyze --url "https://example.org/my-article" \
+  --url "https://example.org/another-article" \
+  --author "Example Writer" --language en --out my-voice.json
+
+# Paste a longer text directly into the terminal (end with Ctrl+D):
+pennovia analyze --text - --author "Example Writer" --out my-voice.json
+```
+
+\`analyze\` and \`run\` accept the same inputs. Each sample needs at least 51 words. The URL reader fetches public HTTPS HTML/text pages with a small response limit; it does not crawl entire sites or extract JavaScript-rendered articles. For pasted snippets, \`--text "Your writing here..."\` is also accepted.
+
 Available generation backends: Ollama, OpenAI, Anthropic, OpenRouter and Codex CLI. Follow the [configuration guide](docs/CONFIGURATION.md) for supported setups and provider data boundaries. Ollama requires a running local service; cloud services require your own API key and may require `pip install -e ".[llm]"`. `--backend auto` may choose a configured cloud provider. Set `PENNOVIA_BACKEND` to choose the default CLI backend, or override it with `--backend`.
 
 The `analyze` and `generate` CLI commands refuse to replace an existing profile or draft. Pass `--overwrite` only when replacement is intended; `run --save-profile` uses the same protection. Local `export` remains collision-safe.
