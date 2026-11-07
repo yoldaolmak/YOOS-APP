@@ -1,8 +1,6 @@
 # Python API Reference
 
-Pennovia 0.2.0 provides a Python API, CLI and an optional local browser Studio. Studio's loopback HTTP adapter is not a maintained external API. The numerical voice scores below are uncalibrated heuristics.
-
-The Python functions below are the supported integration surface. Use Studio for interactive local author workflows; do not build integrations against its internal loopback HTTP routes.
+Use these Python functions to integrate Pennovia. Studio's localhost endpoints are internal, not a public API. Style scores are uncalibrated.
 
 ## ingestion.reader
 
@@ -19,9 +17,7 @@ texts: list[str] = read_corpus(["/path/file1.txt", "/path/file2.pdf"])
 # Returns only texts with > 50 whitespace-delimited words
 ```
 
-`read_url()` fetches a user-selected public HTTPS HTML/plain-text article with a 2 MB download cap, a small redirect limit, and basic local-address rejection. It returns cleaned text but does not search or crawl a site. The CLI `analyze` and `run` accept repeatable `--url` / `--text` alongside optional `--corpus`; `--text -` reads stdin. Every provided document needs at least 51 words. URLs trigger network requests; pasted data is analyzed locally until model generation is requested.
-
-`read_file()` raises `ValueError` for unsupported extensions. The CLI scans a corpus directory non-recursively in sorted filename order and reports both candidate and usable file counts. For direct API use, `read_corpus()` remains best-effort: check the number of returned texts against your inputs.
+`read_url()` reads public HTTPS HTML/plain-text pages (2 MB maximum, limited redirects, local-address rejection). It does not crawl websites. `read_corpus()` skips unreadable or short files and reports them on stderr; check the number of returned texts. CLI `analyze`/`run` also accept repeated `--url`, `--text` and optional `--corpus`. Each source needs **51+ words**.
 
 ## voice.analyzer
 
@@ -55,25 +51,25 @@ print(profile.summary())
 | `sentence_std_dev` | float | Standard deviation of sentence length |
 | `short_sentence_rate` | float | Proportion of sentences < 8 words |
 | `long_sentence_rate` | float | Proportion of sentences > 20 words |
-| `first_person_rate` | float | Share of sentences with supported singular first-person pronouns (English/Turkish, language-aware). Does not infer inflected Turkish verbs or first-person plural |
+| `first_person_rate` | float | Share of sentences with listed singular pronouns; not inflected Turkish verbs |
 | `question_rate` | float | Proportion of sentences ending with ? |
-| `negative_rate` | float | Share of sentences containing at least one listed negation marker (0–1 for newly analyzed profiles); not a full Turkish morphological negation detector |
+| `negative_rate` | float | Sentences with listed negation markers (0–1); limited Turkish coverage |
 | `avg_paragraph_sentences` | float | Mean sentences per paragraph |
-| `vocabulary_richness` | float | Mean type-token ratio over complete 500-word windows (including the final window), or the complete shorter corpus; words count Unicode letter tokens of 3+ characters |
+| `vocabulary_richness` | float | Mean type-token ratio across 500-token windows (including tail) |
 | `emdash_rate` | float | Em-dashes per 100 sentences |
 | `top_transitions` | list[str] | Most-used transition words |
-| `signature_phrases` | list[str] | Recurring 2-gram phrases formed within source documents (never across separate files) |
-| `sample_sentences` | list[str] | Up to five short/medium/long reference sentences, distributed across source documents where available |
+| `signature_phrases` | list[str] | Recurring within-document word pairs |
+| `sample_sentences` | list[str] | Up to five representative sentences across sources |
 
 ### Profile JSON contract
 
-For loss prevention, pass `profile.save(path, overwrite=False)` when writing a new profile via Python. CLI `analyze` and `run --save-profile` refuse replacement by default; `--overwrite` explicitly permits it. The direct Python method keeps its historical default (`overwrite=True`) for compatibility. New profile JSON files and CLI-generated drafts use restrictive permissions on POSIX systems (typically `0600`). Existing outputs are replaced atomically when overwrite is explicit, avoiding partially truncated previous content. This protects ordinary local file writes; it is not encryption or a guarantee against privileged local access.
+Use `profile.save(path, overwrite=False)` to prevent replacement. The Python method defaults to `overwrite=True` for compatibility; CLI commands refuse overwrite unless `--overwrite` is given. Writes use restrictive permissions where supported and atomic replacement, **not encryption**.
 
-`VoiceProfile.save()` writes JSON with `schema_version: 1`. Files written before this field existed remain loadable as version 1. Unknown extra keys are ignored, but a file explicitly declaring another version is rejected to prevent silent interpretation of an incompatible format.
+Profile JSON uses `schema_version: 1`. Older unversioned files load as v1; unknown fields are ignored and incompatible versions are rejected.
 
-`VoiceProfile.load()` and `VoiceProfile.from_dict()` apply the same validation checks: the root is an object, known fields have appropriate JSON types, numeric fields are finite and non-negative, rate fields stay in the 0–1 range, and language is `auto`, `en`, or `tr`. It raises `ValueError` for invalid profile contents. The format is not a proof of writer identity or scoring quality. Profiles may contain verbatim source excerpts; treat them as private user data.
+`load()` and `from_dict()` validate known field types, finite nonnegative metrics, 0–1 rates and language (`auto`, `en`, `tr`). Invalid data raises `ValueError`. Profiles may contain verbatim excerpts.
 
-The built-in detector handles **English and Turkish only**. It combines function-word evidence with Turkish-specific letters; ambiguous, short and mixed-language texts produce `"auto"` rather than inventing a language. `analyze(..., language="tr"|"en")`, `pennovia analyze --language tr`, and `pennovia run --language tr` override the detector. This is a deliberately limited heuristic, not language identification for arbitrary text. A profile with unresolved language prompts the model to follow its source samples instead of presuming English. In this state, analysis checks observed Turkish and English transition and explicit negation markers instead of silently using the English-only list.
+Language detection covers **Turkish and English**. Ambiguous samples return `auto`. Set `language="tr"` or `"en"` when known; the CLI accepts `--language`.
 
 ## voice.generator
 
@@ -89,7 +85,7 @@ content: str = generate(
 )
 ```
 
-`backend="auto"` tries: Anthropic → OpenRouter → OpenAI → Ollama, according to environment credentials. The CLI defaults to `PENNOVIA_BACKEND` if set; an explicit `--backend` takes precedence. Studio instead requires a provider selection and initially selects local Ollama. A `model` override must match the backend; Codex CLI does not accept a model override. No live model or calibrated voice fidelity is demonstrated by synthetic-provider tests.
+`auto` selects Anthropic → OpenRouter → OpenAI → Ollama based on configured credentials. CLI supports `PENNOVIA_BACKEND`; Studio defaults to local Ollama. A `model` override must match the provider; Codex CLI does not accept one.
 
 ## audit
 
@@ -142,11 +138,11 @@ url: str = save_wordpress(content, title,
                           publish=False)     # True = publish, False = draft
 ```
 
-WordPress export refuses redirects (rather than silently following a different host or protocol), validates successful JSON responses, and raises bounded `RuntimeError` on HTTP/network/invalid-response failures. Configure `wp_url` as the canonical HTTPS base URL, without query strings, fragments or embedded credentials. The response must include a non-empty post link.
+WordPress requires a canonical HTTPS base URL. Redirects and invalid responses are rejected; network failures raise `RuntimeError`.
 
 ### CLI export format contract
 
-Local and Google Drive exports accept `html`, `txt`, or `pdf` (including comma-separated combinations). Unsupported or duplicate formats are rejected before writing. WordPress accepts only a single HTML export; multi-format requests are rejected rather than posting the same draft more than once. `run --dest wordpress` defaults to HTML, while local `run` defaults to HTML and TXT.
+Local/Drive: TXT, HTML or PDF (comma-separated formats allowed). WordPress: one HTML output only. Local `run` defaults to HTML+TXT; WordPress `run` defaults to HTML.
 
 ## content_types.registry
 
