@@ -268,7 +268,9 @@ def generate(profile: VoiceProfile, content_type: str, topic: str,
              backend: str = "auto", **kwargs) -> str:
     """
     backend: "auto" | "openai" | "anthropic" | "openrouter" | "ollama" | "codex"
-    "auto" tries available keys in order: anthropic → openrouter → openai → ollama
+    "auto" chooses one configured provider in priority order:
+    anthropic → openrouter → openai → ollama. Never retry with another
+    provider after a failure; implicit cross-provider transfer is unsafe.
     """
     if backend == "auto":
         if os.environ.get("ANTHROPIC_API_KEY"):
