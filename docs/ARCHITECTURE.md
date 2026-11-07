@@ -1,127 +1,70 @@
 # Architecture
 
-Pennovia is a Python library with a CLI and an optional **loopback-only Studio**. Studio serves a small browser interface and locally invokes the existing Python modules; it is not a public HTTP API or hosted platform. Local metrics are diagnostic heuristics, not independently calibrated quality or authorship measures.
+One Python core serves the CLI and local Studio. Studio is a browser interface over the existing functions, not a separate engine or public API.
 
-## Overview
-
-Pennovia is designed as a single-responsibility pipeline. Each module does exactly one thing and is independently testable without any API key.
-
-```
-pennovia/
-├── ingestion/       Input parsing
-│   └── reader.py   read_file(), read_corpus(), read_url()
-│
-├── voice/           Voice intelligence
-│   ├── analyzer.py  analyze() → VoiceProfile
-│   ├── generator.py generate() → str
-│   └── scorer.py    score() → float (0–1)
-│
-├── content_types/   Content structure
-│   └── registry.py  list_types(), get()
-│
-├── exporter/        Output layer
-│   └── writer.py    save_local(), save_google_drive(), save_wordpress()
-│
-├── audit.py         audit() → AuditResult (0–100)
-├── cli.py           Command-line interface
-├── studio/          Optional loopback browser interface and static assets
-│   ├── server.py    Local HTTP adapter (no business-logic duplication)
-│   ├── index.html   Author workspace
-│   ├── app.css      Responsive layout
-│   └── app.js       Browser-side editing and local export controls
-└── demo/            Self-contained demo
-    └── __main__.py  python -m pennovia.demo
-```
-
-## Data Flow
+## Modules
 
 ```text
-[Local TXT/HTML/PDF]    [Public HTTPS article]    [Pasted text]
-         \                    |                     /
-          \____ read_file()/read_url()/user input ___/
-                            |
-                            v
-                      [List of str]
-                            |
-                         analyze()
-                            v
-                       [VoiceProfile] <--> [JSON file / import]
-                            |
-                   _build_prompt() + topic
-                            v
-                   [Selected model backend]
-                            |
-                       [Draft text]
-                            |
-                  +---------+---------+
-                  |                   |
-              audit()/score()     User editing
-                  |                   |
-                  +---------+---------+
-                            |
-                   [Explicit export action]
-                  /            |           \
-           TXT/HTML/PDF    Google Drive   WordPress draft
+pennovia/
+├── ingestion/reader.py     Files and HTTPS article text
+├── voice/analyzer.py       analyze() → VoiceProfile
+├── voice/generator.py      generate() → draft
+├── voice/scorer.py         score() → 0–1
+├── audit.py                audit() → 0–100
+├── content_types/registry.py
+├── exporter/writer.py      TXT, HTML, PDF, Drive, WordPress
+├── cli.py                  Command-line interface
+├── studio/                 Local server and browser assets
+└── demo/                   Offline demonstration
 ```
 
-The CLI and Studio feed the **same analyzer, generator, review and export functions**. Studio offers browser downloads and saves WordPress drafts only; the CLI can also publish with explicit `--publish`. No model call is needed for analysis or review. The offline demo may use labeled mock output, but Studio production generation does not.
+## Flow
 
-## Interfaces and integration
+```text
+Files / HTTPS URLs / pasted text
+              ↓
+        List of texts
+              ↓
+           analyze()
+              ↓
+       VoiceProfile v1 ←→ JSON
+              ↓
+      profile + topic + type
+              ↓
+    configured model backend
+              ↓
+          draft text
+              ↓
+        audit() / score()
+              ↓
+      user review and edits
+              ↓
+    TXT / HTML / PDF / Drive / WP
+```
 
-- **Python API** remains the reusable core. Studio imports the same `analyze()`, `generate()`, `audit()`, `score()` and exporter functions as the CLI.
-- **CLI** remains suitable for scripted workflows and deliberate publishing.
-- **Studio** runs only on `127.0.0.1`, serves packaged HTML/CSS/JS and exposes a small session-token-protected local adapter. It does not add persistent server state, authentication accounts or another scoring implementation.
-- Voice profiles are ordinary JSON. Use `VoiceProfile.from_dict(data)` for in-memory validation or `VoiceProfile.load(path)` for local files; all interfaces use schema v1.
+Analysis and review run locally without a model. Studio permits browser downloads and **WordPress drafts only**; the CLI and Python API support explicit publishing. No automatic account or database is involved.
 
-Developers should integrate through the Python API, **not** depend on Studio's browser endpoints as a stable external service. Studio is an optional presentation layer, not a competing architecture.
+## Voice profile
 
-## VoiceProfile
+`VoiceProfile` stores sentence length, first-person use, questions, negatives, paragraph rhythm, vocabulary and punctuation statistics, transitions, recurring phrases and up to five representative sentences. The portable JSON format uses `schema_version: 1`; old unversioned profiles remain readable.
 
-The `VoiceProfile` dataclass is the core artifact. It is:
-- **Portable** — plain JSON; optional PDF and model backends have their own dependencies
-- **Versionable** — can be stored in private version control; do not publish corpus excerpts without permission
-- **Versioned** — JSON schema version 1 is explicit; legacy files without a version are read as v1, unknown optional keys are ignored, and incompatible or malformed known fields are rejected
+Use `VoiceProfile.load(path)` or `VoiceProfile.from_dict(data)` to validate saved or in-memory profiles. Generated profiles may contain source excerpts.
 
-Key dimensions extracted by `analyzer.py`:
+## Model prompt
 
-| Dimension | Metric |
-|-----------|--------|
-| Sentence rhythm | avg length, std dev, short/long ratio (including 1–2 word sentences) |
-| Voice persona | first-person rate, question rate, negative rate |
-| Paragraph style | avg sentences/words per non-empty paragraph, including short paragraphs |
-| Vocabulary | type-token ratio, avg word length |
-| Punctuation | em-dash, semicolon, parenthesis rates per 100 sentences |
-| Fingerprint | top transition words (whole expressions only), signature 2-gram phrases |
-| Examples | 5 sample sentences (short, medium, long) |
+`_build_prompt()` sends:
 
-## Prompt Strategy
+- **System:** content structure, measured style traits and rules against invented facts or firsthand experiences.
+- **User:** topic plus untrusted source-derived examples, phrases and author label.
 
-The provider receives one system message containing trusted structure and rules, plus one user message containing the topic and **untrusted corpus-derived evidence**. There is no agent loop or streaming pipeline. Codex CLI receives the equivalent labeled text; its prompt labels do not provide provider-enforced role isolation.
+OpenAI, Anthropic, OpenRouter and Ollama use role-separated messages. Codex CLI receives labeled text, not provider-enforced role separation. Source material may still influence the model; this is not a complete prompt-injection defense.
 
-`_build_prompt()` constructs:
-1. Trusted system instructions: structure, output constraints, style statistics and rules against invented experiences.
-2. Untrusted user evidence: corpus-derived author label, observed transitions, characteristic phrases and sample sentences, which are data rather than instructions.
-3. The user-selected topic, delivered with the evidence at user-message priority.
+## Review
 
-The prompt is backend-agnostic — the same prompt works with OpenAI, Anthropic, OpenRouter, and Ollama. The separation reduces accidental elevation of corpus text into system instructions, but is not a complete prompt-injection defense: a model may still follow malicious source content. Generated claims and first-person accounts still require human verification.
+The heuristic audit assigns 40 points to voice markers, 20 to transitions, 20 to structure and 20 to avoiding common AI clichés. A PASS requires **at least 70/100 and 200 words**. Scores are not calibrated measures of authorship or writing quality.
 
-## Audit (Zero LLM)
+## Integration
 
-`audit.py` scores generated content against the source profile using only statistical comparison:
+Use the [Python API](API.md), not Studio's localhost endpoints. The CLI and Studio share the same core functions.
 
-- **Voice match (0–40)**: sentence length similarity, first-person rate, question rate
-- **Transition match (0–20)**: shared transition words from profile
-- **Style match (0–20)**: paragraph structure similarity
-- **No AI clichés (0–20)**: penalty for known AI writing patterns
-
-Diagnostic PASS requires a heuristic total ≥ 70/100 **and at least 200 words**. Insufficient text cannot pass solely by matching superficial traits. Scores remain uncalibrated, and PASS is not an editorial or authorship acceptance decision.
-
-## Extending Supported Choices
-
-A new **model backend** needs an adapter in `voice/generator.py`, dispatch in `generate()`, a CLI `--backend` choice, the Studio provider allowlist/dropdown and relevant configuration and tests. Keep provider failures bounded and ensure no accidental fallback to another cloud service.
-
-A new **content type** belongs in `content_types/registry.py` with `label`, `structure`, `tone` and `length`. The CLI accepts named choices and Studio has an explicit dropdown; update both and their tests. Do not create a separate content-type engine for Studio.
-
-## Data boundary
-
-Voice profiles can include verbatim source excerpts. Optional cloud LLM generation transmits prompt material to the chosen provider. Google Drive and WordPress exports are separate network actions; WordPress drafts are the default and HTTPS is mandatory.
+To add a backend, update `voice/generator.py`, its CLI choice, Studio provider choice and tests. To add a content type, update `content_types/registry.py` and the explicit CLI/Studio choices. Avoid duplicating generation or scoring logic.
