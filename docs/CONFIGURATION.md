@@ -49,7 +49,7 @@ Pennovia **does not load** `.env` files automatically. Export credentials in you
 | OpenRouter | Set `OPENROUTER_API_KEY` |
 | Codex CLI | Install and authenticate Codex separately |
 
-Cloud backends send prompts, including selected source sentences, to the provider. CLI `--backend auto` selects Anthropic → OpenRouter → OpenAI → Ollama based on credentials; it may send writing to a cloud service. Studio requires an explicit provider selection.
+Cloud backends send prompts, including selected source sentences, to the provider. CLI `--backend auto` selects Anthropic → OpenRouter → OpenAI → Ollama based on credentials; it may send writing to a cloud service. Studio requires an explicit provider selection. CLI `auto` selects one provider; if it fails, Pennovia does **not** silently retry with another provider.
 
 Example:
 
