@@ -1,12 +1,12 @@
 # Pennovia contributor and agent guide
 
-This repository is a standalone public Python CLI. Keep product code, tests, documentation, and release metadata self-contained; do not introduce references to other products, unrelated repositories, private corpora, or proprietary runtime dependencies.
+Pennovia is a standalone public Python **author-voice toolkit** with three interfaces over one core: reusable Python API, automation-friendly CLI and optional **local browser Studio**. Do not introduce a competing generation/scoring engine, unrelated repositories, private corpora, proprietary runtimes, hosted accounts or an unnecessary service architecture.
 
-Actual flow: user corpus -> local text reader -> local `VoiceProfile` -> optional provider generation -> heuristic audit -> user-selected export.
+**Product flow:** user-selected TXT/HTML/PDF files, public HTTPS URLs or pasted writing → local `VoiceProfile` → optional configured model generation → heuristic review → explicit export. Studio wraps the same core functions; its loopback HTTP endpoints are implementation details, not a supported external API.
 
-Core modules: `pennovia/ingestion/reader.py`, `pennovia/voice/analyzer.py`, `pennovia/voice/generator.py`, `pennovia/voice/scorer.py`, `pennovia/audit.py`, `pennovia/exporter/writer.py` and `pennovia/cli.py`.
+Core modules: `pennovia/ingestion/reader.py`, `pennovia/voice/analyzer.py`, `pennovia/voice/generator.py`, `pennovia/voice/scorer.py`, `pennovia/audit.py` and `pennovia/exporter/writer.py`. Interfaces: `pennovia/cli.py` and `pennovia/studio/` (local server and bundled HTML/CSS/JS).
 
-Commands:
+Useful commands:
 
 ```bash
 python -m pip install -e ".[dev]"
@@ -14,10 +14,12 @@ python -m compileall -q pennovia
 python -m ruff check pennovia tests
 python -m pytest -q
 python -m pennovia.demo
+pennovia studio --help
+pennovia studio           # local browser interface; Ctrl+C to stop
 ```
 
-Tests and demo must work without provider keys. Use synthetic or properly licensed fixtures, never private author corpora. The score is uncalibrated: preserve uncertainty rather than claiming human voice fidelity. WordPress must remain draft-by-default and HTTPS-only. The supported user interface is the CLI, not an HTTP service.
+Tests and demo must work without API keys; use synthetic or appropriately licensed fixtures, never private writing or live credentials. Studio synthetic provider tests prove software integration **only**. Do not claim validated author identity, real-world voice fidelity or live provider/WordPress success based on mock results. Scores remain uncalibrated.
 
-Before a public release compare README, package version, CLI, CI, security documentation, container entrypoint and the installed wheel against runnable code.
+Preserve CLI compatibility and `VoiceProfile` schema v1. WordPress remains draft-by-default; Studio can create drafts only, while the CLI requires explicit `--publish` for publication. The Studio server must remain loopback-only, with local request protections and no keys entered in the browser.
 
-Keep README, docs/API.md, docs/CONFIGURATION.md, SECURITY.md and CHANGELOG.md consistent with actual behavior. Do not infer capability from test counts, produce credentials in logs, or add decorative abstractions without a specific user problem.
+Before a public release, compare runnable behavior against README, `docs/CONFIGURATION.md`, `docs/API.md`, `docs/ARCHITECTURE.md`, SECURITY.md, CHANGELOG.md, CLI help, Studio UI, packaging, Docker and CI. Prefer fixes that improve a real user action; avoid proof-system or abstraction growth without demonstrated need.
