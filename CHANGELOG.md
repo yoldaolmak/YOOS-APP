@@ -2,7 +2,9 @@
 
 Pennovia's package metadata currently identifies version **0.2.0 alpha**. Entries here describe merged repository work, not a claimed tagged GitHub release.
 
-## Unreleased — 7 November 2026\n\n- Make two-language detection abstain when uncertain; permit explicit English/Turkish overrides for analysis and pipeline commands.
+## Unreleased — 7 November 2026
+
+- Reuse one language-aware first-person pronoun measure across analysis, scoring and audit.\n\n- Make two-language detection abstain when uncertain; permit explicit English/Turkish overrides for analysis and pipeline commands.
 
 ### Behavior and data safety
 - Require explicit CLI consent before replacing existing profiles or drafts ([#12](https://github.com/yoldaolmak/Pennovia/pull/12)).
