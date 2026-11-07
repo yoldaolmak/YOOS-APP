@@ -26,7 +26,7 @@ pennovia export --input draft.txt --title "Lisbon guide" \
   --format html,txt --dest downloads
 ```
 
-A corpus can be one supported TXT, HTML or PDF file, or a directory of such files. The directory scan is non-recursive and alphabetical. Each usable file must contain more than 50 whitespace-delimited words; rejected files are reported on stderr. Voice profiles can contain verbatim sample sentences from your source material.
+A corpus can be one supported TXT, HTML or PDF file, or a directory of such files. English/Turkish language detection is heuristic; use `--language tr` or `--language en` when you know the corpus language, especially for short or mixed text. The directory scan is non-recursive and alphabetical. Each usable file must contain more than 50 whitespace-delimited words; rejected files are reported on stderr. Voice profiles can contain verbatim sample sentences from your source material.
 
 CLI `analyze`, `generate` and `run --save-profile` refuse to replace an existing output unless you explicitly pass `--overwrite`. Local exports use unique filenames.
 

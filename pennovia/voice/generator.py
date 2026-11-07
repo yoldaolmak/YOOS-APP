@@ -15,6 +15,11 @@ def _build_prompt(profile: VoiceProfile, content_type: str, topic: str) -> tuple
     lang = profile.language
     person_examples = "ben/benim/bana" if lang == "tr" else "I/me/my"
     negative_examples = "değil, yok, olmadı" if lang == "tr" else "did not, could not"
+    output_language = {
+        "tr": "Turkish",
+        "en": "English",
+        "auto": "Uncertain: follow the source sentences; do not assume English",
+    }[lang]
 
     # Build rich style fingerprint
     rhythm_desc = (
@@ -84,7 +89,7 @@ ABSOLUTE RULES:
 2. Match the author's sentence length distribution: {int(getattr(profile,'short_sentence_rate',0)*100)}% short, {int(getattr(profile,'long_sentence_rate',0)*100)}% long.
 3. Avoid generic AI writing clichés such as "delve into", "it's worth noting", "in conclusion", "a testament to", "in today's world", and "tapestry". Do not prohibit a transition just because it sounds formal if the author actually uses it.
 4. Do not fabricate specific facts, prices, dates, or quotations you cannot verify — write around them instead.
-5. Output language: {"Turkish" if lang == "tr" else "English"}.
+5. Output language: {output_language}.
 6. Preserve the author's observed rhythm, irony, warmth, distance, and directness without copying sample sentences.
 7. Never invent firsthand visits, personal memories, eyewitness observations, or interviews. A voice profile is evidence of writing style, not evidence that the author experienced the requested topic."""
 

@@ -24,7 +24,7 @@ texts: list[str] = read_corpus(["/path/file1.txt", "/path/file2.pdf"])
 ```python
 from pennovia.voice.analyzer import analyze, VoiceProfile
 
-profile: VoiceProfile = analyze(texts, author_name="Hemingway")
+profile: VoiceProfile = analyze(texts, author_name="Hemingway")\n# Optional: analyze(texts, author_name="Writer", language="tr")
 
 profile.save("hemingway.json")  # Python API preserves overwrite behavior
 profile = VoiceProfile.load("hemingway.json")
@@ -41,7 +41,7 @@ print(profile.summary())
 |-------|------|-------------|
 | `schema_version` | int | Profile format version; currently `1` |
 | `author_name` | str | As provided |
-| `language` | str | "en" or "tr" (auto-detected) |
+| `language` | str | `"en"`, `"tr"` or `"auto"` (insufficient or mixed evidence) |
 | `text_count` | int | Number of input texts |
 | `total_words` | int | Total word count across all texts |
 | `avg_sentence_words` | float | Mean sentence length |
@@ -65,6 +65,8 @@ For loss prevention, pass `profile.save(path, overwrite=False)` when writing a n
 `VoiceProfile.save()` writes JSON with `schema_version: 1`. Files written before this field existed remain loadable as version 1. Unknown extra keys are ignored, but a file explicitly declaring another version is rejected to prevent silent interpretation of an incompatible format.
 
 `VoiceProfile.load()` checks that the root is an object, known fields have appropriate JSON types, numeric fields are finite and non-negative, rate fields stay in the 0–1 range, and language is `auto`, `en`, or `tr`. It raises `ValueError` for invalid profile contents. The format is not a proof of writer identity or scoring quality. Profiles may contain verbatim source excerpts; treat them as private user data.
+
+The built-in detector handles **English and Turkish only**. It combines function-word evidence with Turkish-specific letters; ambiguous, short and mixed-language texts produce `"auto"` rather than inventing a language. `analyze(..., language="tr"|"en")`, `pennovia analyze --language tr`, and `pennovia run --language tr` override the detector. This is a deliberately limited heuristic, not language identification for arbitrary text. A profile with unresolved language prompts the model to follow its source samples instead of presuming English.
 
 ## voice.generator
 

@@ -90,7 +90,7 @@ def cmd_analyze(args):
     _ok(f"{len(texts)} usable of {len(files)} files, {total_words:,} words")
     _step(2, 2, "Analyzing voice...")
     t0 = time.time()
-    profile = analyze(texts, author_name=args.author or "unknown")
+    profile = analyze(texts, author_name=args.author or "unknown", language=args.language)
     profile.save(out, overwrite=getattr(args, "overwrite", False))
     print()
     print(profile.summary())
@@ -169,7 +169,7 @@ def cmd_run(args):
     texts, files = _load_corpus(args.corpus)
     _ok(f"{len(texts)} usable of {len(files)} files, {sum(len(t.split()) for t in texts):,} words")
     _step(2, STEPS, "Analyzing voice...")
-    profile = analyze(texts, author_name=args.author or "unknown")
+    profile = analyze(texts, author_name=args.author or "unknown", language=args.language)
     _ok(profile.summary().split("\n")[0])
     if getattr(args, "save_profile", None):
         profile.save(args.save_profile, overwrite=getattr(args, "overwrite", False))
@@ -226,6 +226,8 @@ def main():
     p_a = sub.add_parser("analyze", help="Extract voice profile from corpus folder")
     p_a.add_argument("--corpus", required=True, help="Folder or file with author texts")
     p_a.add_argument("--author", default="unknown", help="Author name")
+    p_a.add_argument("--language", choices=["auto", "tr", "en"], default="auto",
+                     help="Corpus language; auto abstains when uncertain")
     p_a.add_argument("--out", default="voice_profile.json", help="Output JSON path")
     p_a.add_argument("--overwrite", action="store_true", help="Replace existing profile output")
 
@@ -252,6 +254,8 @@ def main():
     p_r = sub.add_parser("run", help="Full pipeline in one command")
     p_r.add_argument("--corpus", required=True)
     p_r.add_argument("--author", default="unknown")
+    p_r.add_argument("--language", choices=["auto", "tr", "en"], default="auto",
+                     help="Corpus language; auto abstains when uncertain")
     p_r.add_argument("--type", default="travel_blog",
                      choices=["travel_blog","travel_guide","magazine","news","story","column"])
     p_r.add_argument("--topic", required=True)
