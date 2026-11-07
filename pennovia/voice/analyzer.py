@@ -228,16 +228,22 @@ def _std_dev(values: list) -> float:
 
 
 def _vocabulary_richness(text: str) -> float:
-    words = re.findall(r"\b[a-zA-ZçğışöüÇĞİŞÖÜ]{3,}\b", text.lower())
+    """Mean 500-token type-token ratio, including the corpus tail."""
+    # Unicode letters only; normalize Turkish capital dotted-I after lower().
+    normalized = text.lower().replace("i\u0307", "i")
+    words = re.findall(r"\b[^\W\d_]{3,}\b", normalized, re.UNICODE)
     if not words:
         return 0.0
-    # Measure over sliding windows of 500 words for stability
     window = 500
-    ratios = []
-    for i in range(0, len(words) - window, window // 2):
-        chunk = words[i:i + window]
-        ratios.append(len(set(chunk)) / len(chunk))
-    return round(sum(ratios) / len(ratios), 3) if ratios else round(len(set(words)) / len(words), 3)
+    if len(words) <= window:
+        return round(len(set(words)) / len(words), 3)
+
+    starts = list(range(0, len(words) - window + 1, window // 2))
+    final_start = len(words) - window
+    if starts[-1] != final_start:
+        starts.append(final_start)
+    ratios = [len(set(words[i:i + window])) / window for i in starts]
+    return round(sum(ratios) / len(ratios), 3)
 
 
 def analyze(
@@ -300,7 +306,6 @@ def analyze(
     parens = len(re.findall(r"\(", all_text))
 
     # --- Transitions ---
-    lower_text = all_text.lower()
     transition_counts = [(t, _transition_count(all_text, t)) for t in transitions]
     found_transitions = sorted(
         ((t, count) for t, count in transition_counts if count > 0),
@@ -309,8 +314,11 @@ def analyze(
     top_transitions = [t for t, _ in found_transitions[:10]]
 
     # --- Signature 2-grams ---
-    words = re.findall(r"\b\w+\b", lower_text)
-    bigrams = Counter(zip(words, words[1:]))
+    # Do not invent phrase pairs across the boundaries of separate texts.
+    bigrams = Counter()
+    for text in texts:
+        words = re.findall(r"\b\w+\b", text.lower())
+        bigrams.update(zip(words, words[1:]))
     signature = [
         f"{a} {b}" for (a, b), c in bigrams.most_common(50)
         if c >= 3 and len(a) > 3 and len(b) > 3
