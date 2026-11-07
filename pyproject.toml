@@ -39,6 +39,7 @@ gdrive = [
 ]
 dev = [
     "pytest>=7.0",
+    "ruff>=0.12,<1",
 ]
 all = [
     "pennovia[llm,gdrive,dev]",
@@ -67,3 +68,9 @@ filterwarnings = [
 
 [tool.setuptools.package-data]
 "pennovia.demo" = ["corpus/*.txt"]
+
+[tool.ruff]
+target-version = "py310"
+
+[tool.ruff.lint]
+select = ["E4", "E7", "E9", "F"]
