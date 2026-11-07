@@ -205,7 +205,8 @@ class _StudioHandler(BaseHTTPRequestHandler):
         self.send_header(
             "Content-Security-Policy",
             "default-src 'none'; script-src 'self'; style-src 'self'; "
-            "connect-src 'self'; base-uri 'none'; frame-ancestors 'none'",
+            "img-src 'self' data:; connect-src 'self'; "
+            "base-uri 'none'; frame-ancestors 'none'",
         )
         if filename:
             self.send_header("Content-Disposition", f'attachment; filename="{filename}"')
