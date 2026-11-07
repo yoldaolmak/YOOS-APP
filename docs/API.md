@@ -48,7 +48,7 @@ print(profile.summary())
 | `sentence_std_dev` | float | Standard deviation of sentence length |
 | `short_sentence_rate` | float | Proportion of sentences < 8 words |
 | `long_sentence_rate` | float | Proportion of sentences > 20 words |
-| `first_person_rate` | float | Proportion of sentences with I/me/my/ben |
+| `first_person_rate` | float | Share of sentences with supported singular first-person pronouns (English/Turkish, language-aware). Does not infer inflected Turkish verbs or first-person plural |
 | `question_rate` | float | Proportion of sentences ending with ? |
 | `negative_rate` | float | Rate of negative constructions |
 | `avg_paragraph_sentences` | float | Mean sentences per paragraph |
