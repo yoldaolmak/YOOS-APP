@@ -125,10 +125,10 @@ def _handle_api(path: str, payload: dict) -> dict | tuple[str, bytes, str]:
 
             topic = _required_string(payload, "topic", limit=500)
             kind = payload.get("content_type")
-            if kind not in list_types():
+            if not isinstance(kind, str) or kind not in list_types():
                 raise ValueError("Select a supported writing type")
             backend = payload.get("backend")
-            if backend not in _BACKENDS:
+            if not isinstance(backend, str) or backend not in _BACKENDS:
                 raise ValueError("Select a supported model provider")
             model = payload.get("model", "")
             if not isinstance(model, str) or len(model) > 120:
