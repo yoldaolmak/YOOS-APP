@@ -4,6 +4,7 @@ import threading
 import pytest
 
 from pennovia.exporter import writer
+from pennovia.studio import server
 from pennovia.voice import generator
 from tests.test_studio_browser import DRAFT, SAMPLE, local_studio
 
@@ -109,6 +110,38 @@ def test_generation_and_review_lock_all_editor_inputs_while_request_is_active(mo
             )
             assert page.locator("#draft").is_enabled()
             assert page.locator("#review-results").is_visible()
+            browser.close()
+    finally:
+        release.set()
+
+
+def test_review_is_serialized_with_draft_edits(monkeypatch):
+    entered = threading.Event()
+    release = threading.Event()
+    original_review = server._review
+
+    def delayed_review(draft, profile):
+        entered.set()
+        if not release.wait(timeout=15):
+            raise RuntimeError("synthetic review timeout")
+        return original_review(draft, profile)
+
+    try:
+        with local_studio() as base, playwright.sync_playwright() as engine:
+            browser = engine.chromium.launch()
+            page = browser.new_page()
+            page.goto(base)
+            _ready(page)
+            page.locator("#draft").fill(DRAFT)
+            monkeypatch.setattr(server, "_review", delayed_review)
+            page.locator("#review").click()
+            assert entered.wait(timeout=8)
+            assert page.locator("#draft").is_disabled()
+            assert page.locator("#review").is_disabled()
+            release.set()
+            page.locator("#review-results").wait_for(state="visible")
+            assert page.locator("#draft").is_enabled()
+            assert page.locator("#review-score").inner_text().isdigit()
             browser.close()
     finally:
         release.set()
