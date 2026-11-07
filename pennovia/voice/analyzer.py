@@ -74,14 +74,13 @@ class VoiceProfile:
 
     @classmethod
     def load(cls, path: str) -> "VoiceProfile":
-        """Read a v1 JSON profile, rejecting invalid known fields.
-
-        Old files without schema_version remain compatible. Unknown keys are
-        ignored so optional metadata does not break a valid v1 profile.
-        """
+        """Read and validate a stored profile, including legacy v1 files."""
         with open(path, encoding="utf-8") as source:
-            data = json.load(source)
+            return cls.from_dict(json.load(source))
 
+    @classmethod
+    def from_dict(cls, data: dict) -> "VoiceProfile":
+        """Validate an in-memory profile using the same contract as load()."""
         if not isinstance(data, dict):
             raise ValueError("Voice profile must be a JSON object")
 
