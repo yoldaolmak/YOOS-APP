@@ -108,8 +108,9 @@ EN_NEGATIVES = [
 
 
 def _sentences(text: str) -> list:
+    """Retain short emphatic sentences; discarding them biases rhythm metrics."""
     raw = re.split(r"(?<=[.!?])\s+", text)
-    return [s.strip() for s in raw if len(s.split()) > 2]
+    return [s.strip() for s in raw if any(char.isalpha() for char in s)]
 
 
 def _detect_language(text: str) -> str:
@@ -158,7 +159,7 @@ def analyze(texts, author_name: str = "unknown") -> VoiceProfile:
     paragraph_sent_counts = []
 
     for text in texts:
-        paragraphs = [p.strip() for p in text.split("\n\n") if len(p.split()) > 3]
+        paragraphs = [p.strip() for p in text.split("\n\n") if p.strip()]
         for para in paragraphs:
             sents = _sentences(para)
             all_sentences.extend(sents)
