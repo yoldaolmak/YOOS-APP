@@ -16,7 +16,17 @@ The separate [Live Model & Alpha Release](../.github/workflows/live-model-releas
 
 The workflow stores the exact drafts and report as downloadable GitHub Actions artifacts. No claim of calibrated voice fidelity or factual correctness follows from this limited case. The bundled demo corpus is illustrative and is **not** used as an authenticated Twain sample in this experiment.
 
-Release publication is gated on a successful main-branch model run, existing CI and clean package build.
+### Published v0.2.0 evidence
+
+The [7 November 2026 release run](https://github.com/yoldaolmak/Pennovia/actions/runs/42406098002) completed real Ollama inference with `qwen2.5:1.5b` and archived the drafts, original-source SHA-256, model digest and TXT/HTML/PDF exports.
+
+| Output | Words | Heuristic audit |
+| --- | ---: | ---: |
+| Profile-guided draft 1 | 814 | 77/100 |
+| Profile-guided draft 2 | 672 | 68/100 |
+| Neutral control | — | 83/100 |
+
+The neutral control scored higher. This verifies execution, **not** an advantage in writer-style fidelity. The tagged [alpha release](https://github.com/yoldaolmak/Pennovia/releases/tag/v0.2.0) was published only after the separate live-model job, six main-branch CI checks and package-build verification succeeded.
 
 ## How to interpret a score
 
