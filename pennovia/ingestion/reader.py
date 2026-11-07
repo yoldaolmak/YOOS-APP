@@ -4,8 +4,16 @@ Supports: PDF, HTML, TXT
 """
 import ipaddress
 import re
+import socket
 import sys
 from pathlib import Path
+
+import requests
+from requests.adapters import HTTPAdapter
+from urllib3.connection import HTTPSConnection
+from urllib3.connectionpool import HTTPSConnectionPool
+from urllib3.exceptions import ConnectTimeoutError, NewConnectionError
+from urllib3.util.connection import create_connection
 from urllib.parse import urljoin, urlsplit
 from typing import Iterable
 
@@ -80,60 +88,103 @@ def _check_article_url(url: str) -> None:
         raise ValueError("IP-address article links are not allowed")
 
 
+class _PublicHTTPSConnection(HTTPSConnection):
+    """Connect to one checked IP, retaining the hostname for TLS verification."""
+
+    def _new_conn(self):
+        try:
+            addresses = socket.getaddrinfo(
+                self.host, self.port, type=socket.SOCK_STREAM,
+            )
+        except socket.gaierror as exc:
+            raise NewConnectionError(self, "Article hostname could not be resolved") from exc
+
+        ips = {item[4][0] for item in addresses}
+        if not ips or any(not ipaddress.ip_address(ip).is_global for ip in ips):
+            raise NewConnectionError(self, "Article hostname resolves to a non-public IP")
+
+        # Connect to a validated numeric IP without changing self.host:
+        # urllib3 must still verify TLS against the original hostname.
+        try:
+            return create_connection(
+                (sorted(ips)[0], self.port),
+                self.timeout,
+                source_address=self.source_address,
+                socket_options=self.socket_options,
+            )
+        except TimeoutError as exc:
+            raise ConnectTimeoutError(self, "Article connection timed out") from exc
+        except OSError as exc:
+            raise NewConnectionError(self, "Could not connect to article host") from exc
+
+
+class _PublicHTTPSPool(HTTPSConnectionPool):
+    ConnectionCls = _PublicHTTPSConnection
+
+
+class _PublicHTTPSAdapter(HTTPAdapter):
+    def init_poolmanager(self, *args, **kwargs):
+        super().init_poolmanager(*args, **kwargs)
+        self.poolmanager.pool_classes_by_scheme = {
+            **self.poolmanager.pool_classes_by_scheme,
+            "https": _PublicHTTPSPool,
+        }
+
+
 def read_url(url: str) -> str:
     """Fetch a single public HTML article (or plain text) with bounded resources.
 
     URLs are user-selected sources, not an automatic website crawler. Limit
     response size and redirect hops, and reject unsafe URL forms at each hop.
     """
-    try:
-        import requests
-    except ImportError as exc:
-        raise RuntimeError("URL support requires: pip install requests") from exc
-
-    for _ in range(_MAX_URL_REDIRECTS + 1):
-        _check_article_url(url)
-        try:
-            response = requests.get(
-                url, timeout=(5, 15), stream=True, allow_redirects=False,
-                headers={"User-Agent": "Pennovia/0.2 (author voice corpus reader)"},
-            )
-        except requests.RequestException as exc:
-            raise ValueError("Could not download article; check URL and connection") from exc
-        try:
-            if response.status_code in (301, 302, 303, 307, 308):
-                location = response.headers.get("Location")
-                if not location:
-                    raise ValueError("Article redirect has no destination")
-                url = urljoin(url, location)
-                continue
+    with requests.Session() as session:
+        # Never inherit proxies from the process environment. The checked
+        # direct-connection adapter must handle every article request.
+        session.trust_env = False
+        session.mount("https://", _PublicHTTPSAdapter())
+        for _ in range(_MAX_URL_REDIRECTS + 1):
+            _check_article_url(url)
             try:
-                response.raise_for_status()
+                response = session.get(
+                    url, timeout=(5, 15), stream=True, allow_redirects=False,
+                    headers={"User-Agent": "Pennovia/0.2 (author voice corpus reader)"},
+                )
             except requests.RequestException as exc:
-                raise ValueError("Article URL returned an HTTP error") from exc
+                raise ValueError("Could not download article; check URL and connection") from exc
+            try:
+                if response.status_code in (301, 302, 303, 307, 308):
+                    location = response.headers.get("Location")
+                    if not location:
+                        raise ValueError("Article redirect has no destination")
+                    url = urljoin(url, location)
+                    continue
+                try:
+                    response.raise_for_status()
+                except requests.RequestException as exc:
+                    raise ValueError("Article URL returned an HTTP error") from exc
 
-            mime = response.headers.get("Content-Type", "").split(";")[0].strip().lower()
-            if mime not in ("text/html", "application/xhtml+xml", "text/plain"):
-                raise ValueError("Article URL must return HTML or plain text")
-            size = 0
-            pieces = []
-            try:
-                for piece in response.iter_content(chunk_size=65536):
-                    size += len(piece)
-                    if size > _MAX_URL_BYTES:
-                        raise ValueError("Article response exceeds 2 MB")
-                    pieces.append(piece)
-            except requests.RequestException as exc:
-                raise ValueError("Article download interrupted") from exc
-            encoding = response.encoding or "utf-8"
-            try:
-                content = b"".join(pieces).decode(encoding, errors="replace")
-            except LookupError as exc:
-                raise ValueError("Article has an unsupported text encoding") from exc
-            return _html_to_text(content, article_only=True) if mime != "text/plain" else content.strip()
-        finally:
-            response.close()
-    raise ValueError("Article redirected too many times")
+                mime = response.headers.get("Content-Type", "").split(";")[0].strip().lower()
+                if mime not in ("text/html", "application/xhtml+xml", "text/plain"):
+                    raise ValueError("Article URL must return HTML or plain text")
+                size = 0
+                pieces = []
+                try:
+                    for piece in response.iter_content(chunk_size=65536):
+                        size += len(piece)
+                        if size > _MAX_URL_BYTES:
+                            raise ValueError("Article response exceeds 2 MB")
+                        pieces.append(piece)
+                except requests.RequestException as exc:
+                    raise ValueError("Article download interrupted") from exc
+                encoding = response.encoding or "utf-8"
+                try:
+                    content = b"".join(pieces).decode(encoding, errors="replace")
+                except LookupError as exc:
+                    raise ValueError("Article has an unsupported text encoding") from exc
+                return _html_to_text(content, article_only=True) if mime != "text/plain" else content.strip()
+            finally:
+                response.close()
+        raise ValueError("Article redirected too many times")
 
 
 def read_corpus(paths: Iterable[str | Path]) -> list[str]:

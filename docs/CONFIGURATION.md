@@ -33,7 +33,7 @@ pennovia export --input draft.txt --title "Lisbon" \
   --format html,txt --dest downloads
 ```
 
-`analyze` and `run` accept a file or non-recursive directory via `--corpus`, repeated URLs via `--url`, and inline or stdin text via `--text`. Inputs can be mixed. Files: TXT, HTML, PDF. HTTPS pages: HTML/plain text, up to 2 MB; login-protected and JavaScript-only content may not work. Invalid or short sources are skipped; analysis stops if none are usable.
+`analyze` and `run` accept a file or non-recursive directory via `--corpus`, repeated URLs via `--url`, and inline or stdin text via `--text`. Inputs can be mixed. Files: TXT, HTML, PDF. HTTPS pages: HTML/plain text, up to 2 MB; redirects and DNS targets must remain public. Environment proxies are not used. Login-protected and JavaScript-only content may not work. Invalid or short sources are skipped; analysis stops if none are usable.
 
 Use `--language tr` or `--language en` for known languages; automatic detection may abstain. CLI output profiles/drafts are not overwritten without `--overwrite`. Local exports use distinct filenames.
 
