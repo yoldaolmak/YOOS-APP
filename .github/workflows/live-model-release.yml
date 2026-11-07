@@ -32,6 +32,8 @@ jobs:
           python-version: '3.12'
       - name: Install Pennovia
         run: python -m pip install -e .
+      - name: Check authenticated book and chapter split before model download
+        run: python validation/live_model.py --source-only --output "$RUNNER_TEMP/real-model-evidence"
       - name: Install and launch local Ollama
         run: |
           set -euo pipefail
