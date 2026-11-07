@@ -3,7 +3,6 @@ WORKDIR /app
 ENV PYTHONDONTWRITEBYTECODE=1 PYTHONUNBUFFERED=1
 COPY pyproject.toml README.md LICENSE ./
 COPY yoos_app/ ./yoos_app/
-COPY examples/corpus/ ./examples/corpus/
 RUN python -m pip install --no-cache-dir . \
     && useradd --uid 10001 --create-home yoosapp \
     && mkdir -p /app/examples/output \

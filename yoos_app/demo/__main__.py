@@ -15,9 +15,9 @@ import sys
 import os
 from pathlib import Path
 
-ROOT = Path(__file__).parent.parent.parent
-CORPUS_DIR = ROOT / "examples" / "corpus"
-OUTPUT_DIR = ROOT / "examples" / "output"
+CORPUS_DIR = Path(__file__).parent / "corpus"
+# Outputs belong to the invoking user, never to the installed package directory.
+OUTPUT_DIR = Path(os.environ.get("YOOS_DEMO_OUTPUT_DIR", str(Path.cwd() / "examples" / "output")))
 OUTPUT_DIR.mkdir(parents=True, exist_ok=True)
 
 sys.path.insert(0, str(ROOT))

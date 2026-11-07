@@ -76,3 +76,6 @@ python_functions = ["test_*"]
 filterwarnings = [
     "ignore::DeprecationWarning",
 ]
+
+[tool.setuptools.package-data]
+"yoos_app.demo" = ["corpus/*.txt"]

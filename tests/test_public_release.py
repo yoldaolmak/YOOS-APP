@@ -43,3 +43,8 @@ def test_public_release_points_to_existing_cli():
     assert 'python -m pytest -q tests/' in ci
     assert 'ENTRYPOINT ["yoos-app"]' in docker
     assert 'yoos-app-server' not in (root / 'pyproject.toml').read_text()
+
+def test_installed_demo_has_bundled_public_samples():
+    import yoos_app.demo
+    corpus = Path(yoos_app.demo.__file__).parent / 'corpus'
+    assert len(list(corpus.glob('*.txt'))) == 3
