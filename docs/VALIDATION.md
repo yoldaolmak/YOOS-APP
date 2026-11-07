@@ -1,37 +1,23 @@
-# Voice review: validation and limitations
+# Validation limits
 
-Pennovia computes **uncalibrated style heuristics**, not an author-identification model. A numerical score is a description of selected surface features, not a probability that a particular person wrote the text.
+Pennovia measures **selected features of writing style**. Scores are uncalibrated; they do not verify authorship, lived experience or factual accuracy.
 
-## Synthetic end-to-end pipeline check
+## What is tested
 
-`tests/test_cli_synthetic_pipeline.py` drives the actual `pennovia run` command through bundled corpus ingestion, author profiling, OpenRouter response parsing, heuristic audit and local HTML/TXT/PDF exports. A second case checks a WordPress draft response, and a third checks that empty model output blocks export. Provider and WordPress HTTP responses are simulated; no API keys or network services are needed.
+- Corpus reading, English/Turkish analysis, profile JSON compatibility, scoring and exports.
+- Synthetic end-to-end CLI and Studio flows: analysis → model-shaped response → review → TXT/HTML/PDF and simulated WordPress draft.
+- Errors such as blank provider replies and unusable inputs.
 
-This verifies software integration, **not** live model connectivity, writing quality, voice fidelity or real WordPress publication. A successful CI run does not establish those capabilities.
+Tests use synthetic provider responses. They **do not** verify live model connectivity, WordPress publication, writing quality or fidelity to a real author's style.
 
-## What automated tests establish
+## How to interpret a score
 
-The offline suite checks supported English/Turkish token behavior, profile portability, shared first-person semantics, and deliberately different **synthetic writing styles**. Synthetic contrast tests assert only that obvious differences in sentence rhythm, personal pronouns and transition expressions influence score ordering. They do **not** establish real-world author-discrimination accuracy.
+Audit PASS requires **70/100 and at least 200 words**. It compares sentence rhythm, first-person rate, questions, transitions, paragraph structure and common AI clichés. Different writers can receive similar scores.
 
-The audit requires at least **200 whitespace-delimited words** and a heuristic score of at least 70 to display PASS. That minimum is a conservative software guard, not a scientific sample-size threshold. Warnings such as missing transitions only apply when the source profile has enough observed transitions to make the comparison meaningful.
+Turkish negation detection covers only listed forms, not every inflected verb. Vocabulary richness uses 500-token windows; recurring phrases do not cross document boundaries. These are descriptive signals, not identity tests.
 
-## What the model cannot establish
+## Editorial review
 
-- Whether two writers with similar sentence lengths and pronoun rates are actually different people.
-- Whether model-generated travel memories and quotations are genuine.
-- Whether an individual author's voice remains stable between topics, dates and formats.
-- Whether an input corpus contains multiple authors or pasted text from other sources.
-- Whether a high similarity number predicts the quality or originality of a draft.
+Compare the draft with the source writing. Check rhythm, point of view and recurring expressions. Verify facts, quotes and claimed experiences separately.
 
-Negative-construction frequency uses a conservative set of whole Turkish word forms and English negation expressions; one sentence contributes at most one match. It does not infer suffix-based Turkish verb negation, and existing profiles should be regenerated for the corrected metric.
-
-The corpus analyzer calculates vocabulary richness from fixed 500-token windows with a final tail-covering window. It does not invent signature word pairs across separate source documents. These are descriptive metrics, not proof of a writer's identity.
-
-The current scorer combines sentence-length similarity, first-person rate and observed transitions. Because it does not compare all lexical, syntactic or semantic properties, **unrelated writing can receive a high score** when those limited properties match.
-
-## Practical editorial check
-
-The product goal is **style-guided drafting**, not author identification. For a useful review, compare the draft with the source writing: sentence rhythm, point of view, characteristic transitions and paragraph structure. Check claims, first-person experiences and quotations separately; a high heuristic score cannot validate any of them.
-
-Studio uses the same analyzer, generator, audit and scorer as the CLI, with a local HTTP wrapper. Its automated tests exercise source intake, a synthetic provider response, review and downloads. These checks verify software wiring, **not** the quality of any real model's output.
-
-Do not market numeric style scores as verified voice fidelity, a probability of authorship, or a guarantee of publishable content. No large-scale author-identification benchmark is a prerequisite for this toolkit's intended use.
+Pennovia guides drafts; it does **not** identify authors or guarantee voice fidelity. A large authorship-identification benchmark is outside the product's current scope.
