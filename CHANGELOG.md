@@ -11,6 +11,7 @@ Pennovia's package metadata currently identifies version **0.2.0 alpha**. Entrie
 - Make two-language detection abstain when uncertain; permit explicit English/Turkish overrides for analysis and pipeline commands ([#15](https://github.com/yoldaolmak/Pennovia/pull/15)).
 
 ### Behavior and data safety
+- Refuse WordPress REST redirects, malformed success responses and ambiguous URL configuration; report bounded network errors.
 - Write profiles and generated drafts with restrictive file permissions and atomic explicit replacement, retaining exclusive creation by default in the CLI.
 - Require explicit CLI consent before replacing existing profiles or drafts ([#12](https://github.com/yoldaolmak/Pennovia/pull/12)).
 - Reject ambiguous formats and duplicate WordPress exports ([#13](https://github.com/yoldaolmak/Pennovia/pull/13)).
