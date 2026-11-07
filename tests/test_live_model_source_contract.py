@@ -38,3 +38,8 @@ def test_missing_or_short_chapter_fails_closed():
     )
     with pytest.raises(ValueError, match="unexpectedly short"):
         select_chapters(book)
+
+def test_crlf_normalization_matches_gutenberg_download_format():
+    raw = _fake_book().replace("\n", "\r\n").encode("utf-8")
+    decoded = raw.decode("utf-8-sig").replace("\r\n", "\n").replace("\r", "\n")
+    assert len(select_chapters(decoded)) == 4
