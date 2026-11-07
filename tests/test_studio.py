@@ -272,6 +272,25 @@ def test_invalid_profile_and_unsupported_export_are_rejected():
         })[0] == 400
 
 
+@pytest.mark.parametrize("key,value", [
+    ("backend", []), ("backend", {"name": "ollama"}),
+    ("content_type", []), ("content_type", {"name": "travel_guide"}),
+])
+def test_invalid_generation_options_return_400_not_server_error(key, value):
+    with running_studio() as local:
+        profile = post_json(local, "/api/analyze", {
+            "sources": [{"type": "text", "value": TEXT}], "author": "Writer",
+        })[1]["profile"]
+        payload = {
+            "profile": profile, "topic": "An ordinary destination",
+            "content_type": "travel_guide", "backend": "ollama",
+        }
+        payload[key] = value
+        status, result = post_json(local, "/api/generate", payload)
+        assert status == 400
+        assert "Select a supported" in result["error"]
+
+
 def test_studio_disallows_non_loopback_config_and_invalid_port():
     with pytest.raises(ValueError):
         server.make_server(-1)
