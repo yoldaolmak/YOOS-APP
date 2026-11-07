@@ -22,6 +22,6 @@ Keep CLI behavior and `VoiceProfile` schema compatible unless a breaking change 
 
 Submit a small, verifiable change that corrects a demonstrated behavior or improves a working capability. Include a failing case or reproduction where practical, the smallest safe fix, relevant regression tests, and documentation of any changed CLI or Python API behavior.
 
-CI checks Ruff, Python 3.10–3.12 and Docker. Passing checks and higher heuristic voice scores do not by themselves establish authorship accuracy or product quality. Avoid speculative dependencies, private corpora, large cosmetic refactors and breaking profile changes without an explicit compatibility plan.
+CI checks Ruff, Python 3.10–3.12, Docker and an isolated installed-wheel smoke test outside the repository checkout. Passing checks and higher heuristic voice scores do not by themselves establish authorship accuracy or product quality. Avoid speculative dependencies, private corpora, large cosmetic refactors and breaking profile changes without an explicit compatibility plan.
 
 Update [configuration](docs/CONFIGURATION.md), [API](docs/API.md) or [changelog](CHANGELOG.md) as appropriate. Report vulnerabilities privately as described in [SECURITY.md](SECURITY.md).

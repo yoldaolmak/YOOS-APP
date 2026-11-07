@@ -2,9 +2,13 @@
 
 Pennovia's package metadata currently identifies version **0.2.0 alpha**. Entries here describe merged repository work, not a claimed tagged GitHub release.
 
-## Unreleased — 7 November 2026\n\n- Reject missing and blank provider responses and report malformed provider replies with bounded errors.
+## Unreleased — 7 November 2026
 
-- Reuse one language-aware first-person pronoun measure across analysis, scoring and audit.\n\n- Make two-language detection abstain when uncertain; permit explicit English/Turkish overrides for analysis and pipeline commands.
+- Reject missing and blank provider responses and report malformed provider replies with bounded errors ([#17](https://github.com/yoldaolmak/Pennovia/pull/17)).
+
+- Reuse one language-aware first-person pronoun measure across analysis, scoring and audit ([#16](https://github.com/yoldaolmak/Pennovia/pull/16)).
+
+- Make two-language detection abstain when uncertain; permit explicit English/Turkish overrides for analysis and pipeline commands ([#15](https://github.com/yoldaolmak/Pennovia/pull/15)).
 
 ### Behavior and data safety
 - Require explicit CLI consent before replacing existing profiles or drafts ([#12](https://github.com/yoldaolmak/Pennovia/pull/12)).
@@ -19,6 +23,7 @@ Pennovia's package metadata currently identifies version **0.2.0 alpha**. Entrie
 - Validate portable voice-profile schema version 1 and legacy unversioned profiles ([#10](https://github.com/yoldaolmak/Pennovia/pull/10)).
 
 ### Security and maintainability
+- Verify the built wheel from a fresh environment outside the checkout, including bundled demo assets.
 - Replace Codex CLI sandbox bypass with read-only execution and safe errors ([#4](https://github.com/yoldaolmak/Pennovia/pull/4)).
 - Introduce Ruff checks and remove demo import-time filesystem side effects ([#11](https://github.com/yoldaolmak/Pennovia/pull/11)).
 

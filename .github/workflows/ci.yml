@@ -49,3 +49,30 @@ jobs:
         run: |
           docker run --rm pennovia-ci --version
           docker run --rm pennovia-ci demo
+
+  wheel-smoke:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - name: Build distribution wheel
+        run: |
+          python -m pip install --upgrade build
+          python -m build --wheel
+      - name: Install wheel in isolated environment
+        run: |
+          python -m venv "$RUNNER_TEMP/pennovia-wheel-env"
+          "$RUNNER_TEMP/pennovia-wheel-env/bin/python" -m pip install dist/pennovia-*.whl
+      - name: Exercise installed package outside source checkout
+        env:
+          OPENAI_API_KEY: ''
+          ANTHROPIC_API_KEY: ''
+          OPENROUTER_API_KEY: ''
+          PENNOVIA_BACKEND: auto
+        run: |
+          cd "$RUNNER_TEMP"
+          "$RUNNER_TEMP/pennovia-wheel-env/bin/pennovia" --version
+          "$RUNNER_TEMP/pennovia-wheel-env/bin/pennovia" demo
+          "$RUNNER_TEMP/pennovia-wheel-env/bin/python" -c 'from pathlib import Path; import pennovia.demo; p = Path(pennovia.demo.__file__).parent / "corpus"; assert len(list(p.glob("*.txt"))) == 3'
