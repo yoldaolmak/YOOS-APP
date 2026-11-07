@@ -52,10 +52,10 @@ print(profile.summary())
 | `question_rate` | float | Proportion of sentences ending with ? |
 | `negative_rate` | float | Rate of negative constructions |
 | `avg_paragraph_sentences` | float | Mean sentences per paragraph |
-| `vocabulary_richness` | float | Type-token ratio (0–1) |
+| `vocabulary_richness` | float | Mean type-token ratio over complete 500-word windows (including the final window), or the complete shorter corpus; words count Unicode letter tokens of 3+ characters |
 | `emdash_rate` | float | Em-dashes per 100 sentences |
 | `top_transitions` | list[str] | Most-used transition words |
-| `signature_phrases` | list[str] | Recurring 2-gram phrases |
+| `signature_phrases` | list[str] | Recurring 2-gram phrases formed within source documents (never across separate files) |
 | `sample_sentences` | list[str] | Representative sentences |
 
 ### Profile JSON contract
