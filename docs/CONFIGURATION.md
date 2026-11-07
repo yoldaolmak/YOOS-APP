@@ -73,4 +73,4 @@ It creates a **draft** by default. Only explicit `--publish` publishes. WordPres
 - **Provider library missing:** install the required optional extras.
 - **WordPress export accepts one HTML format:** use `--format html` only.
 
-AI output can invent facts, quotations and personal experience. Human review remains required; voice matching scores are not authorship evidence.
+Empty, missing or malformed provider draft text is rejected rather than saved or exported. Network and provider errors are reported without echoing raw remote response payloads. This does not verify model output quality.\n\nAI output can invent facts, quotations and personal experience. Human review remains required; voice matching scores are not authorship evidence.
