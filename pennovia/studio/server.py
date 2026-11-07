@@ -18,6 +18,7 @@ from urllib.parse import urlsplit
 from pennovia.content_types.registry import list_types
 from pennovia.ingestion.reader import MIN_CORPUS_WORDS, SUPPORTED_EXTENSIONS, read_file, read_url
 from pennovia.voice.analyzer import VoiceProfile, analyze
+from pennovia.exporter.writer import RemoteOutcomeUnknown
 
 
 _MAX_REQUEST_BYTES = 12 * 1024 * 1024
@@ -274,8 +275,10 @@ class _StudioHandler(BaseHTTPRequestHandler):
                 self._send(200, blob, mime, filename=f"pennovia-draft.{extension}")
             else:
                 self._json(200, result)
+        except RemoteOutcomeUnknown as exc:
+            self._json(409, {"error": str(exc), "outcome": "unknown"})
         except (ValueError, RuntimeError, OSError, json.JSONDecodeError) as exc:
-            self._json(400, {"error": str(exc)})
+            self._json(400, {"error": str(exc), "outcome": "failed"})
         except Exception:
             self._json(500, {"error": "Studio could not complete this action"})
 
