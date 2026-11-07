@@ -4,7 +4,7 @@ No LLM required. Pure statistical comparison.
 """
 import re
 from dataclasses import dataclass
-from .voice.analyzer import VoiceProfile, _sentences, _detect_language
+from .voice.analyzer import VoiceProfile, _sentences, _transition_count
 
 
 @dataclass
@@ -85,8 +85,7 @@ def audit(content: str, profile: VoiceProfile) -> AuditResult:
         issues.append("first_person_rate_mismatch")
 
     # 2. Transition match (0-20)
-    lower = content.lower()
-    found = sum(1 for t in profile.top_transitions if t in lower)
+    found = sum(1 for t in profile.top_transitions if _transition_count(content, t))
     transition_match = min(20, int((found / max(len(profile.top_transitions), 1)) * 20 + found * 2))
     details["transitions_found"] = found
 
