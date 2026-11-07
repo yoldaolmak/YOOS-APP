@@ -36,7 +36,7 @@ class AuditResult:
 
 AI_CLICHES = [
     "delve into", "it's worth noting", "in conclusion", "to summarize",
-    "furthermore", "moreover", "in today's", "fast-paced world",
+    "in today's", "fast-paced world",
     "in this article", "i will explore", "let's explore",
     "as an ai", "as a language model",
     # Turkish AI clichés (multilingual support)
