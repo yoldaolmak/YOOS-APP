@@ -17,8 +17,8 @@ Pennovia's package metadata currently identifies version **0.2.0 alpha**. Entrie
 - Make corpus ingestion deterministic and CLI diagnostics accurate ([#9](https://github.com/yoldaolmak/Pennovia/pull/9)).
 
 ### Voice analysis and profile reliability
-- Count one bounded negative-construction observation per sentence; prevent substring matches and use both language lists when detection abstains.
-- Cover the complete corpus tail in vocabulary metrics and prevent cross-document signature phrases.
+- Count one bounded negative-construction observation per sentence; prevent substring matches and use both language lists when detection abstains ([#21](https://github.com/yoldaolmak/Pennovia/pull/21)).
+- Cover the complete corpus tail in vocabulary metrics and prevent cross-document signature phrases ([#20](https://github.com/yoldaolmak/Pennovia/pull/20)).
 - Prevent short drafts from passing heuristic review despite high scores; avoid impossible transition warnings.
 - Count complete transition expressions, not word fragments ([#5](https://github.com/yoldaolmak/Pennovia/pull/5)).
 - Include short sentences and paragraphs in rhythm metrics ([#6](https://github.com/yoldaolmak/Pennovia/pull/6)).
@@ -26,6 +26,7 @@ Pennovia's package metadata currently identifies version **0.2.0 alpha**. Entrie
 - Validate portable voice-profile schema version 1 and legacy unversioned profiles ([#10](https://github.com/yoldaolmak/Pennovia/pull/10)).
 
 ### Security and maintainability
+- Keep corpus-derived author labels, phrases and sample sentences out of model system instructions; treat them as untrusted user-message data.
 - Verify the built wheel from a fresh environment outside the checkout, including bundled demo assets.
 - Replace Codex CLI sandbox bypass with read-only execution and safe errors ([#4](https://github.com/yoldaolmak/Pennovia/pull/4)).
 - Introduce Ruff checks and remove demo import-time filesystem side effects ([#11](https://github.com/yoldaolmak/Pennovia/pull/11)).
