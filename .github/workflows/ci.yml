@@ -29,7 +29,7 @@ jobs:
       - name: Static correctness
         run: python -m ruff check pennovia tests
       - name: Test and report coverage
-        run: python -m pytest -q --cov=pennovia --cov-report=term-missing tests/
+        run: python -m pytest -q --cov=pennovia --cov-report=term-missing --cov-fail-under=80 tests/
       - name: Bug-prone Python patterns
         run: python -m ruff check --select B pennovia
       - name: CLI smoke test
