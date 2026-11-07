@@ -50,8 +50,8 @@ def to_pdf(content: str, title: str = "", output_path: str = None) -> str:
         from reportlab.platypus import SimpleDocTemplate, Paragraph, Spacer
         from reportlab.lib.styles import getSampleStyleSheet
         from reportlab.lib.units import cm
-    except ImportError:
-        raise RuntimeError("PDF support requires: pip install reportlab")
+    except ImportError as exc:
+        raise RuntimeError("PDF support requires: pip install reportlab") from exc
 
     generated_temp = not output_path
     if generated_temp:
@@ -123,8 +123,8 @@ def save_google_drive(content: str, title: str, fmt: str) -> str:
         from googleapiclient.discovery import build
         from googleapiclient.http import MediaInMemoryUpload
         import json
-    except ImportError:
-        raise RuntimeError("Google Drive support requires: pip install google-api-python-client google-auth")
+    except ImportError as exc:
+        raise RuntimeError("Google Drive support requires: pip install google-api-python-client google-auth") from exc
 
     token_json = os.environ.get("GOOGLE_DRIVE_TOKEN")
     if not token_json:
@@ -165,8 +165,8 @@ def save_wordpress(content: str, title: str,
     """Publish to WordPress via REST API. Returns post URL."""
     try:
         import requests
-    except ImportError:
-        raise RuntimeError("WordPress support requires: pip install requests")
+    except ImportError as exc:
+        raise RuntimeError("WordPress support requires: pip install requests") from exc
 
     url = wp_url or os.environ.get("WP_URL")
     user = wp_user or os.environ.get("WP_USER")

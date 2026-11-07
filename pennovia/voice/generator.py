@@ -115,8 +115,8 @@ def generate_openai(profile: VoiceProfile, content_type: str, topic: str,
                     model: str = "gpt-4o", api_key: str = None) -> str:
     try:
         from openai import OpenAI, OpenAIError
-    except ImportError:
-        raise RuntimeError("OpenAI support requires: pip install openai")
+    except ImportError as exc:
+        raise RuntimeError("OpenAI support requires: pip install openai") from exc
 
     key = api_key or os.environ.get("OPENAI_API_KEY")
     if not key:
@@ -147,8 +147,8 @@ def generate_ollama(profile: VoiceProfile, content_type: str, topic: str,
                     model: str = "llama3") -> str:
     try:
         import requests
-    except ImportError:
-        raise RuntimeError("Ollama support requires: pip install requests")
+    except ImportError as exc:
+        raise RuntimeError("Ollama support requires: pip install requests") from exc
 
     system, user = _build_prompt(profile, content_type, topic)
     payload = {
@@ -198,8 +198,8 @@ def generate_anthropic(profile: VoiceProfile, content_type: str, topic: str,
                        model: str = "claude-sonnet-4-6", api_key: str = None) -> str:
     try:
         import anthropic
-    except ImportError:
-        raise RuntimeError("Anthropic support requires: pip install anthropic")
+    except ImportError as exc:
+        raise RuntimeError("Anthropic support requires: pip install anthropic") from exc
 
     key = api_key or os.environ.get("ANTHROPIC_API_KEY")
     if not key:
@@ -232,8 +232,8 @@ def generate_openrouter(profile: VoiceProfile, content_type: str, topic: str,
                         model: str = "openai/gpt-4o", api_key: str = None) -> str:
     try:
         import requests
-    except ImportError:
-        raise RuntimeError("OpenRouter support requires: pip install requests")
+    except ImportError as exc:
+        raise RuntimeError("OpenRouter support requires: pip install requests") from exc
 
     key = api_key or os.environ.get("OPENROUTER_API_KEY")
     if not key:

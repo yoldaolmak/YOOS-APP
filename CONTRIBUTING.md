@@ -15,7 +15,7 @@ python -m pytest -q
 pennovia studio --help
 ```
 
-CI covers Python 3.10–3.12, Ruff, Studio JavaScript syntax, Docker demo and installed-wheel assets.
+CI covers Python 3.10–3.12, Ruff (including bug-prone patterns), an 80% Python coverage floor, real Chromium Studio tests, Docker and wheel assets.
 
 ## Pull requests
 
