@@ -75,15 +75,14 @@ Key dimensions extracted by `analyzer.py`:
 
 ## Prompt Strategy
 
-The LLM receives a single, fully-formed prompt. No multi-turn conversation, no streaming complexity.
+The provider receives one system message containing trusted structure and rules, plus one user message containing the topic and **untrusted corpus-derived evidence**. There is no agent loop or streaming pipeline. Codex CLI receives the equivalent labeled text; its prompt labels do not provide provider-enforced role isolation.
 
 `_build_prompt()` constructs:
-1. Author voice fingerprint (derived from profile stats)
-2. Sample sentences (tone reference, not to copy)
-3. Content type structure (numbered sections)
-4. Hard rules (avoid stock AI clichés without banning observed author transitions; no fabricated firsthand experience, facts or quotations; output-only)
+1. Trusted system instructions: structure, output constraints, style statistics and rules against invented experiences.
+2. Untrusted user evidence: corpus-derived author label, observed transitions, characteristic phrases and sample sentences, which are data rather than instructions.
+3. The user-selected topic, delivered with the evidence at user-message priority.
 
-The prompt is backend-agnostic — the same prompt works with OpenAI, Anthropic, OpenRouter, and Ollama. These directions are safeguards, not guarantees: generated claims and first-person accounts still require human verification.
+The prompt is backend-agnostic — the same prompt works with OpenAI, Anthropic, OpenRouter, and Ollama. The separation reduces accidental elevation of corpus text into system instructions, but is not a complete prompt-injection defense: a model may still follow malicious source content. Generated claims and first-person accounts still require human verification.
 
 ## Audit (Zero LLM)
 
