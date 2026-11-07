@@ -62,6 +62,8 @@ pennovia demo
 
 Without provider credentials, the demo uses **labeled mock output**.
 
+Demo's Twain-themed samples are **illustrative, not authenticated historic quotations**. The separate [live-model validation](docs/VALIDATION.md) uses original text from Project Gutenberg.
+
 ## Integrate
 
 Use the [Python API](docs/API.md) and `VoiceProfile` JSON schema. Studio's localhost endpoints are internal; they are not a public integration API. No hosted service or account is needed.

@@ -111,3 +111,13 @@ def test_prompt_preserves_author_voice_over_genre_and_does_not_require_quotes():
         assert "If a suggested section would require missing evidence" in system
         assert "Never invent firsthand visits" in system
         assert "Şehir merkezine ulaşım" in user
+
+def test_unsourced_destination_prompt_blocks_made_up_local_details():
+    system, user = _build_prompt(
+        VoiceProfile(language="en"), "travel_guide",
+        "How to arrive in an unfamiliar seaside town"
+    )
+    assert "do not invent a town name, transport route, airport" in system
+    assert "shorten or omit unsupported sections" in system
+    assert "guideline only; be shorter rather than invent details" in system
+    assert "How to arrive in an unfamiliar seaside town" in user

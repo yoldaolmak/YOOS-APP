@@ -8,7 +8,15 @@ Pennovia measures **selected features of writing style**. Scores are uncalibrate
 - Synthetic end-to-end CLI and Studio flows: analysis → model-shaped response → review → TXT/HTML/PDF and simulated WordPress draft.
 - Errors such as blank provider replies and unusable inputs.
 
-Tests use synthetic provider responses. They **do not** verify live model connectivity, WordPress publication, writing quality or fidelity to a real author's style.
+Offline tests use synthetic responses. They verify adapter behavior, **not** live model connectivity, publishing, writing quality or fidelity to a real author's style.
+
+## Real-model validation
+
+The separate [Live Model & Alpha Release](../.github/workflows/live-model-release.yml) workflow runs an **actual local Ollama model**, without provider keys. It downloads original chapters of Mark Twain's [*The Innocents Abroad*](https://www.gutenberg.org/ebooks/3176), builds a profile from chapters I, II and IV, and holds out chapter III. It generates two drafts through Pennovia plus an independent neutral control using the same model; the report includes source hash, model digest, word counts, heuristic results and real TXT/HTML/PDF exports.
+
+The workflow stores the exact drafts and report as downloadable GitHub Actions artifacts. No claim of calibrated voice fidelity or factual correctness follows from this limited case. The bundled demo corpus is illustrative and is **not** used as an authenticated Twain sample in this experiment.
+
+Release publication is gated on a successful main-branch model run, existing CI and clean package build.
 
 ## How to interpret a score
 
