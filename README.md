@@ -17,7 +17,7 @@ It is a standalone Python CLI. No hosted account, subscription, proprietary runt
 | **Review** | Local, explainable heuristic observations about style alignment and common generic phrases |
 | **Export** | TXT, HTML, PDF, optional Google Drive upload or WordPress draft. Local exports receive collision-safe filenames |
 
-**Release: 0.2.0 alpha.** Voice similarity numbers are *uncalibrated heuristics*, not evidence of identity, authorship, lived experience, factual correctness, or publication quality. A human must review generated work.
+**Package version: 0.2.0 alpha.** Voice similarity numbers are *uncalibrated heuristics*, not evidence of identity, authorship, lived experience, factual correctness, or publication quality. A human must review generated work.
 
 ## Quick start
 
@@ -42,7 +42,7 @@ pennovia generate --profile my-voice.json --type travel_guide --topic "Three day
 pennovia export --input draft.txt --title "Lisbon guide" --format html --dest downloads
 ```
 
-Available generation backends: Ollama, OpenAI, Anthropic, OpenRouter and Codex CLI. Ollama requires a running local service; cloud services require your own API key and may require `pip install -e ".[llm]"`. `--backend auto` may choose a configured cloud provider. Set `PENNOVIA_BACKEND` to choose the default CLI backend, or override it with `--backend`.
+Available generation backends: Ollama, OpenAI, Anthropic, OpenRouter and Codex CLI. Follow the [configuration guide](docs/CONFIGURATION.md) for supported setups and provider data boundaries. Ollama requires a running local service; cloud services require your own API key and may require `pip install -e ".[llm]"`. `--backend auto` may choose a configured cloud provider. Set `PENNOVIA_BACKEND` to choose the default CLI backend, or override it with `--backend`.
 
 The `analyze` and `generate` CLI commands refuse to replace an existing profile or draft. Pass `--overwrite` only when replacement is intended; `run --save-profile` uses the same protection. Local `export` remains collision-safe.
 
@@ -68,5 +68,5 @@ Pennovia's image runs a command-line tool, not a web service. A container's gene
 
 ## Documentation
 
-- [Architecture](docs/ARCHITECTURE.md) · [Python API](docs/API.md) · [Brand principles](docs/BRAND.md)
-- [Contributing](CONTRIBUTING.md) · [Security](SECURITY.md) · [Legal notes](LEGAL.md) · [License](LICENSE)
+- [Configuration](docs/CONFIGURATION.md) · [Architecture](docs/ARCHITECTURE.md) · [Python API](docs/API.md) · [Brand principles](docs/BRAND.md)
+- [Changelog](CHANGELOG.md) · [Contributing](CONTRIBUTING.md) · [Security](SECURITY.md) · [Legal notes](LEGAL.md) · [License](LICENSE)
