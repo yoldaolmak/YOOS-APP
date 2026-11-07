@@ -1,5 +1,4 @@
 """CLI export outcomes: all-or-nothing for local files, explicit partial remote writes."""
-from pathlib import Path
 from types import SimpleNamespace
 
 import pytest
