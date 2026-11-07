@@ -36,6 +36,19 @@ def _fail(msg):
     print(f"\nERROR: {msg}", file=sys.stderr)
     sys.exit(1)
 
+def _export_formats(raw, destination, default):
+    """Validate formats before creating files or making network requests."""
+    formats = [value.strip().lower() for value in (raw if raw is not None else default).split(",")]
+    supported = {"html", "pdf", "txt"}
+    if not formats or any(value not in supported for value in formats):
+        _fail("Supported export formats are html, pdf and txt.")
+    if len(set(formats)) != len(formats):
+        _fail("Duplicate export formats are not allowed.")
+    if destination == "wordpress" and formats != ["html"]:
+        _fail("WordPress export accepts one HTML format only (--format html).")
+    return formats
+
+
 def _check_output_path(path, overwrite):
     """Refuse an accidental overwrite before doing expensive work."""
     if not overwrite and Path(path).exists():
@@ -125,8 +138,8 @@ def cmd_export(args):
     if not Path(args.input).exists():
         _fail(f"Input not found: {args.input}")
     content = Path(args.input).read_text(encoding="utf-8")
-    fmts = [f.strip() for f in (args.format or "html").split(",")]
     dest = args.dest or "downloads"
+    fmts = _export_formats(args.format, dest, "html")
     for i, fmt in enumerate(fmts):
         _step(i+1, len(fmts), f"Exporting {fmt.upper()} to {dest}...")
         try:
@@ -142,6 +155,8 @@ def cmd_export(args):
 
 
 def cmd_run(args):
+    dest = args.dest or "downloads"
+    fmts = _export_formats(args.format, dest, "html" if dest == "wordpress" else "html,txt")
     if getattr(args, "save_profile", None):
         _check_output_path(args.save_profile, getattr(args, "overwrite", False))
     from pennovia.voice.analyzer import analyze
@@ -177,8 +192,6 @@ def cmd_run(args):
     if result.issues:
         _warn(f"Issues: {', '.join(result.issues)}")
     _step(5, STEPS, "Exporting...")
-    fmts = [f.strip() for f in (args.format or "html,txt").split(",")]
-    dest = args.dest or "downloads"
     for fmt in fmts:
         try:
             if dest == "wordpress":
@@ -245,7 +258,8 @@ def main():
     p_r.add_argument("--backend", default=os.environ.get("PENNOVIA_BACKEND", "auto"),
                      choices=["auto","openai","anthropic","openrouter","ollama","codex"])
     p_r.add_argument("--model")
-    p_r.add_argument("--format", default="html,txt")
+    p_r.add_argument("--format", default=None,
+                     help="html, pdf, txt; defaults to html,txt locally or html for WordPress")
     p_r.add_argument("--dest", default="downloads",
                      help="downloads | desktop | /path | google_drive | wordpress")
     p_r.add_argument("--publish", action="store_true")
