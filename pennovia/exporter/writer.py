@@ -176,7 +176,9 @@ def save_google_drive(content: str, title: str, fmt: str) -> str:
         raise RemoteOutcomeUnknown("Google Drive returned an invalid file response; check Drive before retrying")
     link = file.get("webViewLink") or file.get("id")
     if not isinstance(link, str) or not link.strip():
-        raise RuntimeError("Google Drive returned an invalid file response")
+        raise RemoteOutcomeUnknown(
+            "Google Drive returned an invalid file response; check Drive before retrying"
+        )
     return link
 
 
