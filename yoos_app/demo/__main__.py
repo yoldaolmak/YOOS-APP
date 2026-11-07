@@ -79,7 +79,7 @@ def run():
 
     result = run_audit(content, profile)
     similarity = voice_score(content, profile)
-    print(f"      Voice audit: {result.total_score}/100")
+    print(f"      Heuristic voice audit (uncalibrated): {result.total_score}/100")
     print(f"      Voice similarity: {similarity:.2f}")
     if result.issues:
         print(f"      Issues: {', '.join(result.issues)}")
@@ -95,7 +95,7 @@ def run():
     print(f"      PDF:  {pdf_path}")
 
     print("=" * 40)
-    print(f"Demo complete. Voice audit: {result.total_score}/100, similarity: {similarity:.2f}")
+    print(f"Demo complete. Heuristic audit: {result.total_score}/100, similarity: {similarity:.2f} (uncalibrated)")
     print()
     print("To use real LLM generation:")
     print("  export ANTHROPIC_API_KEY=sk-ant-...")

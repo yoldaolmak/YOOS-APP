@@ -5,6 +5,8 @@ Destinations: local path, Google Drive, WordPress
 """
 import os
 import re
+from html import escape
+from urllib.parse import urlparse
 from datetime import datetime
 from pathlib import Path
 
@@ -13,26 +15,32 @@ def _slug(text: str) -> str:
     return re.sub(r"[^\w-]", "-", text.lower())[:60]
 
 
-def to_html(content: str, title: str = "") -> str:
-    paragraphs = content.split("\n\n")
-    body = ""
-    for p in paragraphs:
-        p = p.strip()
-        if not p:
+def _html_body(content: str, title: str = "") -> str:
+    """Escape plain input while supporting simple Markdown headings."""
+    blocks = [f"<h1>{escape(title)}</h1>"] if title else []
+    for part in content.split("\n\n"):
+        part = part.strip()
+        if not part:
             continue
-        if p.startswith("#"):
-            level = len(p) - len(p.lstrip("#"))
-            text = p.lstrip("# ").strip()
-            body += f"<h{level}>{text}</h{level}>\n"
+        match = re.fullmatch(r"(#{1,6})\s+([^\n]+)", part)
+        if match:
+            level = len(match.group(1))
+            blocks.append(f"<h{level}>{escape(match.group(2))}</h{level}>")
         else:
-            body += f"<p>{p}</p>\n"
-    return f"""<!DOCTYPE html>
-<html lang="tr">
-<head><meta charset="utf-8"><title>{title}</title>
-<style>body{{max-width:800px;margin:40px auto;font-family:Georgia,serif;line-height:1.8;color:#222}}h1,h2,h3{{font-family:sans-serif}}p{{margin:1em 0}}</style>
-</head>
-<body>{"<h1>"+title+"</h1>" if title else ""}{body}</body>
-</html>"""
+            blocks.append(f"<p>{escape(part)}</p>")
+    return "\n".join(blocks)
+
+
+def to_html(content: str, title: str = "") -> str:
+    """Create a standalone HTML document from safely escaped text."""
+    body = _html_body(content, title)
+    return (
+        '<!DOCTYPE html>\n<html lang="und">\n<head><meta charset="utf-8">'
+        f'<title>{escape(title)}</title>\n'
+        '<style>body{max-width:800px;margin:40px auto;font-family:Georgia,serif;'
+        'line-height:1.8;color:#222}h1,h2,h3{font-family:sans-serif}</style>\n'
+        f'</head>\n<body>{body}</body>\n</html>'
+    )
 
 
 def to_pdf(content: str, title: str = "", output_path: str = None) -> str:
@@ -53,12 +61,12 @@ def to_pdf(content: str, title: str = "", output_path: str = None) -> str:
     styles = getSampleStyleSheet()
     story = []
     if title:
-        story.append(Paragraph(title, styles["Title"]))
+        story.append(Paragraph(escape(title), styles["Title"]))
         story.append(Spacer(1, 0.5*cm))
     for para in content.split("\n\n"):
         para = para.strip()
         if para:
-            story.append(Paragraph(para, styles["Normal"]))
+            story.append(Paragraph(escape(para), styles["Normal"]))
             story.append(Spacer(1, 0.3*cm))
     doc.build(story)
     return output_path
@@ -148,14 +156,17 @@ def save_wordpress(content: str, title: str,
     if not all([url, user, pwd]):
         raise RuntimeError("Set WP_URL, WP_USER, WP_APP_PASSWORD env vars")
 
-    html_content = to_html(content, title)
+    parsed = urlparse(url)
+    if parsed.scheme != "https" or not parsed.hostname:
+        raise ValueError("WordPress export requires a valid HTTPS URL")
+    html_content = _html_body(content)
     status = "publish" if publish else "draft"
 
     resp = requests.post(
         f"{url.rstrip('/')}/wp-json/wp/v2/posts",
         auth=(user, pwd),
         json={"title": title, "content": html_content, "status": status},
-        verify=False,
+        verify=True,
         timeout=30,
     )
     resp.raise_for_status()

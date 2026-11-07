@@ -1,31 +1,18 @@
-# Security Policy
+# Security policy
 
-## Supported Versions
+YOOS-APP 0.1.x is an alpha release. Security corrections target the active main branch; older releases have no guaranteed support window.
 
-| Version | Supported |
-|---------|-----------|
-| 1.x (main) | ✅ |
+## Disclosure
 
-## Reporting a Vulnerability
+Use the repository's private GitHub vulnerability-reporting feature if enabled. Otherwise contact the maintainer privately using the repository owner's GitHub profile. Do not put exploit details, credentials, or private writing in public issues.
 
-Email **Alex@example.com** with subject `[SECURITY] YOOS-APP`.
+## Data boundaries
 
-Do not open a public GitHub issue for security vulnerabilities.
+- Analysis is local, but profiles can retain verbatim corpus excerpts and generated drafts can contain input-derived material.
+- Configured cloud model generation sends prompt text, including representative source sentences, to that provider.
+- Google Drive and WordPress exports make network requests only when invoked.
+- WordPress export requires HTTPS with certificate verification enabled and defaults to a draft.
+- Keys come from environment variables. Do not commit them or private generated files.
+- The offline demo uses labeled mock output when no API key is configured.
 
-We will respond within 72 hours and coordinate a fix before public disclosure.
-
-## Security Model
-
-**What YOOS-APP does with your data:**
-- Corpus texts are read from disk and processed in-memory — never stored, logged, or transmitted except to your chosen LLM backend.
-- Generated content is written to your chosen destination only.
-- No telemetry, no analytics, no external calls except LLM API.
-
-**Credentials:**
-- All API keys are read from environment variables — never hardcoded.
-- `.env` files are in `.gitignore` — never commit them.
-- WordPress application passwords are passed at runtime, not stored.
-
-**LLM backends:**
-- Sending corpus excerpts to a third-party LLM API means they are subject to that provider's privacy policy.
-- Use `ollama` backend for fully local, no-data-leaving processing.
+This policy is not a claim of a full independent security audit.

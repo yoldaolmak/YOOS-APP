@@ -2,51 +2,37 @@ name: CI
 
 on:
   push:
-    branches: [main, real-history-v3]
+    branches: [main]
   pull_request:
+
+permissions:
+  contents: read
 
 jobs:
   test:
     runs-on: ubuntu-latest
     strategy:
+      fail-fast: false
       matrix:
-        python-version: ["3.10", "3.11", "3.12"]
-
+        python-version: ['3.10', '3.11', '3.12']
     steps:
       - uses: actions/checkout@v4
-
-      - name: Set up Python ${{ matrix.python-version }}
-        uses: actions/setup-python@v5
+      - uses: actions/setup-python@v5
         with:
           python-version: ${{ matrix.python-version }}
-
-      - name: Install dependencies
+      - name: Install package and tests
         run: |
           python -m pip install --upgrade pip
-          pip install -r requirements.txt
-          pip install pytest httpx
-
-      - name: Compile check — graphova
-        run: python -m compileall graphova/
-
-      - name: Compile check — yoos_app (legacy)
-        run: python -m compileall yoos_app/
-
-      - name: Run all tests
-        run: python -m pytest tests/test_graphova_extractor.py tests/test_graphova_handlers.py tests/test_graphova_auditor.py tests/test_graphova_api.py tests/test_core.py -v --tb=short
-
-      - name: Graphova import smoke test
-        run: |
-          python -c "
-          from graphova.core.extractor import extract
-          from graphova.core.fingerprint import VoiceFingerprint
-          from graphova.core.generator import build_prompt
-          from graphova.core.auditor import audit
-          from graphova.core.scorer import score
-          from graphova.api.db import ProfileDB
-          from graphova.app import app
-          print('All graphova imports OK')
-          "
-
-      - name: Run yoos_app demo (no API key)
+          python -m pip install -e '.[dev]'
+      - name: Compile package
+        run: python -m compileall -q yoos_app
+      - name: Test
+        run: python -m pytest -q tests/
+      - name: CLI smoke test
+        run: yoos-app --version
+      - name: Offline demo
+        env:
+          OPENAI_API_KEY: ''
+          ANTHROPIC_API_KEY: ''
+          OPENROUTER_API_KEY: ''
         run: python -m yoos_app.demo
