@@ -8,7 +8,7 @@ Use the repository's private GitHub vulnerability-reporting feature if enabled. 
 
 ## Data boundaries
 
-- Analysis is local, but profiles can retain verbatim corpus excerpts and generated drafts can contain input-derived material.
+- Local files and pasted writing are analyzed locally, but user-selected `--url` inputs download public HTTPS articles over the network. The reader rejects obvious local/IP addresses, bounds response size, and does not follow unsafe redirects. This is **not** a sandbox for adversarial URL sources. Profiles can retain verbatim corpus excerpts and generated drafts can contain input-derived material.
 - Configured cloud model generation sends prompt text, including representative source sentences, to that provider.
 - Google Drive and WordPress exports make network requests only when invoked.
 - WordPress export requires HTTPS with certificate verification enabled and defaults to a draft. The REST request does not follow HTTP redirects or accept malformed success responses; configure the canonical HTTPS base URL.
