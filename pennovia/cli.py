@@ -41,7 +41,7 @@ def _export_formats(raw, destination, default):
     formats = [value.strip().lower() for value in (raw if raw is not None else default).split(",")]
     supported = {"html", "pdf", "txt"}
     if not formats or any(value not in supported for value in formats):
-        _fail("Supported export formats are html, pdf and txt.")
+        _fail("Unsupported export format. Supported formats are html, pdf and txt.")
     if len(set(formats)) != len(formats):
         _fail("Duplicate export formats are not allowed.")
     if destination == "wordpress" and formats != ["html"]:
