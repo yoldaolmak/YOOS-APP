@@ -7,7 +7,9 @@ All public functions are importable from `pennovia.*`.
 ## ingestion.reader
 
 ```python
-from pennovia.ingestion.reader import read_file, read_corpus
+from pennovia.ingestion.reader import read_file, read_corpus, read_url
+
+article: str = read_url("https://example.org/my-article")
 
 text: str = read_file("/path/to/file.pdf")
 # Supports: .pdf, .html, .htm, .txt
@@ -16,6 +18,8 @@ texts: list[str] = read_corpus(["/path/file1.txt", "/path/file2.pdf"])
 # Skips unreadable, unsupported and short files, warning on stderr
 # Returns only texts with > 50 whitespace-delimited words
 ```
+
+`read_url()` fetches a user-selected public HTTPS HTML/plain-text article with a 2 MB download cap, a small redirect limit, and basic local-address rejection. It returns cleaned text but does not search or crawl a site. The CLI `analyze` and `run` accept repeatable `--url` / `--text` alongside optional `--corpus`; `--text -` reads stdin. Every provided document needs at least 51 words. URLs trigger network requests; pasted data is analyzed locally until model generation is requested.
 
 `read_file()` raises `ValueError` for unsupported extensions. The CLI scans a corpus directory non-recursively in sorted filename order and reports both candidate and usable file counts. For direct API use, `read_corpus()` remains best-effort: check the number of returned texts against your inputs.
 
