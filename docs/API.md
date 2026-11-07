@@ -97,7 +97,7 @@ result.transition_match  # int 0–20
 result.style_match    # int 0–20
 result.no_ai_cliches  # int 0–20
 result.issues         # list[str]
-result.passed()       # bool: diagnostic threshold >= 70, not calibrated
+result.passed()       # bool: score >= 70 AND text is at least 200 words; not calibrated
 result.report()       # str — formatted report
 ```
 
