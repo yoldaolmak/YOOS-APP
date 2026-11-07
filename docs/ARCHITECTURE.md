@@ -65,9 +65,9 @@ Key dimensions extracted by `analyzer.py`:
 
 | Dimension | Metric |
 |-----------|--------|
-| Sentence rhythm | avg length, std dev, short/long ratio |
+| Sentence rhythm | avg length, std dev, short/long ratio (including 1–2 word sentences) |
 | Voice persona | first-person rate, question rate, negative rate |
-| Paragraph style | avg sentences/words per paragraph |
+| Paragraph style | avg sentences/words per non-empty paragraph, including short paragraphs |
 | Vocabulary | type-token ratio, avg word length |
 | Punctuation | em-dash, semicolon, parenthesis rates per 100 sentences |
 | Fingerprint | top transition words (whole expressions only), signature 2-gram phrases |
