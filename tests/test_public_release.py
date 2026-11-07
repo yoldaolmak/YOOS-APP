@@ -3,8 +3,8 @@ from pathlib import Path
 from types import SimpleNamespace
 import sys
 import pytest
-from yoos_app import __version__
-from yoos_app.exporter.writer import to_html, save_wordpress
+from pennovia import __version__
+from pennovia.exporter.writer import to_html, save_wordpress
 
 def test_version_matches_package_metadata():
     metadata = (Path(__file__).resolve().parents[1] / 'pyproject.toml').read_text()
@@ -41,10 +41,10 @@ def test_public_release_points_to_existing_cli():
     ci = (root / '.github/workflows/ci.yml').read_text()
     docker = (root / 'Dockerfile').read_text()
     assert 'python -m pytest -q tests/' in ci
-    assert 'ENTRYPOINT ["yoos-app"]' in docker
-    assert 'yoos-app-server' not in (root / 'pyproject.toml').read_text()
+    assert 'ENTRYPOINT ["pennovia"]' in docker
+    assert 'pennovia-server' not in (root / 'pyproject.toml').read_text()
 
 def test_installed_demo_has_bundled_public_samples():
-    import yoos_app.demo
-    corpus = Path(yoos_app.demo.__file__).parent / 'corpus'
+    import pennovia.demo
+    corpus = Path(pennovia.demo.__file__).parent / 'corpus'
     assert len(list(corpus.glob('*.txt'))) == 3

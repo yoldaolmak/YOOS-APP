@@ -53,7 +53,7 @@ def to_pdf(content: str, title: str = "", output_path: str = None) -> str:
         raise RuntimeError("PDF support requires: pip install reportlab")
 
     if not output_path:
-        output_path = f"/tmp/yoos-{_slug(title or 'output')}.pdf"
+        output_path = f"/tmp/pennovia-{_slug(title or 'output')}.pdf"
 
     doc = SimpleDocTemplate(output_path, pagesize=A4,
                             leftMargin=2.5*cm, rightMargin=2.5*cm,
@@ -87,7 +87,7 @@ def save_local(content: str, title: str, fmt: str,
     folder.mkdir(parents=True, exist_ok=True)
 
     timestamp = datetime.now().strftime("%Y%m%d-%H%M")
-    filename = f"yoos-{_slug(title)}-{timestamp}.{fmt}"
+    filename = f"pennovia-{_slug(title)}-{timestamp}.{fmt}"
     filepath = str(folder / filename)
 
     if fmt == "html":
@@ -129,7 +129,7 @@ def save_google_drive(content: str, title: str, fmt: str) -> str:
         data = content.encode("utf-8")
 
     timestamp = datetime.now().strftime("%Y%m%d-%H%M")
-    name = f"yoos-{_slug(title)}-{timestamp}.{fmt}"
+    name = f"pennovia-{_slug(title)}-{timestamp}.{fmt}"
 
     file = service.files().create(
         body={"name": name, "mimeType": mime},

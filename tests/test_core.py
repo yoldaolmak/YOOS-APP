@@ -5,13 +5,13 @@ import sys, os, tempfile, json
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), ".."))
 
 import pytest
-from yoos_app.ingestion.reader import read_corpus, read_file
-from yoos_app.voice.analyzer import analyze, VoiceProfile
-from yoos_app.content_types.registry import list_types, get
-from yoos_app.exporter.writer import to_html, save_local, to_pdf
-from yoos_app.voice.generator import _build_prompt
-from yoos_app.voice.scorer import score
-from yoos_app.audit import audit
+from pennovia.ingestion.reader import read_corpus, read_file
+from pennovia.voice.analyzer import analyze, VoiceProfile
+from pennovia.content_types.registry import list_types, get
+from pennovia.exporter.writer import to_html, save_local, to_pdf
+from pennovia.voice.generator import _build_prompt
+from pennovia.voice.scorer import score
+from pennovia.audit import audit
 
 CORPUS_DIR = os.path.join(os.path.dirname(__file__), "..", "examples", "corpus")
 CORPUS = [os.path.join(CORPUS_DIR, f)
