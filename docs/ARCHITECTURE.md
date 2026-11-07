@@ -58,7 +58,7 @@ pennovia/
 
 The `VoiceProfile` dataclass is the core artifact. It is:
 - **Portable** — plain JSON, no binary dependencies
-- **Versionable** — can be committed to source control
+- **Versionable** — can be stored in private version control; do not publish corpus excerpts without permission
 - **Forward-compatible** — `VoiceProfile.load()` ignores unknown fields
 
 Key dimensions extracted by `analyzer.py`:

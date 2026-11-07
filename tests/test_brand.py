@@ -27,3 +27,16 @@ def test_demo_output_environment_variable_has_consistent_name():
     root = Path(__file__).resolve().parents[1]
     demo = (root / "pennovia/demo/__main__.py").read_text(encoding="utf-8")
     assert 'PENNOVIA_DEMO_OUTPUT_DIR' in demo
+
+
+def test_demo_topic_matches_bundled_mock_text():
+    root = Path(__file__).resolve().parents[1]
+    demo = (root / "pennovia/demo/__main__.py").read_text(encoding="utf-8")
+    assert 'topic = "Istanbul, Turkey"' in demo
+    assert 'explicit_local_backend = backend in ("ollama", "codex")' in demo
+
+
+def test_cli_honors_named_backend_environment_variable():
+    root = Path(__file__).resolve().parents[1]
+    cli = (root / "pennovia/cli.py").read_text(encoding="utf-8")
+    assert cli.count('default=os.environ.get("PENNOVIA_BACKEND", "auto")') == 2

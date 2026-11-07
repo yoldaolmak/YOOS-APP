@@ -181,7 +181,7 @@ def cmd_demo(_args):
 def main():
     parser = argparse.ArgumentParser(
         prog="pennovia",
-        description="Pennovia — Universal Author Voice Engine",
+        description="Pennovia — Open-source author voice toolkit",
         formatter_class=argparse.RawDescriptionHelpFormatter,
         epilog=__doc__,
     )
@@ -199,7 +199,7 @@ def main():
     p_g.add_argument("--type", default="travel_blog",
                      choices=["travel_blog","travel_guide","magazine","news","story","column"])
     p_g.add_argument("--topic", required=True)
-    p_g.add_argument("--backend", default="auto",
+    p_g.add_argument("--backend", default=os.environ.get("PENNOVIA_BACKEND", "auto"),
                      choices=["auto","openai","anthropic","openrouter","ollama","codex"])
     p_g.add_argument("--model", help="Override model (e.g. gpt-4o, claude-opus-4-8)")
     p_g.add_argument("--out", default="output.txt")
@@ -219,7 +219,7 @@ def main():
     p_r.add_argument("--type", default="travel_blog",
                      choices=["travel_blog","travel_guide","magazine","news","story","column"])
     p_r.add_argument("--topic", required=True)
-    p_r.add_argument("--backend", default="auto",
+    p_r.add_argument("--backend", default=os.environ.get("PENNOVIA_BACKEND", "auto"),
                      choices=["auto","openai","anthropic","openrouter","ollama","codex"])
     p_r.add_argument("--model")
     p_r.add_argument("--format", default="html,txt")

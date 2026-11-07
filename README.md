@@ -32,7 +32,7 @@ pennovia demo
 python -m pytest -q
 ```
 
-`pennovia demo` reads bundled public-domain sample excerpts. With no provider credentials it uses **clearly labeled mock text** to demonstrate the complete offline analyze → audit → export flow; it does not prove model-generation quality.
+`pennovia demo` reads bundled public-domain sample excerpts. By default, without provider credentials it uses **clearly labeled mock text** to demonstrate the complete offline analyze → audit → export flow; it does not prove model-generation quality. To try a running local model, explicitly select `PENNOVIA_BACKEND=ollama`. The demo reports a fallback to mock output if the selected backend fails.
 
 ## Use your own writing
 
@@ -42,7 +42,7 @@ pennovia generate --profile my-voice.json --type travel_guide --topic "Three day
 pennovia export --input draft.txt --title "Lisbon guide" --format html --dest downloads
 ```
 
-Available generation backends: Ollama, OpenAI, Anthropic, OpenRouter and Codex CLI. Ollama requires a running local service; cloud services require your own API key and may require `pip install -e ".[llm]"`. `--backend auto` may choose a configured cloud provider.
+Available generation backends: Ollama, OpenAI, Anthropic, OpenRouter and Codex CLI. Ollama requires a running local service; cloud services require your own API key and may require `pip install -e ".[llm]"`. `--backend auto` may choose a configured cloud provider. Set `PENNOVIA_BACKEND` to choose the default CLI backend, or override it with `--backend`.
 
 To create a WordPress **draft**, set `WP_URL`, `WP_USER` and `WP_APP_PASSWORD`, then choose `--dest wordpress`. The endpoint must use HTTPS. Publication requires an explicit `--publish`; nothing is published automatically by analysis or generation.
 

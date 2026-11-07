@@ -8,8 +8,7 @@ the extracted voice profile.
 
 Outputs to examples/output/:
   - demo_profile.json   (extracted voice profile)
-  - demo_result.html
-  - demo_result.txt
+  - timestamped HTML, TXT and PDF demonstration exports
 """
 import sys
 import os
@@ -54,11 +53,12 @@ def run():
     # 3. Generate content
     print("[3/4] Generating content...")
     backend = os.environ.get("PENNOVIA_BACKEND", "auto")
-    topic = "Cappadocia, Turkey"
+    topic = "Istanbul, Turkey"
 
     any_key = any(os.environ.get(k) for k in
                   ["OPENAI_API_KEY", "ANTHROPIC_API_KEY", "OPENROUTER_API_KEY"])
-    if not any_key:
+    explicit_local_backend = backend in ("ollama", "codex")
+    if not any_key and not explicit_local_backend:
         print("      [DEMO MODE] No LLM key found — using mock output")
         print("      Set OPENAI_API_KEY, ANTHROPIC_API_KEY or OPENROUTER_API_KEY for real generation")
         content = _mock_content()
@@ -85,7 +85,6 @@ def run():
 
     # 4. Export
     print("[4/4] Saving outputs...")
-    title = topic.replace(",", "").replace(" ", "-")
     html_path = save_local(content, topic, "html", str(OUTPUT_DIR))
     txt_path = save_local(content, topic, "txt", str(OUTPUT_DIR))
     pdf_path = save_local(content, topic, "pdf", str(OUTPUT_DIR))

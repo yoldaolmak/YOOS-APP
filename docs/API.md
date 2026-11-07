@@ -69,7 +69,7 @@ content: str = generate(
 )
 ```
 
-`backend="auto"` tries: Anthropic → OpenRouter → OpenAI → Ollama.
+`backend="auto"` tries: Anthropic → OpenRouter → OpenAI → Ollama. The CLI defaults to the `PENNOVIA_BACKEND` environment variable when it is set; an explicit `--backend` takes precedence.
 
 ## audit
 
@@ -114,7 +114,7 @@ path: str = save_local(content, title, fmt="html",
 link: str = save_google_drive(content, title, fmt="html")
 # Requires: GOOGLE_DRIVE_TOKEN env var
 
-# Publish to WordPress
+# Export to WordPress (draft by default; publication requires publish=True)
 url: str = save_wordpress(content, title,
                           wp_url=None,       # HTTPS URL; falls back to WP_URL env var
                           wp_user=None,      # WP_USER
