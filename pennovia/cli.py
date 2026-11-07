@@ -57,7 +57,7 @@ def _check_output_path(path, overwrite):
         _fail(f"Output already exists: {path}. Use --overwrite to replace it.")
 
 
-def _load_corpus(corpus_path):
+def _load_corpus(corpus_path, *, allow_empty=False):
     from pennovia.ingestion.reader import SUPPORTED_EXTENSIONS, read_corpus
 
     path = Path(corpus_path)
@@ -75,10 +75,10 @@ def _load_corpus(corpus_path):
     else:
         _fail(f"Corpus must be a file or directory with supported TXT, HTML or PDF files: {corpus_path}")
 
-    if not files:
+    if not files and not allow_empty:
         _fail(f"No supported TXT, HTML or PDF files found in: {corpus_path}")
     texts = read_corpus(files)
-    if not texts:
+    if not texts and not allow_empty:
         _fail("No usable corpus texts (each file must have more than 50 words).")
     return texts, files
 
@@ -93,7 +93,7 @@ def _load_inputs(args):
     if not (corpus or urls or pasted):
         _fail("Provide at least one --corpus, --url or --text input.")
 
-    texts, sources = _load_corpus(corpus) if corpus else ([], [])
+    texts, sources = _load_corpus(corpus, allow_empty=bool(urls or pasted)) if corpus else ([], [])
     sources = list(sources)
     for number, url in enumerate(urls, 1):
         sources.append(f"URL #{number}")

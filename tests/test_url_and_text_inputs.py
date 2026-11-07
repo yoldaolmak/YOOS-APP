@@ -204,3 +204,34 @@ def test_run_url_and_paste_through_synthetic_provider_to_exports(
     outputs = list(target.glob("*.txt"))
     assert len(outputs) == 1
     assert outputs[0].read_text(encoding="utf-8") == draft
+
+
+def test_valid_paste_still_works_when_corpus_folder_has_no_usable_files(
+    monkeypatch, tmp_path
+):
+    folder = tmp_path / "empty"
+    folder.mkdir()
+    (folder / "short.txt").write_text("just a few words", encoding="utf-8")
+    target = tmp_path / "voice.json"
+    monkeypatch.setattr(sys, "argv", [
+        "pennovia", "analyze", "--corpus", str(folder), "--text", SAMPLE,
+        "--out", str(target),
+    ])
+    cli.main()
+    assert VoiceProfile.load(target).text_count == 1
+
+
+def test_valid_url_works_when_other_corpus_folder_has_no_supported_files(
+    monkeypatch, tmp_path
+):
+    folder = tmp_path / "empty"
+    folder.mkdir()
+    (folder / "ignored.csv").write_text(SAMPLE, encoding="utf-8")
+    monkeypatch.setattr(requests, "get", lambda *a, **kw: Page(html_sample()))
+    target = tmp_path / "voice.json"
+    monkeypatch.setattr(sys, "argv", [
+        "pennovia", "analyze", "--corpus", str(folder),
+        "--url", "https://example.org/article", "--out", str(target),
+    ])
+    cli.main()
+    assert VoiceProfile.load(target).text_count == 1
