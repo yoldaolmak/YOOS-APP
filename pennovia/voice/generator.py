@@ -138,13 +138,23 @@ def generate_ollama(profile: VoiceProfile, content_type: str, topic: str,
 def generate_codex(profile: VoiceProfile, content_type: str, topic: str) -> str:
     system, user = _build_prompt(profile, content_type, topic)
     prompt = f"SYSTEM:\n{system}\n\nUSER:\n{user}\n\nFINAL OUTPUT:"
-    result = subprocess.run(
-        ["codex", "exec", "--ephemeral", "--dangerously-bypass-approvals-and-sandbox",
-         "--skip-git-repo-check", "--color", "never", "-"],
-        input=prompt, text=True, capture_output=True, timeout=600,
-    )
+    # Keep CLI execution non-interactive without disabling the Codex sandbox.
+    # Author corpus text is untrusted; it must not grant filesystem write access.
+    command = [
+        "codex", "exec", "--ephemeral", "--sandbox", "read-only",
+        "--skip-git-repo-check", "--color", "never", "-",
+    ]
+    try:
+        result = subprocess.run(
+            command, input=prompt, text=True, capture_output=True, timeout=600,
+        )
+    except FileNotFoundError as exc:
+        raise RuntimeError("Codex CLI is not installed or not on PATH") from exc
+    except subprocess.TimeoutExpired as exc:
+        raise RuntimeError("Codex CLI timed out after 600 seconds") from exc
     if result.returncode != 0:
-        raise RuntimeError(f"Codex error: {result.stderr[:200]}")
+        # stderr can include local paths, credentials or prompt fragments.
+        raise RuntimeError("Codex CLI failed; inspect its local logs for details")
     return result.stdout.strip()
 
 

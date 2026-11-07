@@ -16,3 +16,4 @@ Use the repository's private GitHub vulnerability-reporting feature if enabled. 
 - The offline demo uses labeled mock output when no API key is configured.
 
 This policy is not a claim of a full independent security audit.
+- The opt-in Codex CLI backend invokes `codex exec` with an explicit read-only sandbox, never with approval or sandbox bypass flags. This limits write operations but does not make untrusted corpus instructions harmless; run with a least-privilege local account and avoid exposing secrets to the model process.
