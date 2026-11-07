@@ -40,6 +40,8 @@ def _install_fake_drive(monkeypatch, result):
             return self
 
         def execute(self):
+            if isinstance(result, Exception):
+                raise result
             return result
 
     credentials.Credentials = Credentials
@@ -79,3 +81,34 @@ def test_drive_rejects_unsupported_format_before_network(monkeypatch):
     monkeypatch.delenv("GOOGLE_DRIVE_TOKEN", raising=False)
     with pytest.raises(ValueError, match="Unsupported export format"):
         save_google_drive("Draft", "Title", "exe")
+
+
+class FakeDriveError(Exception):
+    def __init__(self, status):
+        self.resp = type("Response", (), {"status": status})()
+
+
+@pytest.mark.parametrize("status", [500, 503])
+def test_drive_server_error_is_an_uncertain_write(monkeypatch, status):
+    from pennovia.exporter.writer import RemoteOutcomeUnknown
+
+    _install_fake_drive(monkeypatch, FakeDriveError(status))
+    with pytest.raises(RemoteOutcomeUnknown, match="outcome unknown"):
+        save_google_drive("Draft", "Title", "txt")
+
+
+def test_drive_permission_error_is_a_confirmed_rejection(monkeypatch):
+    from pennovia.exporter.writer import RemoteOutcomeUnknown
+
+    _install_fake_drive(monkeypatch, FakeDriveError(403))
+    with pytest.raises(RuntimeError, match="rejected the upload") as caught:
+        save_google_drive("Draft", "Title", "txt")
+    assert not isinstance(caught.value, RemoteOutcomeUnknown)
+
+
+def test_drive_missing_response_is_uncertain_not_a_silent_success(monkeypatch):
+    from pennovia.exporter.writer import RemoteOutcomeUnknown
+
+    _install_fake_drive(monkeypatch, {})
+    with pytest.raises(RemoteOutcomeUnknown, match="invalid file response"):
+        save_google_drive("Draft", "Title", "txt")
