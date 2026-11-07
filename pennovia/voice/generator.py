@@ -8,6 +8,13 @@ from .analyzer import VoiceProfile
 from ..content_types.registry import get as get_type
 
 
+def _require_draft(content, backend: str) -> str:
+    """Reject missing, non-text and whitespace-only provider responses."""
+    if not isinstance(content, str) or not content.strip():
+        raise RuntimeError(f"{backend} returned no usable draft text")
+    return content.strip()
+
+
 def _build_prompt(profile: VoiceProfile, content_type: str, topic: str) -> tuple[str, str]:
     ctype = get_type(content_type)
     structure = "\n".join(f"  {i+1}. {s}" for i, s in enumerate(ctype["structure"]))
@@ -100,7 +107,7 @@ ABSOLUTE RULES:
 def generate_openai(profile: VoiceProfile, content_type: str, topic: str,
                     model: str = "gpt-4o", api_key: str = None) -> str:
     try:
-        from openai import OpenAI
+        from openai import OpenAI, OpenAIError
     except ImportError:
         raise RuntimeError("OpenAI support requires: pip install openai")
 
@@ -111,15 +118,22 @@ def generate_openai(profile: VoiceProfile, content_type: str, topic: str,
     client = OpenAI(api_key=key)
     system, user = _build_prompt(profile, content_type, topic)
 
-    response = client.chat.completions.create(
-        model=model,
-        messages=[
-            {"role": "system", "content": system},
-            {"role": "user", "content": user},
-        ],
-        temperature=0.8,
-    )
-    return response.choices[0].message.content.strip()
+    try:
+        response = client.chat.completions.create(
+            model=model,
+            messages=[
+                {"role": "system", "content": system},
+                {"role": "user", "content": user},
+            ],
+            temperature=0.8,
+        )
+    except OpenAIError as exc:
+        raise RuntimeError("OpenAI request failed; check credentials, model and service") from exc
+    try:
+        content = response.choices[0].message.content
+    except (AttributeError, IndexError, TypeError) as exc:
+        raise RuntimeError("OpenAI returned an invalid response structure") from exc
+    return _require_draft(content, "OpenAI")
 
 
 def generate_ollama(profile: VoiceProfile, content_type: str, topic: str,
@@ -138,9 +152,16 @@ def generate_ollama(profile: VoiceProfile, content_type: str, topic: str,
         ],
         "stream": False,
     }
-    resp = requests.post("http://localhost:11434/api/chat", json=payload, timeout=300)
-    resp.raise_for_status()
-    return resp.json()["message"]["content"].strip()
+    try:
+        resp = requests.post("http://localhost:11434/api/chat", json=payload, timeout=300)
+        resp.raise_for_status()
+    except requests.RequestException as exc:
+        raise RuntimeError("Ollama request failed; check local service and model") from exc
+    try:
+        content = resp.json()["message"]["content"]
+    except (ValueError, KeyError, TypeError) as exc:
+        raise RuntimeError("Ollama returned an invalid response structure") from exc
+    return _require_draft(content, "Ollama")
 
 
 def generate_codex(profile: VoiceProfile, content_type: str, topic: str) -> str:
@@ -163,7 +184,7 @@ def generate_codex(profile: VoiceProfile, content_type: str, topic: str) -> str:
     if result.returncode != 0:
         # stderr can include local paths, credentials or prompt fragments.
         raise RuntimeError("Codex CLI failed; inspect its local logs for details")
-    return result.stdout.strip()
+    return _require_draft(result.stdout, "Codex CLI")
 
 
 def generate_anthropic(profile: VoiceProfile, content_type: str, topic: str,
@@ -180,13 +201,24 @@ def generate_anthropic(profile: VoiceProfile, content_type: str, topic: str,
     client = anthropic.Anthropic(api_key=key)
     system, user = _build_prompt(profile, content_type, topic)
 
-    response = client.messages.create(
-        model=model,
-        max_tokens=4096,
-        system=system,
-        messages=[{"role": "user", "content": user}],
-    )
-    return response.content[0].text.strip()
+    try:
+        response = client.messages.create(
+            model=model,
+            max_tokens=4096,
+            system=system,
+            messages=[{"role": "user", "content": user}],
+        )
+    except anthropic.AnthropicError as exc:
+        raise RuntimeError("Anthropic request failed; check credentials, model and service") from exc
+    try:
+        content = "\n".join(
+            block.text for block in response.content
+            if getattr(block, "type", "text") == "text"
+            and isinstance(getattr(block, "text", None), str)
+        )
+    except (AttributeError, TypeError) as exc:
+        raise RuntimeError("Anthropic returned an invalid response structure") from exc
+    return _require_draft(content, "Anthropic")
 
 
 def generate_openrouter(profile: VoiceProfile, content_type: str, topic: str,
@@ -201,21 +233,28 @@ def generate_openrouter(profile: VoiceProfile, content_type: str, topic: str,
         raise RuntimeError("OPENROUTER_API_KEY environment variable not set")
 
     system, user = _build_prompt(profile, content_type, topic)
-    resp = requests.post(
-        "https://openrouter.ai/api/v1/chat/completions",
-        headers={"Authorization": f"Bearer {key}", "Content-Type": "application/json"},
-        json={
-            "model": model,
-            "messages": [
-                {"role": "system", "content": system},
-                {"role": "user", "content": user},
-            ],
-            "temperature": 0.8,
-        },
-        timeout=300,
-    )
-    resp.raise_for_status()
-    return resp.json()["choices"][0]["message"]["content"].strip()
+    try:
+        resp = requests.post(
+            "https://openrouter.ai/api/v1/chat/completions",
+            headers={"Authorization": f"Bearer {key}", "Content-Type": "application/json"},
+            json={
+                "model": model,
+                "messages": [
+                    {"role": "system", "content": system},
+                    {"role": "user", "content": user},
+                ],
+                "temperature": 0.8,
+            },
+            timeout=300,
+        )
+        resp.raise_for_status()
+    except requests.RequestException as exc:
+        raise RuntimeError("OpenRouter request failed; check credentials, model and service") from exc
+    try:
+        content = resp.json()["choices"][0]["message"]["content"]
+    except (ValueError, KeyError, IndexError, TypeError) as exc:
+        raise RuntimeError("OpenRouter returned an invalid response structure") from exc
+    return _require_draft(content, "OpenRouter")
 
 
 def generate(profile: VoiceProfile, content_type: str, topic: str,
@@ -233,11 +272,10 @@ def generate(profile: VoiceProfile, content_type: str, topic: str,
             return generate_openai(profile, content_type, topic, **kwargs)
         try:
             return generate_ollama(profile, content_type, topic)
-        except Exception:
+        except RuntimeError as exc:
             raise RuntimeError(
-                "No LLM backend available. Set ANTHROPIC_API_KEY, OPENROUTER_API_KEY, "
-                "or OPENAI_API_KEY, or run Ollama locally."
-            )
+                "No usable LLM backend: configure a cloud provider or check local Ollama"
+            ) from exc
     elif backend == "openai":
         return generate_openai(profile, content_type, topic, **kwargs)
     elif backend == "anthropic":
