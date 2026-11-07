@@ -26,7 +26,7 @@ from pennovia.voice.analyzer import analyze, VoiceProfile
 
 profile: VoiceProfile = analyze(texts, author_name="Hemingway")
 
-profile.save("hemingway.json")
+profile.save("hemingway.json")  # Python API preserves overwrite behavior
 profile = VoiceProfile.load("hemingway.json")
 
 print(profile.summary())
@@ -59,6 +59,8 @@ print(profile.summary())
 | `sample_sentences` | list[str] | Representative sentences |
 
 ### Profile JSON contract
+
+For loss prevention, pass `profile.save(path, overwrite=False)` when writing a new profile via Python. CLI `analyze` and `run --save-profile` refuse replacement by default; `--overwrite` explicitly permits it. The direct Python method keeps its historical default (`overwrite=True`) for compatibility.
 
 `VoiceProfile.save()` writes JSON with `schema_version: 1`. Files written before this field existed remain loadable as version 1. Unknown extra keys are ignored, but a file explicitly declaring another version is rejected to prevent silent interpretation of an incompatible format.
 
