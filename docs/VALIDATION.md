@@ -2,6 +2,12 @@
 
 Pennovia computes **uncalibrated style heuristics**, not an author-identification model. A numerical score is a description of selected surface features, not a probability that a particular person wrote the text.
 
+## Synthetic end-to-end pipeline check
+
+`tests/test_cli_synthetic_pipeline.py` drives the actual `pennovia run` command through bundled corpus ingestion, author profiling, OpenRouter response parsing, heuristic audit and local HTML/TXT/PDF exports. A second case checks a WordPress draft response, and a third checks that empty model output blocks export. Provider and WordPress HTTP responses are simulated; no API keys or network services are needed.
+
+This verifies software integration, **not** live model connectivity, writing quality, voice fidelity or real WordPress publication. A successful CI run does not establish those capabilities.
+
 ## What automated tests establish
 
 The offline suite checks supported English/Turkish token behavior, profile portability, shared first-person semantics, and deliberately different **synthetic writing styles**. Synthetic contrast tests assert only that obvious differences in sentence rhythm, personal pronouns and transition expressions influence score ordering. They do **not** establish real-world author-discrimination accuracy.
