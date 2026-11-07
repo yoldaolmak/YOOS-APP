@@ -81,9 +81,9 @@ The LLM receives a single, fully-formed prompt. No multi-turn conversation, no s
 1. Author voice fingerprint (derived from profile stats)
 2. Sample sentences (tone reference, not to copy)
 3. Content type structure (numbered sections)
-4. Hard rules (no AI clichés, no fabrication, output-only)
+4. Hard rules (avoid stock AI clichés without banning observed author transitions; no fabricated firsthand experience, facts or quotations; output-only)
 
-The prompt is backend-agnostic — the same prompt works with OpenAI, Anthropic, OpenRouter, and Ollama.
+The prompt is backend-agnostic — the same prompt works with OpenAI, Anthropic, OpenRouter, and Ollama. These directions are safeguards, not guarantees: generated claims and first-person accounts still require human verification.
 
 ## Audit (Zero LLM)
 

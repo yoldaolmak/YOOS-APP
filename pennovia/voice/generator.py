@@ -13,6 +13,8 @@ def _build_prompt(profile: VoiceProfile, content_type: str, topic: str) -> tuple
     structure = "\n".join(f"  {i+1}. {s}" for i, s in enumerate(ctype["structure"]))
     samples = "\n".join(f"« {s} »" for s in profile.sample_sentences[:4])
     lang = profile.language
+    person_examples = "ben/benim/bana" if lang == "tr" else "I/me/my"
+    negative_examples = "değil, yok, olmadı" if lang == "tr" else "did not, could not"
 
     # Build rich style fingerprint
     rhythm_desc = (
@@ -26,7 +28,7 @@ def _build_prompt(profile: VoiceProfile, content_type: str, topic: str) -> tuple
     voice_desc_parts = []
     fp = profile.first_person_rate
     if fp > 0.3:
-        voice_desc_parts.append(f"Very first-person ({int(fp*100)}% of sentences use I/me/my)")
+        voice_desc_parts.append(f"Very first-person ({int(fp*100)}% of sentences use {person_examples})")
     elif fp > 0.15:
         voice_desc_parts.append(f"Moderately first-person ({int(fp*100)}%)")
     else:
@@ -34,7 +36,7 @@ def _build_prompt(profile: VoiceProfile, content_type: str, topic: str) -> tuple
 
     neg = getattr(profile, 'negative_rate', 0)
     if neg > 0.2:
-        voice_desc_parts.append(f"favours negative constructions ('did not', 'could not') — {int(neg*100)}% rate")
+        voice_desc_parts.append(f"favours negative constructions ({negative_examples}) — {int(neg*100)}% rate")
 
     q = profile.question_rate
     if q > 0.05:
@@ -80,10 +82,11 @@ STRUCTURE TO FOLLOW:
 ABSOLUTE RULES:
 1. Write ONLY the content — no preamble, no "Here is the article", no meta-commentary.
 2. Match the author's sentence length distribution: {int(getattr(profile,'short_sentence_rate',0)*100)}% short, {int(getattr(profile,'long_sentence_rate',0)*100)}% long.
-3. Do NOT use AI writing clichés: "delve into", "it's worth noting", "in conclusion", "furthermore", "moreover", "a testament to", "in today's world", "navigate", "tapestry".
-4. Do not fabricate specific facts, prices, or dates you cannot verify — write around them instead.
+3. Avoid generic AI writing clichés such as "delve into", "it's worth noting", "in conclusion", "a testament to", "in today's world", and "tapestry". Do not prohibit a transition just because it sounds formal if the author actually uses it.
+4. Do not fabricate specific facts, prices, dates, or quotations you cannot verify — write around them instead.
 5. Output language: {"Turkish" if lang == "tr" else "English"}.
-6. Write as the author would — their level of irony, warmth, distance, or directness."""
+6. Preserve the author's observed rhythm, irony, warmth, distance, and directness without copying sample sentences.
+7. Never invent firsthand visits, personal memories, eyewitness observations, or interviews. A voice profile is evidence of writing style, not evidence that the author experienced the requested topic."""
 
     user = f"Topic: {topic}\n\nWrite this in the author's exact voice and the specified structure."
     return system, user
