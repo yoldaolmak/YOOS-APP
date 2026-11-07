@@ -2,7 +2,7 @@
 
 Pennovia's package metadata currently identifies version **0.2.0 alpha**. Entries here describe merged repository work, not a claimed tagged GitHub release.
 
-## Unreleased — 7 November 2026
+## Unreleased — 7 November 2026\n\n- Reject missing and blank provider responses and report malformed provider replies with bounded errors.
 
 - Reuse one language-aware first-person pronoun measure across analysis, scoring and audit.\n\n- Make two-language detection abstain when uncertain; permit explicit English/Turkish overrides for analysis and pipeline commands.
 
