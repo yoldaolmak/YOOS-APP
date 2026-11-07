@@ -16,7 +16,7 @@ The audit requires at least **200 whitespace-delimited words** and a heuristic s
 - Whether an input corpus contains multiple authors or pasted text from other sources.
 - Whether a high similarity number predicts the quality or originality of a draft.
 
-The current scorer combines sentence-length similarity, first-person rate and observed transitions. Because it does not compare all lexical, syntactic or semantic properties, **unrelated writing can receive a high score** when those limited properties match.
+The corpus analyzer calculates vocabulary richness from fixed 500-token windows with a final tail-covering window. It does not invent signature word pairs across separate source documents. These are descriptive metrics, not proof of a writer's identity.\n\nThe current scorer combines sentence-length similarity, first-person rate and observed transitions. Because it does not compare all lexical, syntactic or semantic properties, **unrelated writing can receive a high score** when those limited properties match.
 
 ## Minimum evidence for future author comparison
 
