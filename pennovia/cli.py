@@ -118,7 +118,7 @@ def cmd_export(args):
                 _ok(f"WordPress {'published' if publish else 'draft'}: {save_wordpress(content, args.title, publish=publish)}")
             else:
                 _ok(f"Saved: {save_local(content, args.title, fmt, dest)}")
-        except RuntimeError as e:
+        except (RuntimeError, ValueError) as e:
             _fail(str(e))
 
 
@@ -168,7 +168,7 @@ def cmd_run(args):
                 _ok(f"Google Drive ({fmt}): {save_google_drive(content, args.topic, fmt)}")
             else:
                 _ok(f"Saved ({fmt}): {save_local(content, args.topic, fmt, dest)}")
-        except RuntimeError as e:
+        except (RuntimeError, ValueError) as e:
             _fail(str(e))
     print(f"\nDone. Score: {result.total_score}/100 | {len(content.split()):,} words")
 

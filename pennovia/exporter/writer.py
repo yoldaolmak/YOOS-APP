@@ -9,6 +9,7 @@ from html import escape
 from urllib.parse import urlparse
 from datetime import datetime
 from pathlib import Path
+import tempfile
 
 
 def _slug(text: str) -> str:
@@ -52,32 +53,43 @@ def to_pdf(content: str, title: str = "", output_path: str = None) -> str:
     except ImportError:
         raise RuntimeError("PDF support requires: pip install reportlab")
 
-    if not output_path:
-        output_path = f"/tmp/pennovia-{_slug(title or 'output')}.pdf"
+    generated_temp = not output_path
+    if generated_temp:
+        fd, output_path = tempfile.mkstemp(
+            prefix=f"pennovia-{_slug(title or 'output')}-", suffix=".pdf"
+        )
+        os.close(fd)
 
-    doc = SimpleDocTemplate(output_path, pagesize=A4,
-                            leftMargin=2.5*cm, rightMargin=2.5*cm,
-                            topMargin=2.5*cm, bottomMargin=2.5*cm)
-    styles = getSampleStyleSheet()
-    story = []
-    if title:
-        story.append(Paragraph(escape(title), styles["Title"]))
-        story.append(Spacer(1, 0.5*cm))
-    for para in content.split("\n\n"):
-        para = para.strip()
-        if para:
-            story.append(Paragraph(escape(para), styles["Normal"]))
-            story.append(Spacer(1, 0.3*cm))
-    doc.build(story)
-    return output_path
-
+    try:
+        doc = SimpleDocTemplate(output_path, pagesize=A4,
+                                leftMargin=2.5*cm, rightMargin=2.5*cm,
+                                topMargin=2.5*cm, bottomMargin=2.5*cm)
+        styles = getSampleStyleSheet()
+        story = []
+        if title:
+            story.append(Paragraph(escape(title), styles["Title"]))
+            story.append(Spacer(1, 0.5*cm))
+        for para in content.split("\n\n"):
+            para = para.strip()
+            if para:
+                story.append(Paragraph(escape(para), styles["Normal"]))
+                story.append(Spacer(1, 0.3*cm))
+        doc.build(story)
+        return output_path
+    except Exception:
+        if generated_temp:
+            Path(output_path).unlink(missing_ok=True)
+        raise
 
 def save_local(content: str, title: str, fmt: str,
                destination: str = "downloads") -> str:
     """
     destination: "downloads" | "desktop" | absolute path string
-    fmt: "html" | "txt" | "pdf"
+    fmt: "html" | "txt" | "pdf". Never replace an existing export.
     """
+    if fmt not in {"html", "txt", "pdf"}:
+        raise ValueError(f"Unsupported export format: {fmt}")
+
     home = Path.home()
     dest_map = {
         "downloads": home / "Downloads",
@@ -87,18 +99,22 @@ def save_local(content: str, title: str, fmt: str,
     folder.mkdir(parents=True, exist_ok=True)
 
     timestamp = datetime.now().strftime("%Y%m%d-%H%M")
-    filename = f"pennovia-{_slug(title)}-{timestamp}.{fmt}"
-    filepath = str(folder / filename)
-
-    if fmt == "html":
-        (folder / filename).write_text(to_html(content, title), encoding="utf-8")
-    elif fmt == "pdf":
-        to_pdf(content, title, filepath)
-    else:
-        (folder / filename).write_text(content, encoding="utf-8")
+    fd, filepath = tempfile.mkstemp(
+        prefix=f"pennovia-{_slug(title)}-{timestamp}-", suffix=f".{fmt}", dir=folder
+    )
+    os.close(fd)
+    try:
+        if fmt == "html":
+            Path(filepath).write_text(to_html(content, title), encoding="utf-8")
+        elif fmt == "pdf":
+            to_pdf(content, title, filepath)
+        else:
+            Path(filepath).write_text(content, encoding="utf-8")
+    except Exception:
+        Path(filepath).unlink(missing_ok=True)
+        raise
 
     return filepath
-
 
 def save_google_drive(content: str, title: str, fmt: str) -> str:
     """Upload to Google Drive root folder. Requires GOOGLE_DRIVE_TOKEN env var."""
@@ -124,7 +140,10 @@ def save_google_drive(content: str, title: str, fmt: str) -> str:
         data = to_html(content, title).encode("utf-8")
     elif fmt == "pdf":
         tmp = to_pdf(content, title)
-        data = open(tmp, "rb").read()
+        try:
+            data = Path(tmp).read_bytes()
+        finally:
+            Path(tmp).unlink(missing_ok=True)
     else:
         data = content.encode("utf-8")
 
