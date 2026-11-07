@@ -68,6 +68,7 @@ filterwarnings = [
 
 [tool.setuptools.package-data]
 "pennovia.demo" = ["corpus/*.txt"]
+"pennovia.studio" = ["*.html", "*.css", "*.js"]
 
 [tool.ruff]
 target-version = "py310"
