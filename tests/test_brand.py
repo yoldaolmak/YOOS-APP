@@ -40,3 +40,13 @@ def test_cli_honors_named_backend_environment_variable():
     root = Path(__file__).resolve().parents[1]
     cli = (root / "pennovia/cli.py").read_text(encoding="utf-8")
     assert cli.count('default=os.environ.get("PENNOVIA_BACKEND", "auto")') == 2
+
+
+def test_demo_is_not_attributed_as_historical_twain_source():
+    root = Path(__file__).resolve().parents[1]
+    demo = (root / "pennovia/demo/__main__.py").read_text(encoding="utf-8")
+    legal = (root / "LEGAL.md").read_text(encoding="utf-8")
+    assert "not verified historical quotations" in demo
+    assert "Illustrative travel writer (Demo)" in demo
+    assert "not authenticated historical quotations" in legal
+    assert "Mark Twain (Demo)" not in demo

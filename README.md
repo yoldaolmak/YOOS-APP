@@ -1,10 +1,14 @@
 # Pennovia
 
-**Your voice. Your words.**
+**A writer's voice is not a prompt preset.**
 
-[![CI](https://github.com/yoldaolmak/Pennovia/actions/workflows/ci.yml/badge.svg)](https://github.com/yoldaolmak/Pennovia/actions/workflows/ci.yml) · Python 3.10+ · MIT · Open source
+*Your voice. Your words.*
 
-Pennovia analyzes writing style and uses a portable voice profile to guide new drafts. It has three interfaces: **Python API** for integrations, **CLI** for automation and **Studio** for a local browser workflow.
+Pennovia is an open-source author-voice engine. It studies the measurable patterns in existing writing, turns them into a portable profile, and uses that profile to guide new drafts. The author remains the editor: inspect the analysis, revise the text, and decide what leaves the workspace.
+
+**One core, three ways to work:** the Python API for developers, the CLI for automation, and Studio for a focused local browser experience. No hosted account, proprietary voice service, or separate generation engine.
+
+[![CI](https://github.com/yoldaolmak/Pennovia/actions/workflows/ci.yml/badge.svg)](https://github.com/yoldaolmak/Pennovia/actions/workflows/ci.yml) · [v0.2.0 alpha](https://github.com/yoldaolmak/Pennovia/releases/tag/v0.2.0) · Python 3.10+ · MIT
 
 ## Install
 
@@ -62,7 +66,22 @@ pennovia demo
 
 Without provider credentials, the demo uses **labeled mock output**.
 
-Demo's Twain-themed samples are **illustrative, not authenticated historic quotations**. The separate [live-model validation](docs/VALIDATION.md) uses original text from Project Gutenberg.
+The bundled demo corpus is **illustrative fiction**, not authenticated historical writing. The real-model experiment below uses original public-domain text from Project Gutenberg.
+
+## Tested with a real model
+
+The [v0.2.0 alpha release](https://github.com/yoldaolmak/Pennovia/releases/tag/v0.2.0) passed six CI jobs and a separate, **unmocked Ollama run**. The live trial used *The Innocents Abroad* by Mark Twain from [Project Gutenberg #3176](https://www.gutenberg.org/ebooks/3176), not the bundled demo corpus.
+
+| Evidence | Verified result |
+| --- | --- |
+| Model | Ollama · `qwen2.5:1.5b` |
+| Source separation | Chapters I, II and IV for the profile; chapter III held out (350 words per excerpt) |
+| Pennovia-generated drafts | 814 words / **77/100**, and 672 words / **68/100** |
+| Neutral model control | **83/100** heuristic audit |
+| Output | Real TXT, HTML and PDF exports; source hash, model digest and drafts archived |
+| Reproducibility | [Live-model workflow and artifacts](https://github.com/yoldaolmak/Pennovia/actions/runs/42406098002) · [Main CI](https://github.com/yoldaolmak/Pennovia/actions/runs/42406097987) |
+
+**What this proves:** the real model, analysis, review and export pipeline ran end to end. **What it does not prove:** reliable author-voice fidelity, factual accuracy, or publishable text. The neutral draft scored above both profile-guided drafts; the numerical scores are uncalibrated. See [validation limits](docs/VALIDATION.md).
 
 ## Integrate
 

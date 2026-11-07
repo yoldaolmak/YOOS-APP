@@ -2,9 +2,8 @@
 Pennovia Demo
 Usage: python -m pennovia.demo
 
-Analyzes 3 Mark Twain travel texts (public domain),
-then generates a travel blog post about Istanbul using
-the extracted voice profile.
+Analyzes three illustrative travel samples (not verified historical quotations),
+then generates a travel blog post about Istanbul from the demo voice profile.
 
 Outputs to examples/output/:
   - demo_profile.json   (extracted voice profile)
@@ -41,7 +40,7 @@ def run():
 
     # 2. Analyze voice
     print("[2/4] Analyzing voice profile...")
-    profile = analyze(texts, author_name="Mark Twain (Demo)")
+    profile = analyze(texts, author_name="Illustrative travel writer (Demo)")
     profile_path = str(OUTPUT_DIR / "demo_profile.json")
     profile.save(profile_path)
     print(f"      Avg sentence: {profile.avg_sentence_words} words")

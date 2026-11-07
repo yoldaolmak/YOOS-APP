@@ -2,6 +2,11 @@
 
 Version **0.2.0 alpha**. GitHub release details are recorded separately in [release notes](release/v0.2.0-alpha.md); the release must pass the live-model and CI gates.
 
+## Post-release maintenance — 7 November 2026
+
+- Refine README introduction and publish precise live Ollama results, including the neutral-control comparison.
+- Validate all bounded profile rate fields and malformed Studio request options; correct the bundled demo's provenance labels. The tagged `v0.2.0` release remains unchanged.
+
 ## Unreleased — 7 November 2026
 
 - Pin public DNS results for HTTPS article downloads to prevent redirect/DNS-rebinding requests to non-public IPs; ignore environment proxies for URL corpus ingestion.
