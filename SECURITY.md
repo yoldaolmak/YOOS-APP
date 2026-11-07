@@ -1,6 +1,6 @@
 # Security policy
 
-YOOS-APP 0.1.x is an alpha release. Security corrections target the active main branch; older releases have no guaranteed support window.
+Pennovia 0.2.x is an alpha release. Security corrections target the active main branch; older releases have no guaranteed support window.
 
 ## Disclosure
 
