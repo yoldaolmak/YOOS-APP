@@ -2,7 +2,6 @@
 Voice audit — scores generated content against the source voice profile.
 No LLM required. Pure statistical comparison.
 """
-import re
 from dataclasses import dataclass
 from .voice.analyzer import VoiceProfile, _sentences, _transition_count, _first_person_rate
 
