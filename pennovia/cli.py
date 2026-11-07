@@ -173,26 +173,54 @@ def cmd_generate(args):
         print("\n" + result.report())
 
 
+def _export_all(content, title, formats, destination, *, publish=False):
+    """Rollback only this invocation's local outputs; never pretend remote writes rollback."""
+    from pennovia.exporter.writer import (
+        RemoteOutcomeUnknown, save_local, save_google_drive, save_wordpress,
+    )
+
+    completed = []
+    try:
+        for number, fmt in enumerate(formats, 1):
+            _step(number, len(formats), f"Exporting {fmt.upper()} to {destination}...")
+            if destination == "google_drive":
+                url = save_google_drive(content, title, fmt)
+                completed.append((None, f"Google Drive ({fmt}): {url}"))
+            elif destination == "wordpress":
+                url = save_wordpress(content, title, publish=publish)
+                label = "published" if publish else "draft"
+                completed.append((None, f"WordPress {label}: {url}"))
+            else:
+                path = save_local(content, title, fmt, destination)
+                completed.append((path, f"Saved ({fmt}): {path}"))
+    except (RuntimeError, ValueError, OSError) as exc:
+        if destination not in ("google_drive", "wordpress"):
+            leftovers = []
+            for path, _ in completed:
+                try:
+                    Path(path).unlink()
+                except OSError:
+                    leftovers.append(str(path))
+            if leftovers:
+                _fail(f"Local export failed: {exc}. Could not remove partial outputs: {', '.join(leftovers)}")
+            _fail(f"Local export failed: {exc}. Created files from this attempt were removed.")
+        if completed:
+            for _, description in completed:
+                _warn(f"Already completed remotely: {description}")
+        if isinstance(exc, RemoteOutcomeUnknown):
+            _fail(f"{exc}. Remote outcome unknown; check the destination before retrying.")
+        _fail(f"Remote export failed: {exc}. {len(completed)} previous remote output(s) remain.")
+    for _, description in completed:
+        _ok(description)
+
+
 def cmd_export(args):
-    from pennovia.exporter.writer import save_local, save_google_drive, save_wordpress
     if not Path(args.input).exists():
         _fail(f"Input not found: {args.input}")
     content = Path(args.input).read_text(encoding="utf-8")
     dest = args.dest or "downloads"
     fmts = _export_formats(args.format, dest, "html")
-    for i, fmt in enumerate(fmts):
-        _step(i+1, len(fmts), f"Exporting {fmt.upper()} to {dest}...")
-        try:
-            if dest == "google_drive":
-                _ok(f"Google Drive: {save_google_drive(content, args.title, fmt)}")
-            elif dest == "wordpress":
-                publish = getattr(args, "publish", False)
-                _ok(f"WordPress {'published' if publish else 'draft'}: {save_wordpress(content, args.title, publish=publish)}")
-            else:
-                _ok(f"Saved: {save_local(content, args.title, fmt, dest)}")
-        except (RuntimeError, ValueError) as e:
-            _fail(str(e))
-
+    _export_all(content, args.title, fmts, dest, publish=getattr(args, "publish", False))
 
 def cmd_run(args):
     dest = args.dest or "downloads"
@@ -203,7 +231,6 @@ def cmd_run(args):
     from pennovia.voice.generator import generate
     from pennovia.audit import audit
     from pennovia.voice.scorer import score
-    from pennovia.exporter.writer import save_local, save_wordpress, save_google_drive
     STEPS = 5
     _step(1, STEPS, "Reading writing samples...")
     texts, sources = _load_inputs(args)
@@ -212,9 +239,6 @@ def cmd_run(args):
     _step(2, STEPS, "Analyzing voice...")
     profile = analyze(texts, author_name=args.author or "unknown", language=args.language)
     _ok(profile.summary().split("\n")[0])
-    if getattr(args, "save_profile", None):
-        profile.save(args.save_profile, overwrite=getattr(args, "overwrite", False))
-        _ok(f"Profile: {args.save_profile}")
     _step(3, STEPS, f"Generating '{args.topic}' ({args.type or 'travel_blog'}) via {args.backend or 'auto'}...")
     t0 = time.time()
     try:
@@ -232,19 +256,11 @@ def cmd_run(args):
     _ok(f"Score: {result.total_score}/100 | similarity: {sim:.2f}")
     if result.issues:
         _warn(f"Issues: {', '.join(result.issues)}")
+    if getattr(args, "save_profile", None):
+        profile.save(args.save_profile, overwrite=getattr(args, "overwrite", False))
+        _ok(f"Profile: {args.save_profile}")
     _step(5, STEPS, "Exporting...")
-    for fmt in fmts:
-        try:
-            if dest == "wordpress":
-                publish = getattr(args, "publish", False)
-                _ok(f"WordPress {'published' if publish else 'draft'}: {save_wordpress(content, args.topic, publish=publish)}")
-                break
-            elif dest == "google_drive":
-                _ok(f"Google Drive ({fmt}): {save_google_drive(content, args.topic, fmt)}")
-            else:
-                _ok(f"Saved ({fmt}): {save_local(content, args.topic, fmt, dest)}")
-        except (RuntimeError, ValueError) as e:
-            _fail(str(e))
+    _export_all(content, args.topic, fmts, dest, publish=getattr(args, "publish", False))
     print(f"\nDone. Score: {result.total_score}/100 | {len(content.split()):,} words")
 
 
