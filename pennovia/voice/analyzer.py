@@ -201,6 +201,24 @@ def _transition_count(text: str, transition: str) -> int:
     return len(re.findall(pattern, text, flags=re.IGNORECASE))
 
 
+# All voice metrics use the same language-aware first-person definition.
+# These are explicit personal pronouns, not grammatical inflection detection.
+_FIRST_PERSON_TR = re.compile(r"\\b(?:ben|benim|bana|bende|beni)\\b", re.I)
+_FIRST_PERSON_EN = re.compile(r"\\b(?:i|i'm|i've|i'd|my|me|myself)\\b", re.I)
+
+
+def _first_person_rate(sentences: list, language: str = "auto") -> float:
+    if not sentences:
+        return 0.0
+    if language == "tr":
+        patterns = (_FIRST_PERSON_TR,)
+    elif language == "en":
+        patterns = (_FIRST_PERSON_EN,)
+    else:
+        patterns = (_FIRST_PERSON_TR, _FIRST_PERSON_EN)
+    return sum(any(p.search(sentence) for p in patterns) for sentence in sentences) / len(sentences)
+
+
 def _std_dev(values: list) -> float:
     if len(values) < 2:
         return 0.0
@@ -257,8 +275,7 @@ def analyze(
     long_rate = sum(1 for w in wc if w > 20) / len(wc)
 
     # --- Voice markers ---
-    fp_pat = re.compile(r"\b(ben|benim|bana|bende|beni|I|I'm|I've|I'd|my|me|myself)\b", re.I)
-    first_person = sum(1 for s in all_sentences if fp_pat.search(s))
+    first_person_rate = _first_person_rate(all_sentences, lang)
     questions = sum(1 for s in all_sentences if s.strip().endswith("?"))
     exclamations = sum(1 for s in all_sentences if s.strip().endswith("!"))
 
@@ -318,7 +335,7 @@ def analyze(
         sentence_std_dev=std_dev,
         short_sentence_rate=round(short_rate, 2),
         long_sentence_rate=round(long_rate, 2),
-        first_person_rate=round(first_person / n, 2),
+        first_person_rate=round(first_person_rate, 2),
         question_rate=round(questions / n, 2),
         exclamation_rate=round(exclamations / n, 2),
         negative_rate=round(neg_rate, 2),
