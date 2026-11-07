@@ -66,10 +66,11 @@ class VoiceProfile:
         return json.dumps(asdict(self), ensure_ascii=False, indent=2)
 
     def save(self, path: str, *, overwrite: bool = True) -> None:
-        """Write JSON; API defaults to historical replacement behavior."""
-        mode = "w" if overwrite else "x"
-        with open(path, mode, encoding="utf-8") as target:
-            target.write(self.to_json())
+        """Write a private JSON profile; keep the Python API overwrite default."""
+        from ..storage import write_private_text
+
+        # Serialize before opening anything so invalid data cannot destroy a file.
+        write_private_text(path, self.to_json(), overwrite=overwrite)
 
     @classmethod
     def load(cls, path: str) -> "VoiceProfile":

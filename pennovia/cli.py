@@ -103,6 +103,7 @@ def cmd_generate(args):
     from pennovia.voice.generator import generate
     from pennovia.audit import audit
     from pennovia.voice.scorer import score
+    from pennovia.storage import write_private_text
     out = args.out or "output.txt"
     _check_output_path(out, getattr(args, "overwrite", False))
     if not Path(args.profile).exists():
@@ -126,8 +127,7 @@ def cmd_generate(args):
     _ok(f"Score: {result.total_score}/100 ({'PASS' if result.passed() else 'FAIL'}) | similarity: {sim:.2f}")
     if result.issues:
         _warn(f"Issues: {', '.join(result.issues)}")
-    with Path(out).open("w" if getattr(args, "overwrite", False) else "x", encoding="utf-8") as target:
-        target.write(content)
+    write_private_text(out, content, overwrite=getattr(args, "overwrite", False))
     _ok(f"Saved: {out}")
     if getattr(args, "verbose", False):
         print("\n" + result.report())

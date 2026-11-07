@@ -24,7 +24,8 @@ texts: list[str] = read_corpus(["/path/file1.txt", "/path/file2.pdf"])
 ```python
 from pennovia.voice.analyzer import analyze, VoiceProfile
 
-profile: VoiceProfile = analyze(texts, author_name="Hemingway")\n# Optional: analyze(texts, author_name="Writer", language="tr")
+profile: VoiceProfile = analyze(texts, author_name="Hemingway")
+# Optional: analyze(texts, author_name="Writer", language="tr")
 
 profile.save("hemingway.json")  # Python API preserves overwrite behavior
 profile = VoiceProfile.load("hemingway.json")
@@ -60,7 +61,7 @@ print(profile.summary())
 
 ### Profile JSON contract
 
-For loss prevention, pass `profile.save(path, overwrite=False)` when writing a new profile via Python. CLI `analyze` and `run --save-profile` refuse replacement by default; `--overwrite` explicitly permits it. The direct Python method keeps its historical default (`overwrite=True`) for compatibility.
+For loss prevention, pass `profile.save(path, overwrite=False)` when writing a new profile via Python. CLI `analyze` and `run --save-profile` refuse replacement by default; `--overwrite` explicitly permits it. The direct Python method keeps its historical default (`overwrite=True`) for compatibility. New profile JSON files and CLI-generated drafts use restrictive permissions on POSIX systems (typically `0600`). Existing outputs are replaced atomically when overwrite is explicit, avoiding partially truncated previous content. This protects ordinary local file writes; it is not encryption or a guarantee against privileged local access.
 
 `VoiceProfile.save()` writes JSON with `schema_version: 1`. Files written before this field existed remain loadable as version 1. Unknown extra keys are ignored, but a file explicitly declaring another version is rejected to prevent silent interpretation of an incompatible format.
 

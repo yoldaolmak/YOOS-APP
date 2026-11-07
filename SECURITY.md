@@ -14,7 +14,7 @@ Use the repository's private GitHub vulnerability-reporting feature if enabled. 
 - WordPress export requires HTTPS with certificate verification enabled and defaults to a draft.
 - Keys come from environment variables. Do not commit them or private generated files.
 - The offline demo uses labeled mock output when no API key is configured.
-- Local exports are written to unique files rather than overwriting an earlier export with the same title; generated temporary PDF files are cleaned up on failure or after Google Drive upload preparation.
+- Local exports are written to unique files rather than overwriting earlier exports. New voice profiles and CLI drafts use owner-only file permissions where supported; explicit replacements are written to a temporary file in the same directory, then atomically replaced. This does not encrypt files. Generated temporary PDFs are cleaned up on failure or after Google Drive upload preparation.
 
 - The opt-in Codex CLI backend invokes `codex exec` with an explicit read-only sandbox, never with approval or sandbox bypass flags. This limits write operations but does not make untrusted corpus instructions harmless; run with a least-privilege local account and avoid exposing secrets to the model process.
 - Local output files use filesystem permissions provided by the operating system; voice profiles are not encrypted at rest.
