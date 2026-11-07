@@ -261,6 +261,28 @@ def _vocabulary_richness(text: str) -> float:
     return round(sum(ratios) / len(ratios), 3)
 
 
+def _sample_sentences(documents: list[list[str]]) -> list[str]:
+    """Select short, medium and long examples across source texts."""
+    lengths = ((5, 12, 2), (13, 22, 2), (23, None, 1))
+    picked_per_document = [0] * len(documents)
+    samples = []
+    for minimum, maximum, limit in lengths:
+        candidates = [
+            [s for s in sentences
+             if minimum <= len(s.split()) and
+             (maximum is None or len(s.split()) <= maximum)]
+            for sentences in documents
+        ]
+        for _ in range(limit):
+            available = [i for i, choices in enumerate(candidates) if choices]
+            if not available:
+                break
+            document = min(available, key=lambda i: (picked_per_document[i], i))
+            samples.append(candidates[document].pop(0))
+            picked_per_document[document] += 1
+    return samples
+
+
 def analyze(
     texts, author_name: str = "unknown", language: str = "auto"
 ) -> VoiceProfile:
@@ -276,17 +298,21 @@ def analyze(
     )
 
     all_sentences = []
+    document_sentences = []
     paragraph_word_counts = []
     paragraph_sent_counts = []
 
     for text in texts:
         paragraphs = [p.strip() for p in text.split("\n\n") if p.strip()]
+        document = []
         for para in paragraphs:
             sents = _sentences(para)
             all_sentences.extend(sents)
+            document.extend(sents)
             if sents:
                 paragraph_sent_counts.append(len(sents))
                 paragraph_word_counts.append(len(para.split()))
+        document_sentences.append(document)
 
     if not all_sentences:
         return VoiceProfile(author_name=author_name, language=lang)
@@ -343,11 +369,8 @@ def analyze(
         and b not in ("that", "this", "with", "from", "they", "have", "were", "been")
     ][:8]
 
-    # --- Sample sentences (representative variety) ---
-    short_samples = [s for s in all_sentences if 5 <= len(s.split()) <= 12][:2]
-    medium_samples = [s for s in all_sentences if 12 < len(s.split()) <= 22][:2]
-    long_samples = [s for s in all_sentences if len(s.split()) > 22][:1]
-    samples = (short_samples + medium_samples + long_samples)[:5]
+    # --- Sample sentences: preserve rhythm variety across source texts ---
+    samples = _sample_sentences(document_sentences)
 
     total_words = len(all_words)
 

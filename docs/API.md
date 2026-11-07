@@ -57,7 +57,7 @@ print(profile.summary())
 | `emdash_rate` | float | Em-dashes per 100 sentences |
 | `top_transitions` | list[str] | Most-used transition words |
 | `signature_phrases` | list[str] | Recurring 2-gram phrases formed within source documents (never across separate files) |
-| `sample_sentences` | list[str] | Representative sentences |
+| `sample_sentences` | list[str] | Up to five short/medium/long reference sentences, distributed across source documents where available |
 
 ### Profile JSON contract
 
