@@ -68,5 +68,5 @@ Pennovia's image runs a command-line tool, not a web service. A container's gene
 
 ## Documentation
 
-- [Configuration](docs/CONFIGURATION.md) · [Architecture](docs/ARCHITECTURE.md) · [Python API](docs/API.md) · [Brand principles](docs/BRAND.md)
+- [Configuration](docs/CONFIGURATION.md) · [Architecture](docs/ARCHITECTURE.md) · [Python API](docs/API.md) · [Voice validation limits](docs/VALIDATION.md) · [Brand principles](docs/BRAND.md)
 - [Changelog](CHANGELOG.md) · [Contributing](CONTRIBUTING.md) · [Security](SECURITY.md) · [Legal notes](LEGAL.md) · [License](LICENSE)
