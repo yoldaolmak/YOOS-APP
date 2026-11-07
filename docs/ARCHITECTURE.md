@@ -94,7 +94,7 @@ The prompt is backend-agnostic — the same prompt works with OpenAI, Anthropic,
 - **Style match (0–20)**: paragraph structure similarity
 - **No AI clichés (0–20)**: penalty for known AI writing patterns
 
-Diagnostic threshold: ≥ 70/100. This is uncalibrated and is not editorial acceptance.
+Diagnostic PASS requires a heuristic total ≥ 70/100 **and at least 200 words**. Insufficient text cannot pass solely by matching superficial traits. Scores remain uncalibrated, and PASS is not an editorial or authorship acceptance decision.
 
 ## Adding a Backend
 

@@ -17,6 +17,7 @@ Pennovia's package metadata currently identifies version **0.2.0 alpha**. Entrie
 - Make corpus ingestion deterministic and CLI diagnostics accurate ([#9](https://github.com/yoldaolmak/Pennovia/pull/9)).
 
 ### Voice analysis and profile reliability
+- Prevent short drafts from passing heuristic review despite high scores; avoid impossible transition warnings.
 - Count complete transition expressions, not word fragments ([#5](https://github.com/yoldaolmak/Pennovia/pull/5)).
 - Include short sentences and paragraphs in rhythm metrics ([#6](https://github.com/yoldaolmak/Pennovia/pull/6)).
 - Align prompt instructions with Turkish/English usage and prohibit invented firsthand accounts ([#8](https://github.com/yoldaolmak/Pennovia/pull/8)).
