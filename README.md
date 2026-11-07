@@ -28,8 +28,6 @@ python -m venv .venv
 source .venv/bin/activate
 python -m pip install -e ".[dev]"
 pennovia --version
-pennovia studio           # open the local browser workspace
-# In another terminal, stop Studio with Ctrl+C before running the offline demo:
 pennovia demo
 python -m pytest -q
 ```
