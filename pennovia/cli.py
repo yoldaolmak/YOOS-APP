@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-YOOS-APP CLI — Universal Author Voice Engine
+Pennovia CLI — Universal Author Voice Engine
 
 Commands:
   analyze   Extract voice profile from a corpus folder
@@ -10,11 +10,11 @@ Commands:
   demo      Run the built-in demo
 
 Examples:
-  yoos-app analyze --corpus ./texts/ --author "Hemingway" --out hem.json
-  yoos-app generate --profile hem.json --type travel_blog --topic "Cuba" --backend openai
-  yoos-app export --input out.txt --title "Cuba Morning" --format pdf --dest desktop
-  yoos-app run --corpus ./texts/ --type magazine --topic "Tokyo streets" --dest wordpress
-  yoos-app demo
+  pennovia analyze --corpus ./texts/ --author "Hemingway" --out hem.json
+  pennovia generate --profile hem.json --type travel_blog --topic "Cuba" --backend openai
+  pennovia export --input out.txt --title "Cuba Morning" --format pdf --dest desktop
+  pennovia run --corpus ./texts/ --type magazine --topic "Tokyo streets" --dest wordpress
+  pennovia demo
 """
 import argparse
 import sys
@@ -37,7 +37,7 @@ def _fail(msg):
     sys.exit(1)
 
 def _load_corpus(corpus_path):
-    from yoos_app.ingestion.reader import read_corpus
+    from pennovia.ingestion.reader import read_corpus
     p = Path(corpus_path)
     if not p.exists():
         _fail(f"Corpus path not found: {corpus_path}")
@@ -52,7 +52,7 @@ def _load_corpus(corpus_path):
 
 
 def cmd_analyze(args):
-    from yoos_app.voice.analyzer import analyze
+    from pennovia.voice.analyzer import analyze
     _step(1, 2, f"Reading corpus: {args.corpus}")
     texts, files = _load_corpus(args.corpus)
     total_words = sum(len(t.split()) for t in texts)
@@ -69,10 +69,10 @@ def cmd_analyze(args):
 
 
 def cmd_generate(args):
-    from yoos_app.voice.analyzer import VoiceProfile
-    from yoos_app.voice.generator import generate
-    from yoos_app.audit import audit
-    from yoos_app.voice.scorer import score
+    from pennovia.voice.analyzer import VoiceProfile
+    from pennovia.voice.generator import generate
+    from pennovia.audit import audit
+    from pennovia.voice.scorer import score
     if not Path(args.profile).exists():
         _fail(f"Profile not found: {args.profile}")
     _step(1, 3, f"Loading profile: {args.profile}")
@@ -102,7 +102,7 @@ def cmd_generate(args):
 
 
 def cmd_export(args):
-    from yoos_app.exporter.writer import save_local, save_google_drive, save_wordpress
+    from pennovia.exporter.writer import save_local, save_google_drive, save_wordpress
     if not Path(args.input).exists():
         _fail(f"Input not found: {args.input}")
     content = Path(args.input).read_text(encoding="utf-8")
@@ -123,11 +123,11 @@ def cmd_export(args):
 
 
 def cmd_run(args):
-    from yoos_app.voice.analyzer import analyze
-    from yoos_app.voice.generator import generate
-    from yoos_app.audit import audit
-    from yoos_app.voice.scorer import score
-    from yoos_app.exporter.writer import save_local, save_wordpress, save_google_drive
+    from pennovia.voice.analyzer import analyze
+    from pennovia.voice.generator import generate
+    from pennovia.audit import audit
+    from pennovia.voice.scorer import score
+    from pennovia.exporter.writer import save_local, save_wordpress, save_google_drive
     STEPS = 5
     _step(1, STEPS, f"Reading corpus: {args.corpus}")
     texts, files = _load_corpus(args.corpus)
@@ -174,19 +174,19 @@ def cmd_run(args):
 
 
 def cmd_demo(_args):
-    from yoos_app.demo.__main__ import run
+    from pennovia.demo.__main__ import run
     run()
 
 
 def main():
     parser = argparse.ArgumentParser(
-        prog="yoos-app",
-        description="YOOS-APP — Universal Author Voice Engine",
+        prog="pennovia",
+        description="Pennovia — Universal Author Voice Engine",
         formatter_class=argparse.RawDescriptionHelpFormatter,
         epilog=__doc__,
     )
-    from yoos_app import __version__
-    parser.add_argument("--version", action="version", version=f"yoos-app {__version__}")
+    from pennovia import __version__
+    parser.add_argument("--version", action="version", version=f"pennovia {__version__}")
     sub = parser.add_subparsers(dest="command", metavar="command")
 
     p_a = sub.add_parser("analyze", help="Extract voice profile from corpus folder")

@@ -1,6 +1,6 @@
 """
-YOOS-APP Demo
-Usage: python -m yoos_app.demo
+Pennovia Demo
+Usage: python -m pennovia.demo
 
 Analyzes 3 Mark Twain travel texts (public domain),
 then generates a travel blog post about Istanbul using
@@ -17,18 +17,18 @@ from pathlib import Path
 
 CORPUS_DIR = Path(__file__).parent / "corpus"
 # Outputs belong to the invoking user, never to the installed package directory.
-OUTPUT_DIR = Path(os.environ.get("YOOS_DEMO_OUTPUT_DIR", str(Path.cwd() / "examples" / "output")))
+OUTPUT_DIR = Path(os.environ.get("Pennovia_DEMO_OUTPUT_DIR", str(Path.cwd() / "examples" / "output")))
 OUTPUT_DIR.mkdir(parents=True, exist_ok=True)
 
 
-from yoos_app.ingestion.reader import read_corpus
-from yoos_app.voice.analyzer import analyze
-from yoos_app.voice.generator import generate
-from yoos_app.exporter.writer import save_local
+from pennovia.ingestion.reader import read_corpus
+from pennovia.voice.analyzer import analyze
+from pennovia.voice.generator import generate
+from pennovia.exporter.writer import save_local
 
 
 def run():
-    print("YOOS-APP Demo")
+    print("Pennovia Demo")
     print("=" * 40)
 
     # 1. Read corpus
@@ -53,7 +53,7 @@ def run():
 
     # 3. Generate content
     print("[3/4] Generating content...")
-    backend = os.environ.get("YOOS_BACKEND", "auto")
+    backend = os.environ.get("PENNOVIA_BACKEND", "auto")
     topic = "Cappadocia, Turkey"
 
     any_key = any(os.environ.get(k) for k in
@@ -73,8 +73,8 @@ def run():
     print(f"      Generated: {words} words")
 
     # 3b. Audit
-    from yoos_app.audit import audit as run_audit
-    from yoos_app.voice.scorer import score as voice_score
+    from pennovia.audit import audit as run_audit
+    from pennovia.voice.scorer import score as voice_score
 
     result = run_audit(content, profile)
     similarity = voice_score(content, profile)
@@ -100,7 +100,7 @@ def run():
     print("  export ANTHROPIC_API_KEY=sk-ant-...")
     print("  export OPENAI_API_KEY=sk-...")
     print("  export OPENROUTER_API_KEY=sk-or-...")
-    print("  export YOOS_BACKEND=ollama  (local Ollama)")
+    print("  export PENNOVIA_BACKEND=ollama  (local Ollama)")
 
 
 def _mock_content() -> str:
