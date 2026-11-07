@@ -2,9 +2,11 @@
 Multi-format text reader.
 Supports: PDF, HTML, TXT
 """
+import ipaddress
 import re
 import sys
 from pathlib import Path
+from urllib.parse import urljoin, urlsplit
 from typing import Iterable
 
 SUPPORTED_EXTENSIONS = frozenset({".txt", ".html", ".htm", ".pdf"})
@@ -35,16 +37,103 @@ def _read_pdf(path: str) -> str:
         raise RuntimeError("PDF support requires: pip install pdfplumber")
 
 
-def _read_html(path: str) -> str:
+def _html_to_text(html: str, *, article_only: bool = False) -> str:
     try:
         from bs4 import BeautifulSoup
-        html = Path(path).read_text(encoding="utf-8", errors="replace")
-        soup = BeautifulSoup(html, "html.parser")
-        for tag in soup(["script", "style", "nav", "footer", "header"]):
-            tag.decompose()
-        return re.sub(r"\n{3,}", "\n\n", soup.get_text(separator="\n")).strip()
-    except ImportError:
-        raise RuntimeError("HTML support requires: pip install beautifulsoup4")
+    except ImportError as exc:
+        raise RuntimeError("HTML support requires: pip install beautifulsoup4") from exc
+
+    soup = BeautifulSoup(html, "html.parser")
+    for tag in soup(["script", "style", "nav", "footer", "header", "aside", "form"]):
+        tag.decompose()
+    root = (soup.find("article") or soup.find("main") or soup) if article_only else soup
+    return re.sub(r"\n{3,}", "\n\n", root.get_text(separator="\n")).strip()
+
+
+def _read_html(path: str) -> str:
+    return _html_to_text(Path(path).read_text(encoding="utf-8", errors="replace"))
+
+
+_MAX_URL_BYTES = 2 * 1024 * 1024
+_MAX_URL_REDIRECTS = 3
+
+
+def _check_article_url(url: str) -> None:
+    """Accept ordinary public HTTPS article links, not local endpoints."""
+    parts = urlsplit(url)
+    try:
+        host = (parts.hostname or "").lower().rstrip(".")
+        port = parts.port
+    except ValueError as exc:
+        raise ValueError("Invalid article URL") from exc
+    if (parts.scheme != "https" or not host or parts.username is not None
+            or parts.password is not None or port not in (None, 443)):
+        raise ValueError("Article URLs must use public HTTPS without embedded credentials")
+    if (host == "localhost" or "." not in host
+            or host.endswith((".localhost", ".local", ".internal", ".test", ".invalid"))):
+        raise ValueError("Local or internal article addresses are not allowed")
+    try:
+        ipaddress.ip_address(host)
+    except ValueError:
+        pass
+    else:
+        raise ValueError("IP-address article links are not allowed")
+
+
+def read_url(url: str) -> str:
+    """Fetch a single public HTML article (or plain text) with bounded resources.
+
+    URLs are user-selected sources, not an automatic website crawler. Limit
+    response size and redirect hops, and reject unsafe URL forms at each hop.
+    """
+    try:
+        import requests
+    except ImportError as exc:
+        raise RuntimeError("URL support requires: pip install requests") from exc
+
+    for _ in range(_MAX_URL_REDIRECTS + 1):
+        _check_article_url(url)
+        try:
+            response = requests.get(
+                url, timeout=(5, 15), stream=True, allow_redirects=False,
+                headers={"User-Agent": "Pennovia/0.2 (author voice corpus reader)"},
+            )
+        except requests.RequestException as exc:
+            raise ValueError("Could not download article; check URL and connection") from exc
+        try:
+            if response.status_code in (301, 302, 303, 307, 308):
+                location = response.headers.get("Location")
+                if not location:
+                    raise ValueError("Article redirect has no destination")
+                url = urljoin(url, location)
+                continue
+            try:
+                response.raise_for_status()
+            except requests.RequestException as exc:
+                raise ValueError("Article URL returned an HTTP error") from exc
+
+            mime = response.headers.get("Content-Type", "").split(";")[0].strip().lower()
+            if mime not in ("text/html", "application/xhtml+xml", "text/plain"):
+                raise ValueError("Article URL must return HTML or plain text")
+            size = 0
+            pieces = []
+            try:
+                for piece in response.iter_content(chunk_size=65536):
+                    size += len(piece)
+                    if size > _MAX_URL_BYTES:
+                        raise ValueError("Article response exceeds 2 MB")
+                    pieces.append(piece)
+            except requests.RequestException as exc:
+                raise ValueError("Article download interrupted") from exc
+            encoding = response.encoding or "utf-8"
+            try:
+                content = b"".join(pieces).decode(encoding, errors="replace")
+            except LookupError as exc:
+                raise ValueError("Article has an unsupported text encoding") from exc
+            return _html_to_text(content, article_only=True) if mime != "text/plain" else content.strip()
+        finally:
+            response.close()
+    raise ValueError("Article redirected too many times")
 
 
 def read_corpus(paths: Iterable[str | Path]) -> list[str]:

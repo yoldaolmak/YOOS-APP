@@ -26,6 +26,24 @@ pennovia export --input draft.txt --title "Lisbon guide" \
   --format html,txt --dest downloads
 ```
 
+You can instead pass one or more blog-post links directly, or paste a text as a separate writing sample:
+
+```bash
+pennovia analyze --url "https://example.org/article-1" \
+  --url "https://example.org/article-2" \
+  --author "Writer" --language en --out voice.json
+
+# Supply pasted text via stdin (type/paste, then Ctrl+D on macOS/Linux)
+pennovia analyze --text - --author "Writer" --language en --out voice.json
+
+# Mix sources in one profile or generate directly from a link:
+pennovia run --corpus ./older-articles \
+  --url "https://example.org/recent-article" \
+  --topic "Three days in Lisbon" --backend ollama
+```
+
+Both \`analyze\` and \`run\` accept repeatable \`--url\` and \`--text\` options and an optional \`--corpus\`. \`--text "your text"\` accepts inline text; \`--text -\` reads one text from stdin. Each individual sample requires at least **51 words**. Unreadable, inaccessible or short sources are reported and skipped; the command stops if none is usable. Public HTTPS web pages are fetched on demand (HTML or plain text; at most 2 MB), following only a few HTTPS redirects. The reader prefers an article or main element, removes common site chrome, and cannot extract content hidden behind logins, anti-bot pages or JavaScript-only rendering. URL fetching contacts the selected websites; it is not an unattended crawler or security isolation boundary.
+
 A corpus can be one supported TXT, HTML or PDF file, or a directory of such files. English/Turkish language detection is heuristic; use `--language tr` or `--language en` when you know the corpus language, especially for short or mixed text. The directory scan is non-recursive and alphabetical. Each usable file must contain more than 50 whitespace-delimited words; rejected files are reported on stderr. Voice profiles can contain verbatim sample sentences from your source material. During generation these samples are supplied to the model as lower-priority untrusted style evidence, not trusted system instructions. This reduces prompt-injection risk but does not guarantee that a model ignores malicious directions inside source text.
 
 CLI `analyze`, `generate` and `run --save-profile` refuse to replace an existing output unless you explicitly pass `--overwrite`. Local exports use unique filenames.

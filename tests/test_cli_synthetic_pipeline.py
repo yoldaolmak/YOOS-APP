@@ -109,7 +109,7 @@ def test_cli_real_analyze_generate_audit_export_with_synthetic_provider(
     )
 
     stdout = capsys.readouterr().out
-    assert "[1/5] Reading corpus" in stdout
+    assert "[1/5] Reading writing samples" in stdout
     assert "[2/5] Analyzing voice" in stdout
     assert "[3/5] Generating" in stdout
     assert "[4/5] Auditing" in stdout
