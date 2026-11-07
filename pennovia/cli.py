@@ -329,7 +329,7 @@ def main():
     p_s.add_argument("--port", type=int, default=8765, help="Local port (default: 8765)")
     p_s.add_argument("--no-browser", action="store_true", help="Do not open a browser automatically")
 
-    sub.add_parser("demo", help="Run built-in demo (Mark Twain corpus, no key needed)")
+    sub.add_parser("demo", help="Run built-in demo (illustrative corpus, no key needed)")
 
     args = parser.parse_args()
     if not args.command:
