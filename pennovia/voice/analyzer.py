@@ -113,7 +113,7 @@ class VoiceProfile:
         rates = (
             "short_sentence_rate", "long_sentence_rate",
             "first_person_rate", "question_rate", "exclamation_rate",
-            "vocabulary_richness",
+            "negative_rate", "vocabulary_richness",
         )
         if any(values.get(name, 0) > 1 for name in rates):
             raise ValueError("Voice profile rate fields must be between 0 and 1")
