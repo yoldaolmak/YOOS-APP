@@ -6,7 +6,7 @@
 
 **Pennovia is an open-source author voice toolkit.** Give it writing you have permission to use, inspect how you write, and use that profile to guide an AI-assisted draft without surrendering editorial control.
 
-It is a standalone Python CLI. No hosted account, subscription, proprietary runtime, or vendor-specific voice storage is required. Its statistical analysis runs locally; model inference can use Ollama or a configured external provider.
+It provides a standalone Python CLI and a local browser Studio. No hosted account, subscription, proprietary runtime, or vendor-specific voice storage is required. Its statistical analysis runs locally; model inference can use Ollama or a configured external provider.
 
 ## What you can actually do
 
@@ -34,6 +34,21 @@ python -m pytest -q
 
 `pennovia demo` reads bundled public-domain sample excerpts. By default, without provider credentials it uses **clearly labeled mock text** to demonstrate the complete offline analyze → audit → export flow; it does not prove model-generation quality. To try a running local model, explicitly select `PENNOVIA_BACKEND=ollama`. The demo reports a fallback to mock output if the selected backend fails.
 
+## Pennovia Studio — a single local workspace
+
+Run the browser interface from the same installed package:
+
+```bash
+pennovia studio
+# Open http://127.0.0.1:8765 (opens automatically)
+# Or choose a port without opening the browser:
+pennovia studio --port 8766 --no-browser
+```
+
+Studio lets you add public HTTPS article links, paste original writing, or choose TXT/HTML/PDF files; analyze a voice profile; export/import profile JSON; choose a model and draft type; edit and re-review a draft; and download TXT/HTML/PDF or send a **draft** to WordPress / Google Drive. No separate server, account, database or new backend is installed. The UI is a local tool, not a publicly deployed website.
+
+Profile analysis runs locally (article links are downloaded from their selected sites). Draft generation uses **only the explicitly chosen model provider**, which needs to be configured in the environment; there is no silent mock fallback and no place to type secrets into the browser. Style scores are heuristic, not a guarantee of author-voice fidelity. See [Studio setup and limitations](docs/CONFIGURATION.md#browser-studio).
+
 ## Use your own writing
 
 ```bash
@@ -42,7 +57,7 @@ pennovia generate --profile my-voice.json --type travel_guide --topic "Three day
 pennovia export --input draft.txt --title "Lisbon guide" --format html --dest downloads
 ```
 
-You can also supply article links or paste writing without saving files first. Repeat \`--url\` or \`--text\` for multiple source documents; mix them with \`--corpus\` if needed:
+You can also supply article links or paste writing without saving files first. Repeat `--url` or `--text` for multiple source documents; mix them with `--corpus` if needed:
 
 ```bash
 pennovia analyze --url "https://example.org/my-article" \
@@ -53,7 +68,7 @@ pennovia analyze --url "https://example.org/my-article" \
 pennovia analyze --text - --author "Example Writer" --out my-voice.json
 ```
 
-\`analyze\` and \`run\` accept the same inputs. Each sample needs at least 51 words. The URL reader fetches public HTTPS HTML/text pages with a small response limit; it does not crawl entire sites or extract JavaScript-rendered articles. For pasted snippets, \`--text "Your writing here..."\` is also accepted.
+`analyze` and `run` accept the same inputs. Each sample needs at least 51 words. The URL reader fetches public HTTPS HTML/text pages with a small response limit; it does not crawl entire sites or extract JavaScript-rendered articles. For pasted snippets, `--text "Your writing here..."` is also accepted.
 
 Available generation backends: Ollama, OpenAI, Anthropic, OpenRouter and Codex CLI. Follow the [configuration guide](docs/CONFIGURATION.md) for supported setups and provider data boundaries. Ollama requires a running local service; cloud services require your own API key and may require `pip install -e ".[llm]"`. `--backend auto` may choose a configured cloud provider. Set `PENNOVIA_BACKEND` to choose the default CLI backend, or override it with `--backend`.
 
