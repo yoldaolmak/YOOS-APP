@@ -20,7 +20,6 @@ CORPUS_DIR = Path(__file__).parent / "corpus"
 OUTPUT_DIR = Path(os.environ.get("YOOS_DEMO_OUTPUT_DIR", str(Path.cwd() / "examples" / "output")))
 OUTPUT_DIR.mkdir(parents=True, exist_ok=True)
 
-sys.path.insert(0, str(ROOT))
 
 from yoos_app.ingestion.reader import read_corpus
 from yoos_app.voice.analyzer import analyze
