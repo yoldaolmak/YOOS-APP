@@ -118,9 +118,14 @@ def _handle_api(path: str, payload: dict) -> dict | tuple[str, bytes, str]:
         return {**_summary(profile), "accepted": len(texts),
                 "words": profile.total_words, "warnings": warnings}
     if path == "/api/profile":
-        return _summary(VoiceProfile.from_dict(payload.get("profile")))
+        profile = VoiceProfile.from_dict(payload.get("profile"))
+        if profile.total_words == 0 or profile.text_count == 0:
+            raise ValueError("Profile has no analyzed writing samples")
+        return _summary(profile)
     if path in ("/api/generate", "/api/review", "/api/export"):
         profile = VoiceProfile.from_dict(payload.get("profile"))
+        if profile.total_words == 0 or profile.text_count == 0:
+            raise ValueError("Profile has no analyzed writing samples")
         if path == "/api/generate":
             from pennovia.voice.generator import generate
 
