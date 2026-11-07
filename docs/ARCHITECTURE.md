@@ -70,7 +70,7 @@ Key dimensions extracted by `analyzer.py`:
 | Paragraph style | avg sentences/words per paragraph |
 | Vocabulary | type-token ratio, avg word length |
 | Punctuation | em-dash, semicolon, parenthesis rates per 100 sentences |
-| Fingerprint | top transition words, signature 2-gram phrases |
+| Fingerprint | top transition words (whole expressions only), signature 2-gram phrases |
 | Examples | 5 sample sentences (short, medium, long) |
 
 ## Prompt Strategy

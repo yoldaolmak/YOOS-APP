@@ -117,6 +117,15 @@ def _detect_language(text: str) -> str:
     return "tr" if tr_chars > 5 else "en"
 
 
+def _transition_count(text: str, transition: str) -> int:
+    """Count complete transition expressions, not substrings inside other words."""
+    terms = transition.split()
+    if not terms:
+        return 0
+    pattern = r"(?<!\w)" + r"\s+".join(re.escape(term) for term in terms) + r"(?!\w)"
+    return len(re.findall(pattern, text, flags=re.IGNORECASE))
+
+
 def _std_dev(values: list) -> float:
     if len(values) < 2:
         return 0.0
@@ -195,9 +204,10 @@ def analyze(texts, author_name: str = "unknown") -> VoiceProfile:
 
     # --- Transitions ---
     lower_text = all_text.lower()
+    transition_counts = [(t, _transition_count(all_text, t)) for t in transitions]
     found_transitions = sorted(
-        [(t, lower_text.count(t)) for t in transitions if lower_text.count(t) > 0],
-        key=lambda x: -x[1]
+        ((t, count) for t, count in transition_counts if count > 0),
+        key=lambda x: -x[1],
     )
     top_transitions = [t for t, _ in found_transitions[:10]]
 

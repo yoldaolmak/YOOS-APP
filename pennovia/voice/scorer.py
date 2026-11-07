@@ -4,7 +4,7 @@ sentence-level statistical fingerprint. No embeddings needed.
 """
 import re
 import math
-from .analyzer import VoiceProfile, _sentences
+from .analyzer import VoiceProfile, _sentences, _transition_count
 
 
 def score(content: str, profile: VoiceProfile) -> float:
@@ -25,9 +25,8 @@ def score(content: str, profile: VoiceProfile) -> float:
     fp_sim = 1.0 - min(1.0, abs(fp - profile.first_person_rate) / max(profile.first_person_rate, 0.01))
 
     # Transition coverage
-    lower = content.lower()
     if profile.top_transitions:
-        trans_found = sum(1 for t in profile.top_transitions if t in lower)
+        trans_found = sum(1 for t in profile.top_transitions if _transition_count(content, t))
         trans_sim = trans_found / len(profile.top_transitions)
     else:
         trans_sim = 0.5
