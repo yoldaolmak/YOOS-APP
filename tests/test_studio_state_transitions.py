@@ -3,12 +3,11 @@ import threading
 
 import pytest
 
-playwright = pytest.importorskip("playwright.sync_api")
-
 from pennovia.exporter import writer
-from pennovia.studio import server
 from pennovia.voice import generator
 from tests.test_studio_browser import DRAFT, SAMPLE, local_studio
+
+playwright = pytest.importorskip("playwright.sync_api")
 
 
 def _ready(page):
