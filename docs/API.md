@@ -1,13 +1,13 @@
 # Python API Reference
 
-YOOS-APP 0.1.0 provides a Python API and CLI, not a maintained HTTP service. The numerical voice scores below are uncalibrated heuristics.
+Pennovia 0.2.0 provides a Python API and CLI, not a maintained HTTP service. The numerical voice scores below are uncalibrated heuristics.
 
-All public functions are importable from `yoos_app.*`.
+All public functions are importable from `pennovia.*`.
 
 ## ingestion.reader
 
 ```python
-from yoos_app.ingestion.reader import read_file, read_corpus
+from pennovia.ingestion.reader import read_file, read_corpus
 
 text: str = read_file("/path/to/file.pdf")
 # Supports: .pdf, .html, .htm, .txt
@@ -20,7 +20,7 @@ texts: list[str] = read_corpus(["/path/file1.txt", "/path/file2.pdf"])
 ## voice.analyzer
 
 ```python
-from yoos_app.voice.analyzer import analyze, VoiceProfile
+from pennovia.voice.analyzer import analyze, VoiceProfile
 
 profile: VoiceProfile = analyze(texts, author_name="Hemingway")
 
@@ -58,7 +58,7 @@ print(profile.summary())
 ## voice.generator
 
 ```python
-from yoos_app.voice.generator import generate
+from pennovia.voice.generator import generate
 
 content: str = generate(
     profile,
@@ -69,12 +69,12 @@ content: str = generate(
 )
 ```
 
-`backend="auto"` tries: Anthropic → OpenRouter → OpenAI → Ollama.
+`backend="auto"` tries: Anthropic → OpenRouter → OpenAI → Ollama. The CLI defaults to the `PENNOVIA_BACKEND` environment variable when it is set; an explicit `--backend` takes precedence.
 
 ## audit
 
 ```python
-from yoos_app.audit import audit, AuditResult
+from pennovia.audit import audit, AuditResult
 
 result: AuditResult = audit(content, profile)
 
@@ -91,7 +91,7 @@ result.report()       # str — formatted report
 ## voice.scorer
 
 ```python
-from yoos_app.voice.scorer import score
+from pennovia.voice.scorer import score
 
 similarity: float = score(content, profile)  # 0.0 – 1.0
 ```
@@ -99,7 +99,7 @@ similarity: float = score(content, profile)  # 0.0 – 1.0
 ## exporter.writer
 
 ```python
-from yoos_app.exporter.writer import (
+from pennovia.exporter.writer import (
     to_html, to_pdf, save_local, save_google_drive, save_wordpress
 )
 
@@ -114,7 +114,7 @@ path: str = save_local(content, title, fmt="html",
 link: str = save_google_drive(content, title, fmt="html")
 # Requires: GOOGLE_DRIVE_TOKEN env var
 
-# Publish to WordPress
+# Export to WordPress (draft by default; publication requires publish=True)
 url: str = save_wordpress(content, title,
                           wp_url=None,       # HTTPS URL; falls back to WP_URL env var
                           wp_user=None,      # WP_USER
@@ -125,7 +125,7 @@ url: str = save_wordpress(content, title,
 ## content_types.registry
 
 ```python
-from yoos_app.content_types.registry import list_types, get
+from pennovia.content_types.registry import list_types, get
 
 types: dict = list_types()
 # {"travel_blog": "Seyahat Blogu / Travel Blog", ...}

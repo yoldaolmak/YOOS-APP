@@ -1,13 +1,13 @@
 # Architecture
 
-YOOS-APP is a standalone CLI. No HTTP server is shipped. Local metrics are diagnostic heuristics, not independently calibrated quality or authorship measures.
+Pennovia is a standalone CLI. No HTTP server is shipped. Local metrics are diagnostic heuristics, not independently calibrated quality or authorship measures.
 
 ## Overview
 
-YOOS-APP is designed as a single-responsibility pipeline. Each module does exactly one thing and is independently testable without any API key.
+Pennovia is designed as a single-responsibility pipeline. Each module does exactly one thing and is independently testable without any API key.
 
 ```
-yoos_app/
+pennovia/
 ├── ingestion/       Input parsing
 │   └── reader.py   read_file(), read_corpus()
 │
@@ -25,7 +25,7 @@ yoos_app/
 ├── audit.py         audit() → AuditResult (0–100)
 ├── cli.py           Command-line interface
 └── demo/            Self-contained demo
-    └── __main__.py  python -m yoos_app.demo
+    └── __main__.py  python -m pennovia.demo
 ```
 
 ## Data Flow
@@ -58,7 +58,7 @@ yoos_app/
 
 The `VoiceProfile` dataclass is the core artifact. It is:
 - **Portable** — plain JSON, no binary dependencies
-- **Versionable** — can be committed to source control
+- **Versionable** — can be stored in private version control; do not publish corpus excerpts without permission
 - **Forward-compatible** — `VoiceProfile.load()` ignores unknown fields
 
 Key dimensions extracted by `analyzer.py`:

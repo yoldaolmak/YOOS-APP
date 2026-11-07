@@ -25,25 +25,25 @@ jobs:
           python -m pip install --upgrade pip
           python -m pip install -e '.[dev]'
       - name: Compile package
-        run: python -m compileall -q yoos_app
+        run: python -m compileall -q pennovia
       - name: Test
         run: python -m pytest -q tests/
       - name: CLI smoke test
-        run: yoos-app --version
+        run: pennovia --version
       - name: Offline demo
         env:
           OPENAI_API_KEY: ''
           ANTHROPIC_API_KEY: ''
           OPENROUTER_API_KEY: ''
-        run: python -m yoos_app.demo
+        run: python -m pennovia.demo
 
   container-smoke:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
       - name: Build CLI container
-        run: docker build -t yoos-app-ci .
+        run: docker build -t pennovia-ci .
       - name: CLI and offline demo
         run: |
-          docker run --rm yoos-app-ci --version
-          docker run --rm yoos-app-ci demo
+          docker run --rm pennovia-ci --version
+          docker run --rm pennovia-ci demo

@@ -1,16 +1,16 @@
 # Contributing
 
-Contributions to the standalone YOOS-APP CLI should improve working analysis, author voice profiling, drafting, tests, or safe exports.
+Contributions to the standalone Pennovia CLI should improve working analysis, author voice profiling, drafting, tests, or safe exports.
 
 ```bash
-git clone https://github.com/yoldaolmak/YOOS-APP.git
-cd YOOS-APP
+git clone https://github.com/yoldaolmak/Pennovia.git
+cd Pennovia
 python -m venv .venv
 source .venv/bin/activate
 python -m pip install -e ".[dev]"
-python -m compileall -q yoos_app
+python -m compileall -q pennovia
 python -m pytest -q
-python -m yoos_app.demo
+python -m pennovia.demo
 ```
 
 Use synthetic or properly licensed fixtures; never commit private corpus data, secret keys, personal profiles, or generated drafts. Tests must run without an API key. A proposed change must have an observable behavior or verified bug fix, regression tests, and a documented limitation where relevant.

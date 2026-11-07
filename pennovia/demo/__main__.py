@@ -1,6 +1,6 @@
 """
-YOOS-APP Demo
-Usage: python -m yoos_app.demo
+Pennovia Demo
+Usage: python -m pennovia.demo
 
 Analyzes 3 Mark Twain travel texts (public domain),
 then generates a travel blog post about Istanbul using
@@ -8,8 +8,7 @@ the extracted voice profile.
 
 Outputs to examples/output/:
   - demo_profile.json   (extracted voice profile)
-  - demo_result.html
-  - demo_result.txt
+  - timestamped HTML, TXT and PDF demonstration exports
 """
 import sys
 import os
@@ -17,18 +16,18 @@ from pathlib import Path
 
 CORPUS_DIR = Path(__file__).parent / "corpus"
 # Outputs belong to the invoking user, never to the installed package directory.
-OUTPUT_DIR = Path(os.environ.get("YOOS_DEMO_OUTPUT_DIR", str(Path.cwd() / "examples" / "output")))
+OUTPUT_DIR = Path(os.environ.get("PENNOVIA_DEMO_OUTPUT_DIR", str(Path.cwd() / "examples" / "output")))
 OUTPUT_DIR.mkdir(parents=True, exist_ok=True)
 
 
-from yoos_app.ingestion.reader import read_corpus
-from yoos_app.voice.analyzer import analyze
-from yoos_app.voice.generator import generate
-from yoos_app.exporter.writer import save_local
+from pennovia.ingestion.reader import read_corpus
+from pennovia.voice.analyzer import analyze
+from pennovia.voice.generator import generate
+from pennovia.exporter.writer import save_local
 
 
 def run():
-    print("YOOS-APP Demo")
+    print("Pennovia Demo")
     print("=" * 40)
 
     # 1. Read corpus
@@ -53,12 +52,13 @@ def run():
 
     # 3. Generate content
     print("[3/4] Generating content...")
-    backend = os.environ.get("YOOS_BACKEND", "auto")
-    topic = "Cappadocia, Turkey"
+    backend = os.environ.get("PENNOVIA_BACKEND", "auto")
+    topic = "Istanbul, Turkey"
 
     any_key = any(os.environ.get(k) for k in
                   ["OPENAI_API_KEY", "ANTHROPIC_API_KEY", "OPENROUTER_API_KEY"])
-    if not any_key:
+    explicit_local_backend = backend in ("ollama", "codex")
+    if not any_key and not explicit_local_backend:
         print("      [DEMO MODE] No LLM key found — using mock output")
         print("      Set OPENAI_API_KEY, ANTHROPIC_API_KEY or OPENROUTER_API_KEY for real generation")
         content = _mock_content()
@@ -73,8 +73,8 @@ def run():
     print(f"      Generated: {words} words")
 
     # 3b. Audit
-    from yoos_app.audit import audit as run_audit
-    from yoos_app.voice.scorer import score as voice_score
+    from pennovia.audit import audit as run_audit
+    from pennovia.voice.scorer import score as voice_score
 
     result = run_audit(content, profile)
     similarity = voice_score(content, profile)
@@ -85,7 +85,6 @@ def run():
 
     # 4. Export
     print("[4/4] Saving outputs...")
-    title = topic.replace(",", "").replace(" ", "-")
     html_path = save_local(content, topic, "html", str(OUTPUT_DIR))
     txt_path = save_local(content, topic, "txt", str(OUTPUT_DIR))
     pdf_path = save_local(content, topic, "pdf", str(OUTPUT_DIR))
@@ -100,7 +99,7 @@ def run():
     print("  export ANTHROPIC_API_KEY=sk-ant-...")
     print("  export OPENAI_API_KEY=sk-...")
     print("  export OPENROUTER_API_KEY=sk-or-...")
-    print("  export YOOS_BACKEND=ollama  (local Ollama)")
+    print("  export PENNOVIA_BACKEND=ollama  (local Ollama)")
 
 
 def _mock_content() -> str:
