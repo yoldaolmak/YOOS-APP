@@ -118,6 +118,8 @@ def save_local(content: str, title: str, fmt: str,
 
 def save_google_drive(content: str, title: str, fmt: str) -> str:
     """Upload to Google Drive root folder. Requires GOOGLE_DRIVE_TOKEN env var."""
+    if fmt not in {"html", "txt", "pdf"}:
+        raise ValueError(f"Unsupported export format: {fmt}")
     try:
         from google.oauth2.credentials import Credentials
         from googleapiclient.discovery import build
@@ -156,7 +158,12 @@ def save_google_drive(content: str, title: str, fmt: str) -> str:
         fields="id,webViewLink",
     ).execute()
 
-    return file.get("webViewLink", file["id"])
+    if not isinstance(file, dict):
+        raise RuntimeError("Google Drive returned an invalid file response")
+    link = file.get("webViewLink") or file.get("id")
+    if not isinstance(link, str) or not link.strip():
+        raise RuntimeError("Google Drive returned an invalid file response")
+    return link
 
 
 def save_wordpress(content: str, title: str,
