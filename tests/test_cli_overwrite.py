@@ -1,7 +1,6 @@
 """CLI draft/profile outputs must require explicit replacement intent."""
 import subprocess
 import sys
-from pathlib import Path
 from types import SimpleNamespace
 
 import pytest
