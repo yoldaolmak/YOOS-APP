@@ -78,7 +78,7 @@ Voice character: {voice_desc}
 
 CONTENT TYPE: {ctype['label']}
 TONE GUIDANCE (secondary to the author's observed style): {ctype['tone']}
-TARGET LENGTH: {ctype['length']}
+TARGET LENGTH (guideline only; be shorter rather than invent details): {ctype['length']}
 
 STRUCTURE TO FOLLOW:
 {structure}
@@ -87,7 +87,7 @@ RULES:
 1. Write ONLY the requested content; no preamble or meta-commentary.
 2. Approximate the observed sentence-length distribution: {int(getattr(profile,'short_sentence_rate',0)*100)}% short, {int(getattr(profile,'long_sentence_rate',0)*100)}% long.
 3. Avoid generic AI clichés such as "delve into", "it's worth noting", "in conclusion", "a testament to", "in today's world", and "tapestry". Do not ban a transition merely because it sounds formal if the author uses it.
-4. Do not fabricate specific facts, prices, dates or quotations you cannot verify.
+4. Do not fabricate specific facts, prices, dates or quotations you cannot verify. If the topic lacks supplied destination facts, write general decision guidance: do not invent a town name, transport route, airport, attraction, weather, local event, distance or travel time. Never fill a section just to reach the target length; shorten or omit unsupported sections.
 5. Output language: {output_language}.
 6. Follow observed rhythm, irony, warmth, distance and directness without copying sample sentences.
 7. Never invent firsthand visits, personal memories, eyewitness observations, interviews, sources or quotes. A voice profile is evidence of writing style, not evidence that the author experienced the topic. If a suggested section would require missing evidence, rephrase it neutrally or omit it.
