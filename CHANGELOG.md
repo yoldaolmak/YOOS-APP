@@ -1,6 +1,6 @@
 # Changelog
 
-Pennovia's package metadata currently identifies version **0.2.0 alpha**. Entries here describe merged repository work, not a claimed tagged GitHub release.
+Version **0.2.0 alpha**. GitHub release details are recorded separately in [release notes](release/v0.2.0-alpha.md); the release must pass the live-model and CI gates.
 
 ## Unreleased — 7 November 2026
 
