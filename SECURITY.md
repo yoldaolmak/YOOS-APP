@@ -6,6 +6,12 @@ Pennovia 0.2.x is an alpha release. Security corrections target the active main 
 
 Use the repository's private GitHub vulnerability-reporting feature if enabled. Otherwise contact the maintainer privately using the repository owner's GitHub profile. Do not put exploit details, credentials, or private writing in public issues.
 
+## Local Studio security boundary
+
+`pennovia studio` serves its UI on 127.0.0.1 only. Host and Origin checks, a session-specific request header token, a strict Content Security Policy, a bounded JSON body and per-file size limits reduce accidental exposure to other browser origins. No remote hosting, user accounts or server-side profile database are provided. Avoid exposing the Studio port through tunnels, port-forwarding or reverse proxies. Browser state is not persisted automatically. Optional WordPress actions are **draft-only**; publication remains a CLI-only explicit action.
+
+This local UI is not a containment sandbox for untrusted network sources; URLs still contact user-specified remote sites and model generation may forward samples to the chosen provider.
+
 ## Data boundaries
 
 - Local files and pasted writing are analyzed locally, but user-selected `--url` inputs download public HTTPS articles over the network. The reader rejects obvious local/IP addresses, bounds response size, and does not follow unsafe redirects. This is **not** a sandbox for adversarial URL sources. Profiles can retain verbatim corpus excerpts and generated drafts can contain input-derived material.
