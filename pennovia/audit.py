@@ -4,7 +4,7 @@ No LLM required. Pure statistical comparison.
 """
 import re
 from dataclasses import dataclass
-from .voice.analyzer import VoiceProfile, _sentences, _transition_count
+from .voice.analyzer import VoiceProfile, _sentences, _transition_count, _first_person_rate
 
 
 @dataclass
@@ -64,9 +64,7 @@ def audit(content: str, profile: VoiceProfile) -> AuditResult:
     length_score = max(0, 20 - int(diff * 2))
 
     # first person match (0-10)
-    fp = sum(1 for s in sentences if re.search(
-        r"\b(ben|benim|bana|bende|beni|I|I'm|I've|I'd|my|me|myself)\b", s, re.I
-    )) / len(sentences)
+    fp = _first_person_rate(sentences, profile.language)
     details["first_person_rate"] = round(fp, 2)
     fp_diff = abs(fp - profile.first_person_rate)
     fp_score = max(0, 10 - int(fp_diff * 30))
