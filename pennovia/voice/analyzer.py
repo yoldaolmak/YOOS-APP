@@ -65,9 +65,11 @@ class VoiceProfile:
     def to_json(self) -> str:
         return json.dumps(asdict(self), ensure_ascii=False, indent=2)
 
-    def save(self, path: str):
-        with open(path, "w", encoding="utf-8") as f:
-            f.write(self.to_json())
+    def save(self, path: str, *, overwrite: bool = True) -> None:
+        """Write JSON; API defaults to historical replacement behavior."""
+        mode = "w" if overwrite else "x"
+        with open(path, mode, encoding="utf-8") as target:
+            target.write(self.to_json())
 
     @classmethod
     def load(cls, path: str) -> "VoiceProfile":

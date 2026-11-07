@@ -36,6 +36,12 @@ def _fail(msg):
     print(f"\nERROR: {msg}", file=sys.stderr)
     sys.exit(1)
 
+def _check_output_path(path, overwrite):
+    """Refuse an accidental overwrite before doing expensive work."""
+    if not overwrite and Path(path).exists():
+        _fail(f"Output already exists: {path}. Use --overwrite to replace it.")
+
+
 def _load_corpus(corpus_path):
     from pennovia.ingestion.reader import SUPPORTED_EXTENSIONS, read_corpus
 
@@ -63,6 +69,8 @@ def _load_corpus(corpus_path):
 
 def cmd_analyze(args):
     from pennovia.voice.analyzer import analyze
+    out = args.out or "voice_profile.json"
+    _check_output_path(out, getattr(args, "overwrite", False))
     _step(1, 2, f"Reading corpus: {args.corpus}")
     texts, files = _load_corpus(args.corpus)
     total_words = sum(len(t.split()) for t in texts)
@@ -70,8 +78,7 @@ def cmd_analyze(args):
     _step(2, 2, "Analyzing voice...")
     t0 = time.time()
     profile = analyze(texts, author_name=args.author or "unknown")
-    out = args.out or "voice_profile.json"
-    profile.save(out)
+    profile.save(out, overwrite=getattr(args, "overwrite", False))
     print()
     print(profile.summary())
     print()
@@ -83,6 +90,8 @@ def cmd_generate(args):
     from pennovia.voice.generator import generate
     from pennovia.audit import audit
     from pennovia.voice.scorer import score
+    out = args.out or "output.txt"
+    _check_output_path(out, getattr(args, "overwrite", False))
     if not Path(args.profile).exists():
         _fail(f"Profile not found: {args.profile}")
     _step(1, 3, f"Loading profile: {args.profile}")
@@ -104,8 +113,8 @@ def cmd_generate(args):
     _ok(f"Score: {result.total_score}/100 ({'PASS' if result.passed() else 'FAIL'}) | similarity: {sim:.2f}")
     if result.issues:
         _warn(f"Issues: {', '.join(result.issues)}")
-    out = args.out or "output.txt"
-    Path(out).write_text(content, encoding="utf-8")
+    with Path(out).open("w" if getattr(args, "overwrite", False) else "x", encoding="utf-8") as target:
+        target.write(content)
     _ok(f"Saved: {out}")
     if getattr(args, "verbose", False):
         print("\n" + result.report())
@@ -133,6 +142,8 @@ def cmd_export(args):
 
 
 def cmd_run(args):
+    if getattr(args, "save_profile", None):
+        _check_output_path(args.save_profile, getattr(args, "overwrite", False))
     from pennovia.voice.analyzer import analyze
     from pennovia.voice.generator import generate
     from pennovia.audit import audit
@@ -146,7 +157,7 @@ def cmd_run(args):
     profile = analyze(texts, author_name=args.author or "unknown")
     _ok(profile.summary().split("\n")[0])
     if getattr(args, "save_profile", None):
-        profile.save(args.save_profile)
+        profile.save(args.save_profile, overwrite=getattr(args, "overwrite", False))
         _ok(f"Profile: {args.save_profile}")
     _step(3, STEPS, f"Generating '{args.topic}' ({args.type or 'travel_blog'}) via {args.backend or 'auto'}...")
     t0 = time.time()
@@ -203,6 +214,7 @@ def main():
     p_a.add_argument("--corpus", required=True, help="Folder or file with author texts")
     p_a.add_argument("--author", default="unknown", help="Author name")
     p_a.add_argument("--out", default="voice_profile.json", help="Output JSON path")
+    p_a.add_argument("--overwrite", action="store_true", help="Replace existing profile output")
 
     p_g = sub.add_parser("generate", help="Generate content from a voice profile")
     p_g.add_argument("--profile", required=True, help="voice_profile.json path")
@@ -213,6 +225,7 @@ def main():
                      choices=["auto","openai","anthropic","openrouter","ollama","codex"])
     p_g.add_argument("--model", help="Override model (e.g. gpt-4o, claude-opus-4-8)")
     p_g.add_argument("--out", default="output.txt")
+    p_g.add_argument("--overwrite", action="store_true", help="Replace existing draft output")
     p_g.add_argument("--verbose", action="store_true")
 
     p_e = sub.add_parser("export", help="Export content to a destination")
@@ -238,6 +251,7 @@ def main():
     p_r.add_argument("--publish", action="store_true")
     p_r.add_argument("--save-profile", metavar="FILE",
                      dest="save_profile", help="Also save voice profile to this path")
+    p_r.add_argument("--overwrite", action="store_true", help="Replace existing --save-profile file")
 
     sub.add_parser("demo", help="Run built-in demo (Mark Twain corpus, no key needed)")
 
@@ -252,6 +266,8 @@ def main():
     except KeyboardInterrupt:
         print("\nInterrupted.", file=sys.stderr)
         sys.exit(1)
+    except FileExistsError as exc:
+        _fail(f"Output already exists: {exc.filename}. Use --overwrite to replace it.")
     except (OSError, ValueError) as exc:
         _fail(str(exc))
 

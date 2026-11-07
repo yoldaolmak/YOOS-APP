@@ -44,6 +44,8 @@ pennovia export --input draft.txt --title "Lisbon guide" --format html --dest do
 
 Available generation backends: Ollama, OpenAI, Anthropic, OpenRouter and Codex CLI. Ollama requires a running local service; cloud services require your own API key and may require `pip install -e ".[llm]"`. `--backend auto` may choose a configured cloud provider. Set `PENNOVIA_BACKEND` to choose the default CLI backend, or override it with `--backend`.
 
+The `analyze` and `generate` CLI commands refuse to replace an existing profile or draft. Pass `--overwrite` only when replacement is intended; `run --save-profile` uses the same protection. Local `export` remains collision-safe.
+
 To create a WordPress **draft**, set `WP_URL`, `WP_USER` and `WP_APP_PASSWORD`, then choose `--dest wordpress`. The endpoint must use HTTPS. Publication requires an explicit `--publish`; nothing is published automatically by analysis or generation.
 
 ## Container
