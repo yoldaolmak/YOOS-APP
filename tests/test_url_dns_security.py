@@ -3,9 +3,9 @@ import socket
 
 import pytest
 import requests
-from urllib3.connection import HTTPSConnection
 from urllib3.exceptions import NewConnectionError
 
+from pennovia.ingestion import reader
 from pennovia.ingestion.reader import (
     _PublicHTTPSAdapter,
     _PublicHTTPSConnection,
@@ -44,8 +44,8 @@ def test_hostname_with_any_nonpublic_dns_answer_never_connects(
         lambda host, port, *, type: _answer(host, port, addresses),
     )
     monkeypatch.setattr(
-        HTTPSConnection, "_new_conn",
-        lambda self: calls.append(self._dns_host),
+        reader, "create_connection",
+        lambda *args, **kwargs: calls.append(args),
     )
     connection = _PublicHTTPSConnection("articles.example.org", 443)
     with pytest.raises(NewConnectionError, match="non-public"):
@@ -61,17 +61,17 @@ def test_dns_rebinding_prevented_by_pinning_checked_ip(monkeypatch):
     monkeypatch.setattr(socket, "getaddrinfo", resolve)
 
     connected = []
-    def connect(self):
-        # urllib3 uses _dns_host to establish the socket. Host remains the
-        # original domain for TLS SNI and certificate hostname verification.
-        connected.append((self._dns_host, self.host))
+    def connect(address, timeout, *, source_address, socket_options):
+        connected.append(address)
         return "synthetic-socket"
-    monkeypatch.setattr(HTTPSConnection, "_new_conn", connect)
+    monkeypatch.setattr(reader, "create_connection", connect)
 
     connection = _PublicHTTPSConnection("articles.example.org", 443)
     assert connection._new_conn() == "synthetic-socket"
     assert names == ["articles.example.org"]
-    assert connected == [("1.1.1.1", "articles.example.org")]
+    assert connected == [("1.1.1.1", 443)]
+    # Changing _dns_host also changes urllib3's host property: never do that.
+    assert connection.host == "articles.example.org"
     assert connection._dns_host == "articles.example.org"
 
 
