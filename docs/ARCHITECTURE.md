@@ -1,6 +1,6 @@
 # Architecture
 
-Pennovia is a standalone CLI. No HTTP server is shipped. Local metrics are diagnostic heuristics, not independently calibrated quality or authorship measures.
+Pennovia is a Python library with a CLI and an optional **loopback-only Studio**. Studio serves a small browser interface and locally invokes the existing Python modules; it is not a public HTTP API or hosted platform. Local metrics are diagnostic heuristics, not independently calibrated quality or authorship measures.
 
 ## Overview
 
@@ -24,6 +24,11 @@ pennovia/
 │
 ├── audit.py         audit() → AuditResult (0–100)
 ├── cli.py           Command-line interface
+├── studio/          Optional loopback browser interface and static assets
+│   ├── server.py    Local HTTP adapter (no business-logic duplication)
+│   ├── index.html   Author workspace
+│   ├── app.css      Responsive layout
+│   └── app.js       Browser-side editing and local export controls
 └── demo/            Self-contained demo
     └── __main__.py  python -m pennovia.demo
 ```
@@ -31,6 +36,9 @@ pennovia/
 ## Data Flow
 
 ```
+[Files, URLs or pasted writing]
+     │ read_file() / read_url() / input collection
+     ▼
 [Corpus files]
      │ read_corpus()
      ▼
@@ -53,6 +61,15 @@ pennovia/
      └─ save_local() / save_google_drive() / save_wordpress()
           └─ to_html() / to_pdf() / plain txt
 ```
+
+## Interfaces and integration
+
+- **Python API** remains the reusable core. Studio imports the same `analyze()`, `generate()`, `audit()`, `score()` and exporter functions as the CLI.
+- **CLI** remains suitable for scripted workflows and deliberate publishing.
+- **Studio** runs only on `127.0.0.1`, serves packaged HTML/CSS/JS and exposes a small session-token-protected local adapter. It does not add persistent server state, authentication accounts or another scoring implementation.
+- Voice profiles are ordinary JSON. Use `VoiceProfile.from_dict(data)` for in-memory validation or `VoiceProfile.load(path)` for local files; all interfaces use schema v1.
+
+Developers should integrate through the Python API, **not** depend on Studio's browser endpoints as a stable external service. Studio is an optional presentation layer, not a competing architecture.
 
 ## VoiceProfile
 
