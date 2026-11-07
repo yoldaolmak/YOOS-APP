@@ -26,7 +26,7 @@ pennovia export --input draft.txt --title "Lisbon guide" \
   --format html,txt --dest downloads
 ```
 
-A corpus can be one supported TXT, HTML or PDF file, or a directory of such files. English/Turkish language detection is heuristic; use `--language tr` or `--language en` when you know the corpus language, especially for short or mixed text. The directory scan is non-recursive and alphabetical. Each usable file must contain more than 50 whitespace-delimited words; rejected files are reported on stderr. Voice profiles can contain verbatim sample sentences from your source material.
+A corpus can be one supported TXT, HTML or PDF file, or a directory of such files. English/Turkish language detection is heuristic; use `--language tr` or `--language en` when you know the corpus language, especially for short or mixed text. The directory scan is non-recursive and alphabetical. Each usable file must contain more than 50 whitespace-delimited words; rejected files are reported on stderr. Voice profiles can contain verbatim sample sentences from your source material. During generation these samples are supplied to the model as lower-priority untrusted style evidence, not trusted system instructions. This reduces prompt-injection risk but does not guarantee that a model ignores malicious directions inside source text.
 
 CLI `analyze`, `generate` and `run --save-profile` refuse to replace an existing output unless you explicitly pass `--overwrite`. Local exports use unique filenames.
 
@@ -73,4 +73,6 @@ It creates a **draft** by default. Only explicit `--publish` publishes. WordPres
 - **Provider library missing:** install the required optional extras.
 - **WordPress export accepts one HTML format:** use `--format html` only.
 
-Empty, missing or malformed provider draft text is rejected rather than saved or exported. Network and provider errors are reported without echoing raw remote response payloads. This does not verify model output quality.\n\nAI output can invent facts, quotations and personal experience. Human review remains required; voice matching scores are not authorship evidence.
+Empty, missing or malformed provider draft text is rejected rather than saved or exported. Network and provider errors are reported without echoing raw remote response payloads. This does not verify model output quality.
+
+AI output can invent facts, quotations and personal experience. Human review remains required; voice matching scores are not authorship evidence.
