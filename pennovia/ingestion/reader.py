@@ -41,8 +41,8 @@ def _read_pdf(path: str) -> str:
             return "\n\n".join(
                 page.extract_text() or "" for page in pdf.pages
             ).strip()
-    except ImportError:
-        raise RuntimeError("PDF support requires: pip install pdfplumber")
+    except ImportError as exc:
+        raise RuntimeError("PDF support requires: pip install pdfplumber") from exc
 
 
 def _html_to_text(html: str, *, article_only: bool = False) -> str:
