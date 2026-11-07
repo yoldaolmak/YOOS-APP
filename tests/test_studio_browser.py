@@ -129,7 +129,7 @@ def test_real_chromium_full_studio_flow_and_mobile_layout(monkeypatch, tmp_path)
         # Small informational labels must remain readable on paper surfaces.
         assert page.evaluate("""() => {
           function luminance(rgb) {
-            const v = rgb.match(/[\\d.]+/g).slice(0, 3).map(Number).map(x => x / 255);
+            const v = rgb.match(/[0-9.]+/g).slice(0, 3).map(Number).map(x => x / 255);
             const linear = v.map(x => x <= .04045 ? x / 12.92 : ((x + .055) / 1.055) ** 2.4);
             return linear[0] * .2126 + linear[1] * .7152 + linear[2] * .0722;
           }
