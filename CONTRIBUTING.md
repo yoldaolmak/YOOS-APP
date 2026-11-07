@@ -23,4 +23,4 @@ Propose a small, verifiable improvement to working author voice profiling, draft
 
 Use synthetic or properly licensed sample texts. Never commit private corpora, personal profiles, provider keys or user drafts. Tests must work without live API credentials. Existing CI checks Python 3.10–3.12, Ruff, packaged Studio JavaScript syntax, Docker demo and wheel assets. A green CI result verifies tested software paths, **not** model quality or author-voice accuracy.
 
-WordPress is draft-by-default; the CLI alone exposes explicit publication via `--publish`. See [configuration](docs/CONFIGURATION.md), [architecture](docs/ARCHITECTURE.md), [validation limits](docs/VALIDATION.md), and the private disclosure process in [SECURITY.md](SECURITY.md).
+WordPress is draft-by-default; Studio has no publish action. The CLI exposes explicit `--publish`, and the Python API supports an explicit `publish=True` argument. See [configuration](docs/CONFIGURATION.md), [architecture](docs/ARCHITECTURE.md), [validation limits](docs/VALIDATION.md), and the private disclosure process in [SECURITY.md](SECURITY.md).
