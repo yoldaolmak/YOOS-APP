@@ -46,7 +46,7 @@ Available generation backends: Ollama, OpenAI, Anthropic, OpenRouter and Codex C
 
 The `analyze` and `generate` CLI commands refuse to replace an existing profile or draft. Pass `--overwrite` only when replacement is intended; `run --save-profile` uses the same protection. Local `export` remains collision-safe.
 
-To create a WordPress **draft**, set `WP_URL`, `WP_USER` and `WP_APP_PASSWORD`, then choose `--dest wordpress`. The endpoint must use HTTPS. Publication requires an explicit `--publish`; nothing is published automatically by analysis or generation.
+To create a WordPress **draft**, set `WP_URL`, `WP_USER` and `WP_APP_PASSWORD`, then choose `--dest wordpress`. The endpoint must use HTTPS. Publication requires an explicit `--publish`; nothing is published automatically by analysis or generation. WordPress accepts one HTML export per command, so multi-format requests are rejected instead of creating duplicate posts.
 
 ## Container
 
