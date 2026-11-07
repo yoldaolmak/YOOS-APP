@@ -1,0 +1,159 @@
+name: Live Model & Alpha Release
+
+on:
+  pull_request:
+    paths:
+      - .github/workflows/live-model-release.yml
+      - validation/live_model.py
+      - tests/test_live_model_source_contract.py
+      - release/v0.2.0-alpha.md
+  push:
+    branches: [main]
+    paths:
+      - release/v0.2.0-alpha.md
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  live-model:
+    runs-on: ubuntu-latest
+    timeout-minutes: 35
+    env:
+      OPENAI_API_KEY: ''
+      ANTHROPIC_API_KEY: ''
+      OPENROUTER_API_KEY: ''
+      PENNOVIA_BACKEND: ollama
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-python@v7
+        with:
+          python-version: '3.12'
+      - name: Install Pennovia
+        run: python -m pip install -e .
+      - name: Install and launch local Ollama
+        run: |
+          set -euo pipefail
+          curl -fsSL https://ollama.com/install.sh | sh
+          nohup ollama serve > "$RUNNER_TEMP/ollama.log" 2>&1 &
+          for i in $(seq 1 90); do
+            if curl -fsS http://127.0.0.1:11434/api/tags > /dev/null; then
+              break
+            fi
+            sleep 2
+          done
+          curl -fsS http://127.0.0.1:11434/api/tags > /dev/null
+          ollama pull qwen2.5:1.5b
+      - name: Generate with actual model and compare withheld prose
+        run: python validation/live_model.py --output "$RUNNER_TEMP/real-model-evidence"
+      - name: Archive source hashes, actual drafts and measured results
+        if: always()
+        uses: actions/upload-artifact@v7
+        with:
+          name: pennovia-real-ollama-evidence
+          path: ${{ runner.temp }}/real-model-evidence/
+          if-no-files-found: ignore
+
+  release:
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    needs: live-model
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    permissions:
+      contents: write
+      actions: read
+    env:
+      GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          persist-credentials: false
+      - uses: actions/setup-python@v7
+        with:
+          python-version: '3.12'
+      - name: Check immutable version and source
+        run: |
+          python - <<'PY'
+          import importlib.util
+          import pathlib
+          import tomllib
+          project = tomllib.loads(pathlib.Path("pyproject.toml").read_text())
+          assert project["project"]["version"] == "0.2.0"
+          spec = importlib.util.spec_from_file_location("pennovia", "pennovia/__init__.py")
+          module = importlib.util.module_from_spec(spec)
+          spec.loader.exec_module(module)
+          assert module.__version__ == "0.2.0"
+          PY
+      - name: Require passing main CI for this exact commit
+        run: |
+          set -euo pipefail
+          for i in $(seq 1 60); do
+            conclusion="$(gh api "repos/$GITHUB_REPOSITORY/actions/runs?head_sha=$GITHUB_SHA&per_page=50" --jq '[.workflow_runs[] | select(.name == "CI")] | .[0].conclusion // "pending"')"
+            if [ "$conclusion" = "success" ]; then
+              echo "Matching main CI passed."
+              exit 0
+            fi
+            if [ "$conclusion" = "failure" ] || [ "$conclusion" = "cancelled" ]; then
+              echo "Main CI did not pass: $conclusion"
+              exit 1
+            fi
+            sleep 15
+          done
+          echo "No successful main CI found for $GITHUB_SHA"
+          exit 1
+      - name: Verify completed real model artifact
+        run: |
+          set -euo pipefail
+          gh run download "$GITHUB_RUN_ID" --name pennovia-real-ollama-evidence --dir model-evidence
+          python - <<'PY'
+          import json
+          from pathlib import Path
+          report = json.loads(Path("model-evidence/evidence.json").read_text())
+          assert report["status"] == "real_model_executed"
+          assert report["model"] == "qwen2.5:1.5b"
+          assert len(report["model_digest"]) >= 32
+          assert report["actual_model_calls"] == 3
+          assert report["training_chapters"] == ["I", "II", "IV"]
+          assert report["held_out_chapter"] == "III"
+          assert len(report["styled_drafts"]) == 2
+          assert all(Path("model-evidence", d["file"]).is_file()
+                     and d["words"] >= 50 for d in report["styled_drafts"])
+          assert Path("model-evidence/neutral-control.txt").is_file()
+          assert set(report["exports"]) == {"html", "pdf", "txt"}
+          assert all(Path("model-evidence", name).is_file()
+                     for name in report["exports"].values())
+          PY
+      - name: Build and inspect distribution
+        run: |
+          python -m pip install --upgrade build twine
+          python -m build
+          python -m twine check dist/*
+          python -m venv "$RUNNER_TEMP/release-smoke"
+          "$RUNNER_TEMP/release-smoke/bin/python" -m pip install dist/*.whl
+          (
+            cd "$RUNNER_TEMP"
+            "$RUNNER_TEMP/release-smoke/bin/pennovia" --version
+            "$RUNNER_TEMP/release-smoke/bin/pennovia" studio --help
+            "$RUNNER_TEMP/release-smoke/bin/python" -c 'from pennovia.voice.analyzer import VoiceProfile; assert VoiceProfile().schema_version == 1'
+          )
+          (cd dist && sha256sum *.whl *.tar.gz > SHA256SUMS.txt)
+      - name: Create alpha pre-release exactly once
+        run: |
+          set -euo pipefail
+          if gh release view v0.2.0 >/dev/null 2>&1; then
+            echo "Tag v0.2.0 already has a GitHub release; refusing to replace it."
+            exit 1
+          fi
+          if git ls-remote --exit-code --tags origin refs/tags/v0.2.0 >/dev/null 2>&1; then
+            echo "Tag v0.2.0 already exists; refusing to move it."
+            exit 1
+          fi
+          cp release/v0.2.0-alpha.md "$RUNNER_TEMP/release-notes.md"
+          printf '\nReal-model evidence: https://github.com/%s/actions/runs/%s\n' \
+            "$GITHUB_REPOSITORY" "$GITHUB_RUN_ID" >> "$RUNNER_TEMP/release-notes.md"
+          gh release create v0.2.0 dist/*.whl dist/*.tar.gz dist/SHA256SUMS.txt \
+            --target "$GITHUB_SHA" \
+            --title "Pennovia v0.2.0 (alpha)" \
+            --prerelease \
+            --notes-file "$RUNNER_TEMP/release-notes.md"
