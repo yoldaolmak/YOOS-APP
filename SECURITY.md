@@ -12,7 +12,7 @@ Studio creates WordPress **drafts only**. Publishing requires explicit `--publis
 
 ## Data and network
 
-- Local files and pasted text are analyzed locally. Selected HTTPS URLs are fetched from their sites (2 MB response limit, basic local-address rejection). URL reading is **not** an isolation sandbox for hostile sources.
+- Local files and pasted text are analyzed locally. Selected HTTPS URLs are fetched from their sites (2 MB cap). DNS answers must be public IP addresses; the connection pins the checked IP and retains hostname verification. Redirect hops are rechecked and environment proxies are disabled. This is still **not** a complete sandbox for hostile sources.
 - Voice profiles may store source sentences verbatim. Keep profile JSON private.
 - Cloud generation sends selected profile excerpts and prompts to the chosen provider. Never put API keys in browser fields or committed files.
 - WordPress and Google Drive connect only on explicit export. WordPress requires canonical HTTPS, verifies TLS and rejects redirects.
