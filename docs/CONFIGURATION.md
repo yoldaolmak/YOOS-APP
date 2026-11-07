@@ -57,13 +57,13 @@ pennovia generate --profile voice.json --type column \
 
 Local output accepts `html`, `txt` or `pdf`, including comma-separated combinations. Google Drive accepts the same formats; install `.[gdrive]` and set `GOOGLE_DRIVE_TOKEN` to authorized-user OAuth **JSON content**, not a filename.
 
-WordPress requires `WP_URL` (HTTPS), `WP_USER`, and `WP_APP_PASSWORD`:
+WordPress requires `WP_URL` (the canonical HTTPS site base URL, without query strings or embedded credentials), `WP_USER`, and `WP_APP_PASSWORD`:
 
 ```bash
 pennovia export --input draft.txt --title "A draft" --format html --dest wordpress
 ```
 
-It creates a **draft** by default. Only explicit `--publish` publishes. WordPress accepts one HTML export per CLI call; mixed formats are rejected so they cannot create duplicate posts.
+It creates a **draft** by default. Only explicit `--publish` publishes. Redirects and invalid success responses are rejected rather than being treated as successful exports. WordPress accepts one HTML export per CLI call; mixed formats are rejected so they cannot create duplicate posts.
 
 ## Common errors
 

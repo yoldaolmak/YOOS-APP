@@ -136,6 +136,8 @@ url: str = save_wordpress(content, title,
                           publish=False)     # True = publish, False = draft
 ```
 
+WordPress export refuses redirects (rather than silently following a different host or protocol), validates successful JSON responses, and raises bounded `RuntimeError` on HTTP/network/invalid-response failures. Configure `wp_url` as the canonical HTTPS base URL, without query strings, fragments or embedded credentials. The response must include a non-empty post link.
+
 ### CLI export format contract
 
 Local and Google Drive exports accept `html`, `txt`, or `pdf` (including comma-separated combinations). Unsupported or duplicate formats are rejected before writing. WordPress accepts only a single HTML export; multi-format requests are rejected rather than posting the same draft more than once. `run --dest wordpress` defaults to HTML, while local `run` defaults to HTML and TXT.

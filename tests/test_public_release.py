@@ -1,7 +1,7 @@
 """Offline public quality and security regression tests."""
 from pathlib import Path
 from types import SimpleNamespace
-import sys
+import requests
 import pytest
 from pennovia import __version__
 from pennovia.exporter.writer import to_html, save_wordpress
@@ -20,8 +20,8 @@ def test_wordpress_uses_https_and_body_fragment(monkeypatch):
     calls = []
     def post(url, **kwargs):
         calls.append((url, kwargs))
-        return SimpleNamespace(raise_for_status=lambda: None, json=lambda: {'link': 'https://site.example/post'})
-    monkeypatch.setitem(sys.modules, 'requests', SimpleNamespace(post=post))
+        return SimpleNamespace(status_code=201, raise_for_status=lambda: None, json=lambda: {'link': 'https://site.example/post'})
+    monkeypatch.setattr(requests, 'post', post)
     result = save_wordpress("<unsafe>", "Title", wp_url="https://site.example", wp_user="user", wp_password="secret")
     assert result == "https://site.example/post"
     url, kw = calls[0]
@@ -31,7 +31,7 @@ def test_wordpress_uses_https_and_body_fragment(monkeypatch):
 
 def test_wordpress_rejects_insecure_endpoint(monkeypatch):
     calls = []
-    monkeypatch.setitem(sys.modules, 'requests', SimpleNamespace(post=lambda *a, **kw: calls.append(1)))
+    monkeypatch.setattr(requests, 'post', lambda *a, **kw: calls.append(1))
     with pytest.raises(ValueError, match="HTTPS"):
         save_wordpress("Text", "Title", wp_url="http://site.example", wp_user="user", wp_password="secret")
     assert not calls

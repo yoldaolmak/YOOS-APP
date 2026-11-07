@@ -11,7 +11,7 @@ Use the repository's private GitHub vulnerability-reporting feature if enabled. 
 - Analysis is local, but profiles can retain verbatim corpus excerpts and generated drafts can contain input-derived material.
 - Configured cloud model generation sends prompt text, including representative source sentences, to that provider.
 - Google Drive and WordPress exports make network requests only when invoked.
-- WordPress export requires HTTPS with certificate verification enabled and defaults to a draft.
+- WordPress export requires HTTPS with certificate verification enabled and defaults to a draft. The REST request does not follow HTTP redirects or accept malformed success responses; configure the canonical HTTPS base URL.
 - Keys come from environment variables. Do not commit them or private generated files.
 - The offline demo uses labeled mock output when no API key is configured.
 - Local exports are written to unique files rather than overwriting earlier exports. New voice profiles and CLI drafts use owner-only file permissions where supported; explicit replacements are written to a temporary file in the same directory, then atomically replaced. This does not encrypt files. Generated temporary PDFs are cleaned up on failure or after Google Drive upload preparation.

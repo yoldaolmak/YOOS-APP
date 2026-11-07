@@ -176,17 +176,37 @@ def save_wordpress(content: str, title: str,
         raise RuntimeError("Set WP_URL, WP_USER, WP_APP_PASSWORD env vars")
 
     parsed = urlparse(url)
-    if parsed.scheme != "https" or not parsed.hostname:
-        raise ValueError("WordPress export requires a valid HTTPS URL")
+    if (
+        parsed.scheme != "https" or not parsed.hostname
+        or parsed.username or parsed.password or parsed.query or parsed.fragment
+    ):
+        raise ValueError("WordPress export requires a valid HTTPS base URL")
     html_content = _html_body(content)
     status = "publish" if publish else "draft"
 
-    resp = requests.post(
-        f"{url.rstrip('/')}/wp-json/wp/v2/posts",
-        auth=(user, pwd),
-        json={"title": title, "content": html_content, "status": status},
-        verify=True,
-        timeout=30,
-    )
-    resp.raise_for_status()
-    return resp.json().get("link", "")
+    try:
+        resp = requests.post(
+            f"{url.rstrip('/')}/wp-json/wp/v2/posts",
+            auth=(user, pwd),
+            json={"title": title, "content": html_content, "status": status},
+            verify=True,
+            timeout=30,
+            allow_redirects=False,
+        )
+        if 300 <= resp.status_code < 400:
+            raise RuntimeError(
+                "WordPress redirected the REST request; set WP_URL to its canonical HTTPS URL"
+            )
+        resp.raise_for_status()
+    except requests.RequestException as exc:
+        raise RuntimeError(
+            "WordPress export failed; check HTTPS URL, credentials and connectivity"
+        ) from exc
+
+    try:
+        result = resp.json()
+    except ValueError as exc:
+        raise RuntimeError("WordPress returned an invalid post response") from exc
+    if not isinstance(result, dict) or not isinstance(result.get("link"), str) or not result["link"].strip():
+        raise RuntimeError("WordPress returned an invalid post response")
+    return result["link"]
