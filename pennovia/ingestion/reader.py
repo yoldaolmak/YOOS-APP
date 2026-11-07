@@ -12,7 +12,8 @@ import requests
 from requests.adapters import HTTPAdapter
 from urllib3.connection import HTTPSConnection
 from urllib3.connectionpool import HTTPSConnectionPool
-from urllib3.exceptions import NewConnectionError
+from urllib3.exceptions import ConnectTimeoutError, NewConnectionError
+from urllib3.util.connection import create_connection
 from urllib.parse import urljoin, urlsplit
 from typing import Iterable
 
@@ -102,14 +103,19 @@ class _PublicHTTPSConnection(HTTPSConnection):
         if not ips or any(not ipaddress.ip_address(ip).is_global for ip in ips):
             raise NewConnectionError(self, "Article hostname resolves to a non-public IP")
 
-        # Connect directly to the validated IP: a second DNS lookup must not
-        # redirect a request into the local network. self.host retains TLS SNI.
-        original_host = self._dns_host
-        self._dns_host = sorted(ips)[0]
+        # Connect to a validated numeric IP without changing self.host:
+        # urllib3 must still verify TLS against the original hostname.
         try:
-            return super()._new_conn()
-        finally:
-            self._dns_host = original_host
+            return create_connection(
+                (sorted(ips)[0], self.port),
+                self.timeout,
+                source_address=self.source_address,
+                socket_options=self.socket_options,
+            )
+        except TimeoutError as exc:
+            raise ConnectTimeoutError(self, "Article connection timed out") from exc
+        except OSError as exc:
+            raise NewConnectionError(self, "Could not connect to article host") from exc
 
 
 class _PublicHTTPSPool(HTTPSConnectionPool):
