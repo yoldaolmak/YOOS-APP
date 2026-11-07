@@ -40,9 +40,9 @@ def test_vocabulary_handles_turkish_capital_dotted_i():
 
 
 def test_bigrams_never_cross_separate_input_documents():
-    texts = ["alpha omega", "sigma tau"] * 4
+    texts = ["alpha omega", "sigma taupe"] * 4
     profile = analyze(texts, language="en")
     assert "alpha omega" in profile.signature_phrases
-    assert "sigma tau" in profile.signature_phrases
+    assert "sigma taupe" in profile.signature_phrases
     assert "omega sigma" not in profile.signature_phrases
-    assert "tau alpha" not in profile.signature_phrases
+    assert "taupe alpha" not in profile.signature_phrases
