@@ -54,6 +54,7 @@ def test_rejects_unsupported_schema_versions(tmp_path, version):
         ("sentence_std_dev", -1),
         ("first_person_rate", 2),
         ("question_rate", -0.2),
+        ("negative_rate", 1.3),
         ("vocabulary_richness", 1.2),
         ("sample_sentences", "not a list"),
         ("sample_sentences", [1, "text"]),
