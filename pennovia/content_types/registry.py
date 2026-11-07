@@ -4,13 +4,13 @@ CONTENT_TYPES = {
     "travel_blog": {
         "label": "Travel Blog",
         "structure": [
-            "Opening — a personal moment or sense of place",
+            "Opening — a concrete sense of place or relevant question",
             "Why this place?",
-            "What I saw and did",
+            "What to see and do",
             "Practical notes",
             "Closing note / recommendation",
         ],
-        "tone": "first person, warm, speaks directly to the reader",
+        "tone": "follow the author's observed point of view; clear and practical",
         "length": "800-1500 words",
     },
     "travel_guide": {
@@ -29,10 +29,10 @@ CONTENT_TYPES = {
     "magazine": {
         "label": "Magazine Article",
         "structure": [
-            "Striking opening (an anecdote or a scene)",
+            "Engaging opening grounded in the supplied material",
             "Subject / thesis",
             "In-depth narrative",
-            "Expert or witness voice",
+            "Attributable perspectives (only if supplied)",
             "Closing",
         ],
         "tone": "narrative, layered, draws the reader in",
@@ -44,7 +44,7 @@ CONTENT_TYPES = {
             "Lead (who/what/when/where/why/how)",
             "Context",
             "Details",
-            "Quote / source",
+            "Attributable sources (only if supplied)",
             "Background",
         ],
         "tone": "objective, plain, direct",
