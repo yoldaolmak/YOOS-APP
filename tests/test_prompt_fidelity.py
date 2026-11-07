@@ -83,3 +83,31 @@ def test_author_source_samples_still_available_for_style_reference():
     assert "benim evim" in user
     assert "Observed transitions: ama" in user
     assert "Kısa. Ve tekrar kısa." not in system
+
+
+def test_content_type_templates_do_not_demand_unsupplied_experience_or_sources():
+    from pennovia.content_types.registry import get
+
+    blog = get("travel_blog")
+    assert "What I saw and did" not in blog["structure"]
+    assert "first person" not in blog["tone"]
+
+    magazine = get("magazine")
+    assert not any("Expert or witness voice" in section for section in magazine["structure"])
+    assert any("only if supplied" in section for section in magazine["structure"])
+
+    news = get("news")
+    assert not any(section == "Quote / source" for section in news["structure"])
+    assert any("only if supplied" in section for section in news["structure"])
+
+
+def test_prompt_preserves_author_voice_over_genre_and_does_not_require_quotes():
+    for genre in ("travel_blog", "magazine", "news"):
+        system, user = _build_prompt(
+            VoiceProfile(language="tr", first_person_rate=0),
+            genre, "Şehir merkezine ulaşım"
+        )
+        assert "secondary to the author's observed style" in system
+        assert "If a suggested section would require missing evidence" in system
+        assert "Never invent firsthand visits" in system
+        assert "Şehir merkezine ulaşım" in user
