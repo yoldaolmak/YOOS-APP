@@ -36,3 +36,14 @@ jobs:
           ANTHROPIC_API_KEY: ''
           OPENROUTER_API_KEY: ''
         run: python -m yoos_app.demo
+
+  container-smoke:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Build CLI container
+        run: docker build -t yoos-app-ci .
+      - name: CLI and offline demo
+        run: |
+          docker run --rm yoos-app-ci --version
+          docker run --rm yoos-app-ci demo
