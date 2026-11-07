@@ -162,9 +162,34 @@ def _sentences(text: str) -> list:
     return [s.strip() for s in raw if any(char.isalpha() for char in s)]
 
 
+# A deliberately small, auditable detector for the two supported languages.
+# Weak or mixed evidence is unknown rather than silently classified English.
+_TR_WORDS = frozenset(
+    "ve bir bu ama ben benim bana sen biz siz onlar için ile gibi daha çok "
+    "var yok değil ne nasıl sonra önce kadar olarak fakat ancak çünkü bugün "
+    "yarın şimdi her burada orada bunu mi mı mu mü".split()
+)
+_EN_WORDS = frozenset(
+    "the and a an is are was were with but for from on of to in i you we "
+    "they it this that not have had has be as at or if then when what how "
+    "could would should can will there here".split()
+)
+
+
 def _detect_language(text: str) -> str:
-    tr_chars = len(re.findall(r"[çğışöüÇĞİŞÖÜ]", text))
-    return "tr" if tr_chars > 5 else "en"
+    """Return 'tr', 'en', or 'auto' when evidence is too weak or mixed."""
+    normalized = text.lower().replace("i\u0307", "i")
+    tokens = re.findall(r"[^\\W\\d_]+", normalized, re.UNICODE)
+    tr_score = sum(token in _TR_WORDS for token in tokens)
+    en_score = sum(token in _EN_WORDS for token in tokens)
+    # Turkish-specific letters are supporting evidence, not proof: English
+    # travel writing can mention İstanbul, Çeşme or other Turkish locations.
+    tr_score += 2 * len(re.findall(r"[çğıöşü]", normalized))
+    if tr_score >= 3 and tr_score >= 1.5 * en_score + 1:
+        return "tr"
+    if en_score >= 3 and en_score >= 1.5 * tr_score + 1:
+        return "en"
+    return "auto"
 
 
 def _transition_count(text: str, transition: str) -> int:
@@ -197,9 +222,14 @@ def _vocabulary_richness(text: str) -> float:
     return round(sum(ratios) / len(ratios), 3) if ratios else round(len(set(words)) / len(words), 3)
 
 
-def analyze(texts, author_name: str = "unknown") -> VoiceProfile:
+def analyze(
+    texts, author_name: str = "unknown", language: str = "auto"
+) -> VoiceProfile:
+    """Extract a profile; explicit language overrides weak auto-detection."""
+    if language not in ("auto", "en", "tr"):
+        raise ValueError("language must be auto, en or tr")
     all_text = "\n\n".join(texts)
-    lang = _detect_language(all_text)
+    lang = _detect_language(all_text) if language == "auto" else language
     transitions = TR_TRANSITIONS if lang == "tr" else EN_TRANSITIONS
     neg_patterns = TR_NEGATIVES if lang == "tr" else EN_NEGATIVES
 
