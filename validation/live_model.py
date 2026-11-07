@@ -32,14 +32,27 @@ def select_chapters(book: str) -> dict[str, str]:
     """Select nonoverlapping narrative excerpts, not the table of contents."""
     if "The Innocents Abroad" not in book or "Mark Twain" not in book:
         raise ValueError("Source is not the expected Mark Twain work")
+    # The Gutenberg text contains a contents list as well as chapter headings.
+    # Anchor the split after the preface, never at a table-of-contents entry.
+    prefaces = list(re.finditer(r"(?mi)^[ \t]*PREFACE[ \t]*$", book))
+    if not prefaces:
+        raise ValueError("Expected a preface boundary before chapter text")
+    body_start = prefaces[-1].end()
+    body = book[body_start:]
     headings = {}
     for number in ("I", "II", "III", "IV", "V"):
-        matches = list(re.finditer(
-            rf"(?m)^CHAPTER {number}\.[ \t]*$", book
-        ))
-        if len(matches) != 1:
-            raise ValueError(f"Expected one body heading for chapter {number}")
-        headings[number] = matches[0]
+        match = re.search(
+            rf"(?mi)^[ \t]*CHAPTER[ \t]+{number}\.[ \t]*$", body
+        )
+        if match is None:
+            candidates = [
+                line.strip() for line in body.splitlines()
+                if "CHAPTER" in line.upper()
+            ][:8]
+            raise ValueError(f"Missing body heading {number}; candidates: {candidates}")
+        headings[number] = match
+    if list(headings.values()) != sorted(headings.values(), key=lambda m: m.start()):
+        raise ValueError("Chapter headings are not in book order")
     pieces = {}
     for number, next_number in (("I", "II"), ("II", "III"),
                                 ("III", "IV"), ("IV", "V")):
@@ -106,12 +119,19 @@ def _write_json(path: Path, data: dict) -> None:
 def main() -> None:
     parser = argparse.ArgumentParser()
     parser.add_argument("--output", type=Path, required=True)
+    parser.add_argument("--source-only", action="store_true",
+                        help="Validate the downloaded public-domain source without Ollama")
     args = parser.parse_args()
     out = args.output
     out.mkdir(parents=True, exist_ok=True)
 
     book, source_sha256 = _download_source()
     chapters = select_chapters(book)
+    if args.source_only:
+        print(json.dumps({"source_sha256": source_sha256,
+                          "chapters": list(chapters),
+                          "word_counts": {k: len(v.split()) for k, v in chapters.items()}}))
+        return
     model_digest = _model_digest()
     training = [chapters[name] for name in ("I", "II", "IV")]
     held_out = chapters["III"]
