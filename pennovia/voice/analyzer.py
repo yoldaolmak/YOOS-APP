@@ -203,8 +203,8 @@ def _transition_count(text: str, transition: str) -> int:
 
 # All voice metrics use the same language-aware first-person definition.
 # These are explicit personal pronouns, not grammatical inflection detection.
-_FIRST_PERSON_TR = re.compile(r"\\b(?:ben|benim|bana|bende|beni)\\b", re.I)
-_FIRST_PERSON_EN = re.compile(r"\\b(?:i|i'm|i've|i'd|my|me|myself)\\b", re.I)
+_FIRST_PERSON_TR = re.compile(r"\b(?:ben|benim|bana|bende|beni)\b", re.I)
+_FIRST_PERSON_EN = re.compile(r"\b(?:i|i'm|i've|i'd|my|me|myself)\b", re.I)
 
 
 def _first_person_rate(sentences: list, language: str = "auto") -> float:
