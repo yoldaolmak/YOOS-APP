@@ -5,7 +5,6 @@ import pytest
 import requests
 
 from pennovia.exporter import writer
-from pennovia.studio import server
 from tests.test_studio import TEXT, post_json, running_studio
 
 
