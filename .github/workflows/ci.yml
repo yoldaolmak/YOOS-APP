@@ -82,3 +82,24 @@ jobs:
           "$RUNNER_TEMP/pennovia-wheel-env/bin/python" -c 'from pathlib import Path; import pennovia.demo; p = Path(pennovia.demo.__file__).parent / "corpus"; assert len(list(p.glob("*.txt"))) == 3'
           "$RUNNER_TEMP/pennovia-wheel-env/bin/pennovia" studio --help
           "$RUNNER_TEMP/pennovia-wheel-env/bin/python" -c 'from importlib.resources import files; p = files("pennovia.studio"); assert all(p.joinpath(f).is_file() for f in ("index.html", "app.css", "app.js"))'
+
+  studio-browser-smoke:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Install browser test dependencies
+        run: python -m pip install -e '.[dev]' 'playwright>=1.55,<2'
+      - name: Install Chromium
+        run: python -m playwright install --with-deps chromium
+      - name: Real desktop and mobile Studio smoke test
+        run: python -m pytest -q tests/test_studio_browser.py
+      - name: Save synthetic Studio screenshots
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: studio-desktop-mobile
+          path: ${{ runner.temp }}/studio-screenshots/*.png
+          if-no-files-found: ignore
