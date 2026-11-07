@@ -219,6 +219,20 @@ def _first_person_rate(sentences: list, language: str = "auto") -> float:
     return sum(any(p.search(sentence) for p in patterns) for sentence in sentences) / len(sentences)
 
 
+def _has_negative_marker(sentence: str, language: str) -> bool:
+    """Conservative explicit negative constructions, counted once per sentence."""
+    if language in ("tr", "auto") and any(
+        _transition_count(sentence, term) for term in TR_NEGATIVES
+    ):
+        return True
+    if language in ("en", "auto") and any(
+        re.search(pattern, sentence, flags=re.IGNORECASE)
+        for pattern in EN_NEGATIVES
+    ):
+        return True
+    return False
+
+
 def _std_dev(values: list) -> float:
     if len(values) < 2:
         return 0.0
@@ -254,8 +268,11 @@ def analyze(
         raise ValueError("language must be auto, en or tr")
     all_text = "\n\n".join(texts)
     lang = _detect_language(all_text) if language == "auto" else language
-    transitions = TR_TRANSITIONS if lang == "tr" else EN_TRANSITIONS
-    neg_patterns = TR_NEGATIVES if lang == "tr" else EN_NEGATIVES
+    transitions = (
+        TR_TRANSITIONS if lang == "tr"
+        else EN_TRANSITIONS if lang == "en"
+        else TR_TRANSITIONS + EN_TRANSITIONS
+    )
 
     all_sentences = []
     paragraph_word_counts = []
@@ -285,10 +302,9 @@ def analyze(
     questions = sum(1 for s in all_sentences if s.strip().endswith("?"))
     exclamations = sum(1 for s in all_sentences if s.strip().endswith("!"))
 
-    neg_count = 0
-    for pat in neg_patterns:
-        neg_count += len(re.findall(pat, all_text, re.I))
-    neg_rate = neg_count / max(len(all_sentences), 1)
+    neg_rate = sum(
+        _has_negative_marker(sentence, lang) for sentence in all_sentences
+    ) / len(all_sentences)
 
     # --- Paragraph metrics ---
     avg_para_sents = sum(paragraph_sent_counts) / max(len(paragraph_sent_counts), 1)
