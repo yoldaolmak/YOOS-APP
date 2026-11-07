@@ -4,7 +4,8 @@ Pennovia's package metadata currently identifies version **0.2.0 alpha**. Entrie
 
 ## Unreleased — 7 November 2026
 
-- Add Pennovia Studio: one local browser screen for sample collection, voice profile, model-assisted draft, editorial review and manual exports. Studio uses the existing Python core/CLI capabilities, bundled static assets and the standard library server; no accounts, database or hosted platform.
+- Add Pennovia Studio ([#30](https://github.com/yoldaolmak/Pennovia/pull/30)): one local browser screen for sample collection, voice profile, model-assisted draft, editorial review and manual exports. Studio uses the existing Python core/CLI capabilities, bundled static assets and the standard library server; no accounts, database or hosted platform.
+- Align README, setup, Python API, architecture, contributor guidance, branding, security and validation documentation with the working Core / CLI / Studio boundaries; no code behavior change.
 
 - Reject missing and blank provider responses and report malformed provider replies with bounded errors ([#17](https://github.com/yoldaolmak/Pennovia/pull/17)).
 
