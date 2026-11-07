@@ -11,14 +11,13 @@ from pennovia.ingestion.reader import read_url
 from pennovia.voice.analyzer import VoiceProfile
 
 
-SAMPLE = " ".join(
+SAMPLE = (
     "Ben yazarken gördüğüm yerleri anlatmayı seviyorum ama acele etmeden. "
     "Sokakları yürümek insanın dikkatini başka bir yöne çeviriyor. "
     "Bir şehre geldiğimde önce yolun nasıl ilerlediğine bakıyorum. "
     "Kalabalık bazen yorucu oluyor, ancak küçük ayrıntılar daha sonra aklımda kalıyor. "
     "Bu yüzden kısa yolları değil kendi ritmimi tercih ediyorum. "
-    * 3
-)
+) * 3
 
 
 class Page:
