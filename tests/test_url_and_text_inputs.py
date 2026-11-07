@@ -57,7 +57,7 @@ def test_read_url_extracts_article_not_page_chrome(monkeypatch):
     def get(url, **kwargs):
         calls.append((url, kwargs))
         return page
-    monkeypatch.setattr(requests, "get", get)
+    monkeypatch.setattr(requests.Session, "get", lambda self, url, **kw: get(url, **kw))
     text = read_url("https://example.org/blog/yazim")
     assert "Yolun ritmi" in text
     assert "Ben yazarken" in text
@@ -76,7 +76,7 @@ def test_url_can_follow_canonical_https_redirect(monkeypatch):
         if len(calls) == 1:
             return Page("", status=301, location="https://www.example.org/article")
         return Page(html_sample())
-    monkeypatch.setattr(requests, "get", get)
+    monkeypatch.setattr(requests.Session, "get", lambda self, url, **kw: get(url, **kw))
     assert "Ben yazarken" in read_url("https://example.org/article")
     assert calls == ["https://example.org/article", "https://www.example.org/article"]
 
@@ -89,7 +89,7 @@ def test_url_can_follow_canonical_https_redirect(monkeypatch):
 ])
 def test_unsafe_url_is_rejected_before_http(monkeypatch, url):
     calls = []
-    monkeypatch.setattr(requests, "get", lambda *a, **kw: calls.append(a) or Page(""))
+    monkeypatch.setattr(requests.Session, "get", lambda self, *a, **kw: calls.append(a) or Page(""))
     with pytest.raises(ValueError):
         read_url(url)
     assert calls == []
@@ -100,7 +100,7 @@ def test_https_redirect_to_unsafe_destination_is_rejected(monkeypatch):
     def get(url, **kwargs):
         calls.append(url)
         return Page("", status=302, location="http://localhost/private")
-    monkeypatch.setattr(requests, "get", get)
+    monkeypatch.setattr(requests.Session, "get", lambda self, url, **kw: get(url, **kw))
     with pytest.raises(ValueError, match="public HTTPS"):
         read_url("https://example.org/article")
     assert calls == ["https://example.org/article"]
@@ -112,14 +112,14 @@ def test_https_redirect_to_unsafe_destination_is_rejected(monkeypatch):
     (Page("", status=404), "HTTP error"),
 ])
 def test_bad_remote_content_is_rejected_and_closed(monkeypatch, page, expected):
-    monkeypatch.setattr(requests, "get", lambda *a, **kw: page)
+    monkeypatch.setattr(requests.Session, "get", lambda self, *a, **kw: page)
     with pytest.raises(ValueError, match=expected):
         read_url("https://example.org/article")
     assert page.closed
 
 
 def test_analyze_accepts_url_and_paste_without_local_files(monkeypatch, tmp_path):
-    monkeypatch.setattr(requests, "get", lambda *a, **kw: Page(html_sample()))
+    monkeypatch.setattr(requests.Session, "get", lambda self, *a, **kw: Page(html_sample()))
     profile_file = tmp_path / "writer.json"
     monkeypatch.setattr(sys, "argv", [
         "pennovia", "analyze",
@@ -147,7 +147,7 @@ def test_analyze_reads_pasted_multiline_stdin(monkeypatch, tmp_path):
 def test_bad_url_can_be_skipped_when_valid_pasted_writing_exists(
     monkeypatch, capsys, tmp_path
 ):
-    monkeypatch.setattr(requests, "get", lambda *a, **kw: Page("", status=404))
+    monkeypatch.setattr(requests.Session, "get", lambda self, *a, **kw: Page("", status=404))
     target = tmp_path / "writer.json"
     monkeypatch.setattr(sys, "argv", [
         "pennovia", "analyze",
@@ -179,7 +179,7 @@ def test_run_url_and_paste_through_synthetic_provider_to_exports(
 ):
     from pennovia.voice import generator
 
-    monkeypatch.setattr(requests, "get", lambda *a, **kw: Page(html_sample()))
+    monkeypatch.setattr(requests.Session, "get", lambda self, *a, **kw: Page(html_sample()))
     draft = " ".join(
         ["A practical city guide can be short and clear without invented visits."]
         * 24
@@ -227,7 +227,7 @@ def test_valid_url_works_when_other_corpus_folder_has_no_supported_files(
     folder = tmp_path / "empty"
     folder.mkdir()
     (folder / "ignored.csv").write_text(SAMPLE, encoding="utf-8")
-    monkeypatch.setattr(requests, "get", lambda *a, **kw: Page(html_sample()))
+    monkeypatch.setattr(requests.Session, "get", lambda self, *a, **kw: Page(html_sample()))
     target = tmp_path / "voice.json"
     monkeypatch.setattr(sys, "argv", [
         "pennovia", "analyze", "--corpus", str(folder),
