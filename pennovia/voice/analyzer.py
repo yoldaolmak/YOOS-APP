@@ -360,7 +360,7 @@ def analyze(
     bigrams = Counter()
     for text in texts:
         words = re.findall(r"\b\w+\b", text.lower())
-        bigrams.update(zip(words, words[1:]))
+        bigrams.update(zip(words, words[1:], strict=False))
     signature = [
         f"{a} {b}" for (a, b), c in bigrams.most_common(50)
         if c >= 3 and len(a) > 3 and len(b) > 3
