@@ -16,6 +16,20 @@ python -m pytest -q
 
 Without provider credentials, the demo uses labeled mock writing. It tests the offline pipeline, not the quality of LLM generation.
 
+## Browser Studio
+
+```bash
+pennovia studio
+```
+
+Open the printed local address in your browser. The UI runs on **127.0.0.1:8765** by default and opens your browser unless you pass `--no-browser`. Use `--port 8766` if the default port is taken. Stop it with Ctrl+C in the terminal. This is not a hosted website or a network-shared service.
+
+The one-panel workflow is **Sources → Profile → Draft → Review → Export**. Supply public HTTPS links, paste one or more writings, or choose local TXT/HTML/PDF files (4 MB each, up to 20 sources per analysis). Each usable sample needs at least 51 words. Save the profile as JSON for reuse or import a saved profile directly. Choose Ollama (local) or a specifically configured remote provider; the default selection is Ollama to avoid unexpected cloud transmission. No model is simulated in the Studio production flow. Draft text is editable, and `Review edited draft` refreshes the heuristic findings.
+
+Downloads go to your browser's download destination. WordPress **always creates a draft** and asks for confirmation in Studio; use the existing CLI if you deliberately want to publish. Google Drive requires the existing optional dependencies and environment configuration. Browser profile/draft state stays in the current page; refresh closes unsaved work, so download important files before leaving.
+
+Studio uses a session token and enforces loopback host/origin checks; it serves only the fixed UI assets and API actions. It does not expose the editor to your network and is not designed to run behind a public reverse proxy. Keep model API keys in the shell environment, not the browser. This is a lightweight local tool, not an independent security sandbox for malicious websites or files.
+
 ## Your own writing
 
 ```bash
@@ -42,7 +56,7 @@ pennovia run --corpus ./older-articles \
   --topic "Three days in Lisbon" --backend ollama
 ```
 
-Both \`analyze\` and \`run\` accept repeatable \`--url\` and \`--text\` options and an optional \`--corpus\`. \`--text "your text"\` accepts inline text; \`--text -\` reads one text from stdin. Each individual sample requires at least **51 words**. Unreadable, inaccessible or short sources are reported and skipped; the command stops if none is usable. Public HTTPS web pages are fetched on demand (HTML or plain text; at most 2 MB), following only a few HTTPS redirects. The reader prefers an article or main element, removes common site chrome, and cannot extract content hidden behind logins, anti-bot pages or JavaScript-only rendering. URL fetching contacts the selected websites; it is not an unattended crawler or security isolation boundary.
+Both `analyze` and `run` accept repeatable `--url` and `--text` options and an optional `--corpus`. `--text "your text"` accepts inline text; `--text -` reads one text from stdin. Each individual sample requires at least **51 words**. Unreadable, inaccessible or short sources are reported and skipped; the command stops if none is usable. Public HTTPS web pages are fetched on demand (HTML or plain text; at most 2 MB), following only a few HTTPS redirects. The reader prefers an article or main element, removes common site chrome, and cannot extract content hidden behind logins, anti-bot pages or JavaScript-only rendering. URL fetching contacts the selected websites; it is not an unattended crawler or security isolation boundary.
 
 A corpus can be one supported TXT, HTML or PDF file, or a directory of such files. English/Turkish language detection is heuristic; use `--language tr` or `--language en` when you know the corpus language, especially for short or mixed text. The directory scan is non-recursive and alphabetical. Each usable file must contain more than 50 whitespace-delimited words; rejected files are reported on stderr. Voice profiles can contain verbatim sample sentences from your source material. During generation these samples are supplied to the model as lower-priority untrusted style evidence, not trusted system instructions. This reduces prompt-injection risk but does not guarantee that a model ignores malicious directions inside source text.
 

@@ -31,7 +31,11 @@ jobs:
       - name: Test
         run: python -m pytest -q tests/
       - name: CLI smoke test
-        run: pennovia --version
+        run: |
+          pennovia --version
+          pennovia studio --help
+      - name: Studio browser script syntax
+        run: node --check pennovia/studio/app.js
       - name: Offline demo
         env:
           OPENAI_API_KEY: ''
@@ -76,3 +80,5 @@ jobs:
           "$RUNNER_TEMP/pennovia-wheel-env/bin/pennovia" --version
           "$RUNNER_TEMP/pennovia-wheel-env/bin/pennovia" demo
           "$RUNNER_TEMP/pennovia-wheel-env/bin/python" -c 'from pathlib import Path; import pennovia.demo; p = Path(pennovia.demo.__file__).parent / "corpus"; assert len(list(p.glob("*.txt"))) == 3'
+          "$RUNNER_TEMP/pennovia-wheel-env/bin/pennovia" studio --help
+          "$RUNNER_TEMP/pennovia-wheel-env/bin/python" -c 'from importlib.resources import files; p = files("pennovia.studio"); assert all(p.joinpath(f).is_file() for f in ("index.html", "app.css", "app.js"))'

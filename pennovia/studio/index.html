@@ -1,0 +1,157 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="theme-color" content="#f8f6f2">
+  <meta name="pennovia-token" content="__STUDIO_TOKEN__">
+  <title>Pennovia Studio — Your voice, still yours.</title>
+  <meta name="description" content="A local workspace for voice profiling, AI-assisted drafting and editorial review.">
+  <link rel="stylesheet" href="/app.css">
+  <script src="/app.js" defer></script>
+</head>
+<body>
+  <header class="topbar">
+    <div class="topbar-inner">
+      <a href="/" class="wordmark" aria-label="Pennovia Studio home">
+        <span class="brand-mark" aria-hidden="true"><svg viewBox="0 0 32 32" fill="none"><path d="m7 24 9-17 9 17-9-5-9 5Z" stroke="currentColor" stroke-width="1.7" stroke-linejoin="round"/><path d="M16 7v12" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"/></svg></span>
+        <span>Pennovia<span class="brand-muted"> / studio</span></span>
+      </a>
+      <div class="header-note"><span class="local-dot"></span> Running locally <span class="header-separator">·</span> Alpha 0.2</div>
+      <a class="header-link" href="https://github.com/yoldaolmak/Pennovia" target="_blank" rel="noopener noreferrer">GitHub <span aria-hidden="true">↗</span></a>
+    </div>
+  </header>
+
+  <div class="shell">
+    <div class="intro">
+      <div class="kicker"><span class="kicker-line"></span> THE AUTHOR'S WORKSPACE</div>
+      <h1>Write like <em>yourself.</em></h1>
+      <p>Your writing has a rhythm worth keeping. Turn your existing work into a style profile, then guide a new draft without losing your own voice.</p>
+    </div>
+
+    <div class="workbench">
+      <aside class="source-column">
+        <section class="card source-card" aria-labelledby="sources-title">
+          <div class="card-top">
+            <span class="stage-number">01</span>
+            <span class="card-kicker">START HERE</span>
+          </div>
+          <h2 id="sources-title">Your writing, first.</h2>
+          <p class="card-intro">Add a few pieces that sound like you. Each becomes a separate sample.</p>
+
+          <div class="segmented" role="tablist" aria-label="Writing input method">
+            <button class="segment is-active" role="tab" aria-selected="true" aria-controls="source-url" id="tab-url" data-source-tab="url">Links</button>
+            <button class="segment" role="tab" aria-selected="false" aria-controls="source-paste" id="tab-paste" data-source-tab="paste">Paste</button>
+            <button class="segment" role="tab" aria-selected="false" aria-controls="source-files" id="tab-files" data-source-tab="files">Files</button>
+          </div>
+
+          <div id="source-url" class="source-method" role="tabpanel" aria-labelledby="tab-url">
+            <label for="url-input">Article links <span class="soft-label">one per line</span></label>
+            <textarea id="url-input" rows="4" placeholder="https://yourblog.com/your-story&#10;https://yourblog.com/another-story" spellcheck="false"></textarea>
+            <p class="input-hint">Public HTTPS articles. No entire-site crawling.</p>
+            <button id="add-urls" class="button button-secondary button-full" type="button">+ Add links</button>
+          </div>
+          <div id="source-paste" class="source-method" role="tabpanel" aria-labelledby="tab-paste" hidden>
+            <label for="paste-input">Paste a piece of writing</label>
+            <textarea id="paste-input" rows="7" placeholder="Paste at least 51 words of your original writing here…"></textarea>
+            <p class="input-hint">One piece per addition. Your text stays local until you request a model draft.</p>
+            <button id="add-text" class="button button-secondary button-full" type="button">+ Add writing sample</button>
+          </div>
+          <div id="source-files" class="source-method" role="tabpanel" aria-labelledby="tab-files" hidden>
+            <label class="upload-zone" for="file-input"><span class="upload-icon" aria-hidden="true">↑</span><strong>Choose writing files</strong><small>TXT, HTML or PDF · up to 4 MB each</small></label>
+            <input id="file-input" type="file" accept=".txt,.html,.htm,.pdf" multiple hidden>
+            <p class="input-hint">The same file reader used by the Pennovia CLI.</p>
+          </div>
+
+          <div class="source-list-head"><span>COLLECTION</span><span id="source-counter">0 / 20</span></div>
+          <div id="source-list" class="source-list"><p class="list-empty">No writing samples yet.</p></div>
+
+          <div class="form-divider"></div>
+          <div class="field-grid">
+            <div><label for="author">Author label</label><input id="author" type="text" maxlength="120" value="My writing" autocomplete="off"></div>
+            <div><label for="language">Language</label><select id="language"><option value="auto">Detect</option><option value="en">English</option><option value="tr">Türkçe</option></select></div>
+          </div>
+          <button id="analyze" class="button button-primary button-full action-main" type="button" disabled>Analyze my voice <span aria-hidden="true">↗</span></button>
+          <p class="muted-note">Analysis runs on this computer. URLs are fetched from the selected websites.</p>
+        </section>
+
+        <div class="privacy-card"><span class="privacy-glyph" aria-hidden="true">✳</span><div><strong>Your words stay yours.</strong><p>No account, cloud database or automatic publishing. Model generation sends selected style excerpts only to the provider you choose.</p></div></div>
+      </aside>
+
+      <main class="main-column">
+        <section class="card profile-card" aria-labelledby="profile-title">
+          <div class="card-top"><span class="stage-number">02</span><span class="card-kicker">YOUR STYLE PROFILE</span><span id="profile-state" class="state-tag">Not analyzed</span></div>
+          <div class="section-heading">
+            <div><h2 id="profile-title">A fingerprint of your prose.</h2><p>The patterns behind how you write, not a claim about who wrote it.</p></div>
+            <div class="small-actions">
+              <label class="text-action" for="profile-import">Import profile</label><input id="profile-import" type="file" accept=".json,application/json" hidden>
+              <button id="profile-save" type="button" class="text-action" disabled>Save JSON ↓</button>
+            </div>
+          </div>
+          <div id="profile-empty" class="empty-state">
+            <span class="empty-symbol" aria-hidden="true">≈</span>
+            <p>Bring in your writing to see your voice take shape.</p>
+            <span>Your sentence rhythm, point of view and characteristic phrases appear here.</span>
+          </div>
+          <div id="profile-results" hidden>
+            <div class="metrics">
+              <div class="metric"><span>WORDS STUDIED</span><strong id="metric-words">—</strong><small id="metric-texts">—</small></div>
+              <div class="metric"><span>SENTENCE RHYTHM</span><strong id="metric-sentence">—</strong><small>words on average</small></div>
+              <div class="metric"><span>FIRST PERSON</span><strong id="metric-person">—</strong><small>of sentences</small></div>
+              <div class="metric"><span>VOCABULARY</span><strong id="metric-vocab">—</strong><small>richness indicator</small></div>
+            </div>
+            <div class="fingerprint"><div class="fingerprint-label">RECURRING TRANSITIONS</div><div id="transitions" class="chips"></div></div>
+            <p id="profile-warnings" class="inline-warning" hidden></p>
+          </div>
+        </section>
+
+        <section class="card draft-card" aria-labelledby="draft-title">
+          <div class="card-top"><span class="stage-number">03</span><span class="card-kicker">DRAFT WITH YOUR VOICE</span></div>
+          <div class="section-heading"><div><h2 id="draft-title">A fresh page. A familiar voice.</h2><p>Your profile guides the model; you remain the editor.</p></div></div>
+          <div class="draft-fields">
+            <div class="field-topic"><label for="topic">What are we writing about?</label><input id="topic" type="text" maxlength="500" placeholder="e.g. A weekend in Lisbon" autocomplete="off"></div>
+            <div><label for="content-type">Format</label><select id="content-type"><option value="travel_blog">Travel blog</option><option value="travel_guide">Travel guide</option><option value="magazine">Magazine article</option><option value="news">News</option><option value="story">Story</option><option value="column">Column</option></select></div>
+            <div><label for="backend">Model provider</label><select id="backend"><option value="ollama">Ollama · local</option><option value="openai">OpenAI</option><option value="anthropic">Anthropic</option><option value="openrouter">OpenRouter</option><option value="codex">Codex CLI</option></select></div>
+            <div><label for="model">Model name <span class="soft-label">optional</span></label><input id="model" type="text" maxlength="120" placeholder="Provider default" autocomplete="off"></div>
+          </div>
+          <div class="draft-toolbar"><p>Choose a configured provider. No API keys are entered or saved in the browser.</p><button id="generate" type="button" class="button button-primary" disabled>Generate draft <span aria-hidden="true">↗</span></button></div>
+          <div class="editor-area">
+            <div class="editor-label"><span>EDITOR</span><span id="draft-words">0 words</span></div>
+            <textarea id="draft" rows="13" placeholder="Your draft will appear here. You can also paste or edit a draft and review its alignment with your voice profile." spellcheck="true"></textarea>
+            <div class="editor-footer"><span>Editable draft · Not automatically published</span><button id="review" class="text-action" type="button" disabled>Review edited draft →</button></div>
+          </div>
+        </section>
+
+        <div class="bottom-grid">
+          <section class="card review-card" aria-labelledby="review-title">
+            <div class="card-top"><span class="stage-number">04</span><span class="card-kicker">EDITORIAL REVIEW</span></div>
+            <h2 id="review-title">Check the fit.</h2>
+            <p class="card-intro">A descriptive comparison, not authorship verification or a quality guarantee.</p>
+            <div id="review-empty" class="review-placeholder">Generate or paste a draft, then review it against your profile.</div>
+            <div id="review-results" hidden>
+              <div class="score-line"><strong id="review-score">—</strong><span><b>/ 100</b><small>Heuristic style score</small></span></div>
+              <div class="score-track"><div id="score-fill"></div></div>
+              <p id="review-verdict" class="score-verdict"></p>
+              <div id="review-components" class="review-components"></div>
+              <div id="review-issues" class="review-issues"></div>
+            </div>
+          </section>
+
+          <section class="card export-card" aria-labelledby="export-title">
+            <div class="card-top"><span class="stage-number">05</span><span class="card-kicker">MAKE IT YOURS</span></div>
+            <h2 id="export-title">Take it from here.</h2>
+            <p class="card-intro">Download a copy, or send a draft to your connected publishing tools.</p>
+            <label for="export-title-input">Document title</label><input id="export-title-input" type="text" maxlength="200" placeholder="A title for your draft" autocomplete="off">
+            <div class="export-choices"><label for="export-format">Download format</label><div class="export-download"><select id="export-format"><option value="txt">Plain text · TXT</option><option value="html">Web document · HTML</option><option value="pdf">Printable · PDF</option></select><button id="download" class="button button-secondary" type="button" disabled>Download ↓</button></div></div>
+            <div class="export-separator"><span>OR SEND A DRAFT</span></div>
+            <div class="publish-row"><button id="wordpress" type="button" class="button button-soft button-full" disabled>WordPress draft <span aria-hidden="true">↗</span></button><button id="drive" type="button" class="button button-soft button-full" disabled>Google Drive <span aria-hidden="true">↗</span></button></div>
+            <p class="muted-note">Publishing is never automatic. WordPress credentials and Google Drive access are configured outside Studio.</p>
+          </section>
+        </div>
+        <footer class="workspace-footer"><span>PENNOVIA STUDIO · LOCAL-FIRST</span><span>Built for writers. Open for developers.</span></footer>
+      </main>
+    </div>
+  </div>
+  <div id="notice" class="notice" role="status" aria-live="polite" hidden></div>
+</body>
+</html>

@@ -4,6 +4,8 @@ Pennovia's package metadata currently identifies version **0.2.0 alpha**. Entrie
 
 ## Unreleased — 7 November 2026
 
+- Add Pennovia Studio: one local browser screen for sample collection, voice profile, model-assisted draft, editorial review and manual exports. Studio uses the existing Python core/CLI capabilities, bundled static assets and the standard library server; no accounts, database or hosted platform.
+
 - Reject missing and blank provider responses and report malformed provider replies with bounded errors ([#17](https://github.com/yoldaolmak/Pennovia/pull/17)).
 
 - Reuse one language-aware first-person pronoun measure across analysis, scoring and audit ([#16](https://github.com/yoldaolmak/Pennovia/pull/16)).

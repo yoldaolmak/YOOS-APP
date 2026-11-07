@@ -8,6 +8,7 @@ Commands:
   export    Export content to a destination in a chosen format
   run       Full pipeline: corpus → analyze → generate → export
   demo      Run the built-in demo
+  studio    Open the local author voice workspace
 
 Examples:
   pennovia analyze --corpus ./texts/ --author "Hemingway" --out hem.json
@@ -252,6 +253,11 @@ def cmd_demo(_args):
     run()
 
 
+def cmd_studio(args):
+    from pennovia.studio.server import serve
+    serve(port=args.port, open_browser=not args.no_browser)
+
+
 def main():
     parser = argparse.ArgumentParser(
         prog="pennovia",
@@ -319,6 +325,10 @@ def main():
                      dest="save_profile", help="Also save voice profile to this path")
     p_r.add_argument("--overwrite", action="store_true", help="Replace existing --save-profile file")
 
+    p_s = sub.add_parser("studio", help="Open the local Pennovia Studio browser interface")
+    p_s.add_argument("--port", type=int, default=8765, help="Local port (default: 8765)")
+    p_s.add_argument("--no-browser", action="store_true", help="Do not open a browser automatically")
+
     sub.add_parser("demo", help="Run built-in demo (Mark Twain corpus, no key needed)")
 
     args = parser.parse_args()
@@ -328,7 +338,8 @@ def main():
 
     try:
         {"analyze": cmd_analyze, "generate": cmd_generate,
-         "export": cmd_export, "run": cmd_run, "demo": cmd_demo}[args.command](args)
+         "export": cmd_export, "run": cmd_run, "demo": cmd_demo,
+         "studio": cmd_studio}[args.command](args)
     except KeyboardInterrupt:
         print("\nInterrupted.", file=sys.stderr)
         sys.exit(1)
