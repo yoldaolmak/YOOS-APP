@@ -17,7 +17,8 @@ class AuditResult:
     details: dict
 
     def passed(self) -> bool:
-        return self.total_score >= 70
+        """A high heuristic score cannot override insufficient text evidence."""
+        return self.total_score >= 70 and "too_short" not in self.issues
 
     def report(self) -> str:
         status = "PASS" if self.passed() else "FAIL"
@@ -86,7 +87,7 @@ def audit(content: str, profile: VoiceProfile) -> AuditResult:
     transition_match = min(20, int((found / max(len(profile.top_transitions), 1)) * 20 + found * 2))
     details["transitions_found"] = found
 
-    if found < 2:
+    if profile.top_transitions and found < min(2, len(profile.top_transitions)):
         issues.append("missing_transitions")
 
     # 3. Style match — paragraph structure (0-20)
