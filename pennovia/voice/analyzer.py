@@ -179,7 +179,7 @@ _EN_WORDS = frozenset(
 def _detect_language(text: str) -> str:
     """Return 'tr', 'en', or 'auto' when evidence is too weak or mixed."""
     normalized = text.lower().replace("i\u0307", "i")
-    tokens = re.findall(r"[^\\W\\d_]+", normalized, re.UNICODE)
+    tokens = re.findall(r"[^\W\d_]+", normalized, re.UNICODE)
     tr_score = sum(token in _TR_WORDS for token in tokens)
     en_score = sum(token in _EN_WORDS for token in tokens)
     # Turkish-specific letters are supporting evidence, not proof: English
