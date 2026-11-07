@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-Pennovia CLI — Universal Author Voice Engine
+Pennovia CLI — Open-source author voice toolkit
 
 Commands:
   analyze   Extract voice profile from a corpus folder
@@ -37,26 +37,36 @@ def _fail(msg):
     sys.exit(1)
 
 def _load_corpus(corpus_path):
-    from pennovia.ingestion.reader import read_corpus
-    p = Path(corpus_path)
-    if not p.exists():
+    from pennovia.ingestion.reader import SUPPORTED_EXTENSIONS, read_corpus
+
+    path = Path(corpus_path)
+    if not path.exists():
         _fail(f"Corpus path not found: {corpus_path}")
-    files = [str(f) for f in (p.iterdir() if p.is_dir() else [p])
-             if Path(f).suffix.lower() in (".txt", ".pdf", ".html", ".htm")]
+
+    if path.is_dir():
+        files = [
+            str(candidate)
+            for candidate in sorted(path.iterdir())
+            if candidate.is_file() and candidate.suffix.lower() in SUPPORTED_EXTENSIONS
+        ]
+    elif path.is_file() and path.suffix.lower() in SUPPORTED_EXTENSIONS:
+        files = [str(path)]
+    else:
+        _fail(f"Corpus must be a file or directory with supported TXT, HTML or PDF files: {corpus_path}")
+
     if not files:
-        _fail(f"No .txt/.pdf/.html files found in: {corpus_path}")
+        _fail(f"No supported TXT, HTML or PDF files found in: {corpus_path}")
     texts = read_corpus(files)
     if not texts:
-        _fail("All corpus files were empty or unreadable.")
+        _fail("No usable corpus texts (each file must have more than 50 words).")
     return texts, files
-
 
 def cmd_analyze(args):
     from pennovia.voice.analyzer import analyze
     _step(1, 2, f"Reading corpus: {args.corpus}")
     texts, files = _load_corpus(args.corpus)
     total_words = sum(len(t.split()) for t in texts)
-    _ok(f"{len(files)} files, {total_words:,} words")
+    _ok(f"{len(texts)} usable of {len(files)} files, {total_words:,} words")
     _step(2, 2, "Analyzing voice...")
     t0 = time.time()
     profile = analyze(texts, author_name=args.author or "unknown")
@@ -131,7 +141,7 @@ def cmd_run(args):
     STEPS = 5
     _step(1, STEPS, f"Reading corpus: {args.corpus}")
     texts, files = _load_corpus(args.corpus)
-    _ok(f"{len(files)} files, {sum(len(t.split()) for t in texts):,} words")
+    _ok(f"{len(texts)} usable of {len(files)} files, {sum(len(t.split()) for t in texts):,} words")
     _step(2, STEPS, "Analyzing voice...")
     profile = analyze(texts, author_name=args.author or "unknown")
     _ok(profile.summary().split("\n")[0])
@@ -242,6 +252,8 @@ def main():
     except KeyboardInterrupt:
         print("\nInterrupted.", file=sys.stderr)
         sys.exit(1)
+    except (OSError, ValueError) as exc:
+        _fail(str(exc))
 
 if __name__ == "__main__":
     main()
