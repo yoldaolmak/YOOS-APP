@@ -3,7 +3,7 @@
 Pennovia CLI — Open-source author voice toolkit
 
 Commands:
-  analyze   Extract voice profile from a corpus folder
+  analyze   Extract voice profile from files, article URLs or pasted text
   generate  Generate content from a saved voice profile
   export    Export content to a destination in a chosen format
   run       Full pipeline: corpus → analyze → generate → export
@@ -14,6 +14,8 @@ Examples:
   pennovia generate --profile hem.json --type travel_blog --topic "Cuba" --backend openai
   pennovia export --input out.txt --title "Cuba Morning" --format pdf --dest desktop
   pennovia run --corpus ./texts/ --type magazine --topic "Tokyo streets" --dest wordpress
+  pennovia analyze --url https://example.com/article --author Writer --out voice.json
+  pennovia analyze --text - --author Writer --out voice.json
   pennovia demo
 """
 import argparse
@@ -80,14 +82,51 @@ def _load_corpus(corpus_path):
         _fail("No usable corpus texts (each file must have more than 50 words).")
     return texts, files
 
+
+def _load_inputs(args):
+    """Combine optional local files, article URLs and pasted texts as documents."""
+    from pennovia.ingestion.reader import MIN_CORPUS_WORDS, read_url
+
+    corpus = getattr(args, "corpus", None)
+    urls = getattr(args, "urls", None) or []
+    pasted = getattr(args, "texts", None) or []
+    if not (corpus or urls or pasted):
+        _fail("Provide at least one --corpus, --url or --text input.")
+
+    texts, sources = _load_corpus(corpus) if corpus else ([], [])
+    sources = list(sources)
+    for number, url in enumerate(urls, 1):
+        sources.append(f"URL #{number}")
+        try:
+            content = read_url(url)
+        except (ValueError, RuntimeError) as exc:
+            _warn(f"Skipping URL #{number}: {exc}")
+            continue
+        if len(content.split()) < MIN_CORPUS_WORDS:
+            _warn(f"Skipping URL #{number}: fewer than {MIN_CORPUS_WORDS} words")
+            continue
+        texts.append(content)
+    for number, text in enumerate(pasted, 1):
+        sources.append(f"pasted text #{number}")
+        content = sys.stdin.read() if text == "-" else text
+        if len(content.split()) < MIN_CORPUS_WORDS:
+            _warn(f"Skipping pasted text #{number}: fewer than {MIN_CORPUS_WORDS} words")
+            continue
+        texts.append(content)
+    if not texts:
+        _fail("No usable writings; each source must contain at least 51 words.")
+    return texts, sources
+
+
 def cmd_analyze(args):
     from pennovia.voice.analyzer import analyze
     out = args.out or "voice_profile.json"
     _check_output_path(out, getattr(args, "overwrite", False))
-    _step(1, 2, f"Reading corpus: {args.corpus}")
-    texts, files = _load_corpus(args.corpus)
+    _step(1, 2, "Reading writing samples...")
+    texts, sources = _load_inputs(args)
     total_words = sum(len(t.split()) for t in texts)
-    _ok(f"{len(texts)} usable of {len(files)} files, {total_words:,} words")
+    kind = "files" if args.corpus and not (args.urls or args.texts) else "sources"
+    _ok(f"{len(texts)} usable of {len(sources)} {kind}, {total_words:,} words")
     _step(2, 2, "Analyzing voice...")
     t0 = time.time()
     profile = analyze(texts, author_name=args.author or "unknown", language=args.language)
@@ -165,9 +204,10 @@ def cmd_run(args):
     from pennovia.voice.scorer import score
     from pennovia.exporter.writer import save_local, save_wordpress, save_google_drive
     STEPS = 5
-    _step(1, STEPS, f"Reading corpus: {args.corpus}")
-    texts, files = _load_corpus(args.corpus)
-    _ok(f"{len(texts)} usable of {len(files)} files, {sum(len(t.split()) for t in texts):,} words")
+    _step(1, STEPS, "Reading writing samples...")
+    texts, sources = _load_inputs(args)
+    kind = "files" if args.corpus and not (args.urls or args.texts) else "sources"
+    _ok(f"{len(texts)} usable of {len(sources)} {kind}, {sum(len(t.split()) for t in texts):,} words")
     _step(2, STEPS, "Analyzing voice...")
     profile = analyze(texts, author_name=args.author or "unknown", language=args.language)
     _ok(profile.summary().split("\n")[0])
@@ -224,7 +264,11 @@ def main():
     sub = parser.add_subparsers(dest="command", metavar="command")
 
     p_a = sub.add_parser("analyze", help="Extract voice profile from corpus folder")
-    p_a.add_argument("--corpus", required=True, help="Folder or file with author texts")
+    p_a.add_argument("--corpus", help="Folder or file with author texts")
+    p_a.add_argument("--url", action="append", dest="urls", default=[],
+                     help="Public HTTPS article link (repeat for more articles)")
+    p_a.add_argument("--text", action="append", dest="texts", default=[],
+                     help="Pasted writing (repeat) or '-' to read from stdin")
     p_a.add_argument("--author", default="unknown", help="Author name")
     p_a.add_argument("--language", choices=["auto", "tr", "en"], default="auto",
                      help="Corpus language; auto abstains when uncertain")
@@ -252,7 +296,11 @@ def main():
     p_e.add_argument("--publish", action="store_true", help="Publish to WordPress immediately")
 
     p_r = sub.add_parser("run", help="Full pipeline in one command")
-    p_r.add_argument("--corpus", required=True)
+    p_r.add_argument("--corpus")
+    p_r.add_argument("--url", action="append", dest="urls", default=[],
+                     help="Public HTTPS article link (repeat for more articles)")
+    p_r.add_argument("--text", action="append", dest="texts", default=[],
+                     help="Pasted writing (repeat) or '-' to read from stdin")
     p_r.add_argument("--author", default="unknown")
     p_r.add_argument("--language", choices=["auto", "tr", "en"], default="auto",
                      help="Corpus language; auto abstains when uncertain")
