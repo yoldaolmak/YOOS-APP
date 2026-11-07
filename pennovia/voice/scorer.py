@@ -3,7 +3,6 @@ Voice similarity scorer — compares content style to profile using
 sentence-level statistical fingerprint. No embeddings needed.
 """
 import re
-import math
 from .analyzer import VoiceProfile, _sentences, _transition_count
 
 

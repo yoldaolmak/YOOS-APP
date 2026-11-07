@@ -14,19 +14,18 @@ import sys
 import os
 from pathlib import Path
 
-CORPUS_DIR = Path(__file__).parent / "corpus"
-# Outputs belong to the invoking user, never to the installed package directory.
-OUTPUT_DIR = Path(os.environ.get("PENNOVIA_DEMO_OUTPUT_DIR", str(Path.cwd() / "examples" / "output")))
-OUTPUT_DIR.mkdir(parents=True, exist_ok=True)
-
-
 from pennovia.ingestion.reader import read_corpus
 from pennovia.voice.analyzer import analyze
 from pennovia.voice.generator import generate
 from pennovia.exporter.writer import save_local
 
+CORPUS_DIR = Path(__file__).parent / "corpus"
+# Outputs belong to the invoking user, never to the installed package directory.
+OUTPUT_DIR = Path(os.environ.get("PENNOVIA_DEMO_OUTPUT_DIR", str(Path.cwd() / "examples" / "output")))
+
 
 def run():
+    OUTPUT_DIR.mkdir(parents=True, exist_ok=True)
     print("Pennovia Demo")
     print("=" * 40)
 

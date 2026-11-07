@@ -9,6 +9,7 @@ python -m venv .venv
 source .venv/bin/activate
 python -m pip install -e ".[dev]"
 python -m compileall -q pennovia
+python -m ruff check pennovia tests
 python -m pytest -q
 python -m pennovia.demo
 ```

@@ -1,6 +1,5 @@
 """A portable author profile needs a predictable and safe v1 JSON contract."""
 import json
-import math
 
 import pytest
 

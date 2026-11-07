@@ -1,10 +1,9 @@
 """
 Core tests — all run without any API key.
 """
-import sys, os, tempfile, json
-sys.path.insert(0, os.path.join(os.path.dirname(__file__), ".."))
-
-import pytest
+import json
+import os
+import tempfile
 from pennovia.ingestion.reader import read_corpus, read_file
 from pennovia.voice.analyzer import analyze, VoiceProfile
 from pennovia.content_types.registry import list_types, get
