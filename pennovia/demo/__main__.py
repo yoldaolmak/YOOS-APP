@@ -17,7 +17,7 @@ from pathlib import Path
 
 CORPUS_DIR = Path(__file__).parent / "corpus"
 # Outputs belong to the invoking user, never to the installed package directory.
-OUTPUT_DIR = Path(os.environ.get("Pennovia_DEMO_OUTPUT_DIR", str(Path.cwd() / "examples" / "output")))
+OUTPUT_DIR = Path(os.environ.get("PENNOVIA_DEMO_OUTPUT_DIR", str(Path.cwd() / "examples" / "output")))
 OUTPUT_DIR.mkdir(parents=True, exist_ok=True)
 
 
