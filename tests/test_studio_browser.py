@@ -95,7 +95,7 @@ def test_real_chromium_full_studio_flow_and_mobile_layout(monkeypatch, tmp_path)
         page.locator("#content-type").select_option("travel_guide")
         page.locator("#generate").click()
         page.locator("#draft").wait_for(state="visible")
-        page.wait_for_function("(expected) => document.querySelector('#draft').value === expected", DRAFT)
+        page.wait_for_function("(expected) => document.querySelector('#draft').value === expected", arg=DRAFT)
         assert calls[0] == ("generate", "travel_guide", "Walkable neighborhoods", "ollama")
 
         page.locator("#draft").fill(DRAFT + "\n\nExtra editorial note.")
