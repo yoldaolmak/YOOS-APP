@@ -2,8 +2,7 @@
 Voice similarity scorer — compares content style to profile using
 sentence-level statistical fingerprint. No embeddings needed.
 """
-import re
-from .analyzer import VoiceProfile, _sentences, _transition_count
+from .analyzer import VoiceProfile, _sentences, _transition_count, _first_person_rate
 
 
 def score(content: str, profile: VoiceProfile) -> float:
@@ -18,9 +17,7 @@ def score(content: str, profile: VoiceProfile) -> float:
     length_sim = 1.0 - min(1.0, abs(avg - profile.avg_sentence_words) / profile.avg_sentence_words)
 
     # First person similarity
-    fp = sum(1 for s in sentences if re.search(
-        r"\b(ben|benim|bana|I|my|me)\b", s, re.I
-    )) / len(sentences)
+    fp = _first_person_rate(sentences, profile.language)
     fp_sim = 1.0 - min(1.0, abs(fp - profile.first_person_rate) / max(profile.first_person_rate, 0.01))
 
     # Transition coverage
