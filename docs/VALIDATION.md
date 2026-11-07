@@ -28,8 +28,10 @@ The corpus analyzer calculates vocabulary richness from fixed 500-token windows 
 
 The current scorer combines sentence-length similarity, first-person rate and observed transitions. Because it does not compare all lexical, syntactic or semantic properties, **unrelated writing can receive a high score** when those limited properties match.
 
-## Minimum evidence for future author comparison
+## Practical editorial check
 
-With permission to use multiple authors' texts, divide material by **document** into training and held-out test sets. Do not test the same source text used to build the profile. Include within-author held-out positives, between-author negatives, hard negatives on the **same topic**, and a baseline that always chooses the most frequent author. Report results separately for Turkish and English, including corpus length, uncertainty, false matches and negative controls.
+The product goal is **style-guided drafting**, not author identification. For a useful review, compare the draft with the source writing: sentence rhythm, point of view, characteristic transitions and paragraph structure. Check claims, first-person experiences and quotations separately; a high heuristic score cannot validate any of them.
 
-Until representative held-out corpora have been tested and results independently reviewed, do not market Pennovia's score as authorship verification, identity replication or a calibrated similarity probability.
+Studio uses the same analyzer, generator, audit and scorer as the CLI, with a local HTTP wrapper. Its automated tests exercise source intake, a synthetic provider response, review and downloads. These checks verify software wiring, **not** the quality of any real model's output.
+
+Do not market numeric style scores as verified voice fidelity, a probability of authorship, or a guarantee of publishable content. No large-scale author-identification benchmark is a prerequisite for this toolkit's intended use.

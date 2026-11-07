@@ -6,7 +6,7 @@
 
 ## Positioning
 
-Pennovia helps people examine characteristics of their own writing and use an inspectable voice profile when drafting with a language model. It is an independent, self-contained public software project, not a suite, managed platform, or service.
+Pennovia helps writers examine characteristics of their work and guide drafts with an inspectable voice profile. Its Python Core and CLI remain reusable by developers; the optional Studio is the local, single-panel author workspace. Pennovia is an independent open-source project, not a hosted platform or managed subscription service.
 
 ## How Pennovia speaks
 
@@ -14,14 +14,16 @@ Use plain, confident, precise English. Prefer demonstrable capabilities to aspir
 
 ## Visual direction
 
-Quiet, editorial and technical. Prefer readable type, ample space, and restrained emphasis. Proposed palette for future standalone design work: Ink `#1C2730`, Paper `#FAF8F4`, Brass `#A97642`. These are design guidelines, not product UI that currently exists.
+Quiet, editorial and technical. Studio currently uses spacious typography, neutral surfaces and a restrained terracotta accent: Ink `#282521`, Canvas `#f7f6f2`, Paper `#fffcf8`, Accent `#a94f38`. These describe the implemented CSS tokens in `pennovia/studio/app.css`, not a proposed future palette. Keep visual polish subordinate to readable writing and clear workflow controls.
 
 ## Product terminology
 
 - **Voice profile:** local, portable statistical description of supplied writing.
 - **Draft:** model-generated candidate requiring human review.
 - **Voice review:** explainable heuristic observations; not a certified authenticity score.
-- **Export:** an explicit user-selected output action. WordPress defaults to a draft.
+- **Export:** an explicit user-selected output action. Studio sends only WordPress drafts; the CLI permits explicit publishing.
+- **Studio:** local browser interface for sample collection, profile review, editing and export; not a cloud service.
+- **Core:** Python functions and portable profile data used by both Studio and CLI.
 
 ## Boundaries
 

@@ -9,7 +9,7 @@ Pennovia is designed as a single-responsibility pipeline. Each module does exact
 ```
 pennovia/
 ├── ingestion/       Input parsing
-│   └── reader.py   read_file(), read_corpus()
+│   └── reader.py   read_file(), read_corpus(), read_url()
 │
 ├── voice/           Voice intelligence
 │   ├── analyzer.py  analyze() → VoiceProfile
@@ -35,32 +35,36 @@ pennovia/
 
 ## Data Flow
 
+```text
+[Local TXT/HTML/PDF]    [Public HTTPS article]    [Pasted text]
+         \                    |                     /
+          \____ read_file()/read_url()/user input ___/
+                            |
+                            v
+                      [List of str]
+                            |
+                         analyze()
+                            v
+                       [VoiceProfile] <--> [JSON file / import]
+                            |
+                   _build_prompt() + topic
+                            v
+                   [Selected model backend]
+                            |
+                       [Draft text]
+                            |
+                  +---------+---------+
+                  |                   |
+              audit()/score()     User editing
+                  |                   |
+                  +---------+---------+
+                            |
+                   [Explicit export action]
+                  /            |           \
+           TXT/HTML/PDF    Google Drive   WordPress draft
 ```
-[Files, URLs or pasted writing]
-     │ read_file() / read_url() / input collection
-     ▼
-[Corpus files]
-     │ read_corpus()
-     ▼
-[List of str]
-     │ analyze()
-     ▼
-[VoiceProfile JSON]  ←─ portable, versionable, shareable
-     │
-     │ _build_prompt()
-     │     └─ profile stats + sample sentences + content type structure
-     ▼
-[LLM API call]  ← one call, fully formed prompt
-     │
-     ▼
-[Generated text str]
-     │
-     ├─ audit()   → AuditResult (0–100, no LLM)
-     ├─ score()   → float 0–1   (no LLM)
-     │
-     └─ save_local() / save_google_drive() / save_wordpress()
-          └─ to_html() / to_pdf() / plain txt
-```
+
+The CLI and Studio feed the **same analyzer, generator, review and export functions**. Studio offers browser downloads and saves WordPress drafts only; the CLI can also publish with explicit `--publish`. No model call is needed for analysis or review. The offline demo may use labeled mock output, but Studio production generation does not.
 
 ## Interfaces and integration
 
@@ -74,7 +78,7 @@ Developers should integrate through the Python API, **not** depend on Studio's b
 ## VoiceProfile
 
 The `VoiceProfile` dataclass is the core artifact. It is:
-- **Portable** — plain JSON, no binary dependencies
+- **Portable** — plain JSON; optional PDF and model backends have their own dependencies
 - **Versionable** — can be stored in private version control; do not publish corpus excerpts without permission
 - **Versioned** — JSON schema version 1 is explicit; legacy files without a version are read as v1, unknown optional keys are ignored, and incompatible or malformed known fields are rejected
 
@@ -112,19 +116,11 @@ The prompt is backend-agnostic — the same prompt works with OpenAI, Anthropic,
 
 Diagnostic PASS requires a heuristic total ≥ 70/100 **and at least 200 words**. Insufficient text cannot pass solely by matching superficial traits. Scores remain uncalibrated, and PASS is not an editorial or authorship acceptance decision.
 
-## Adding a Backend
+## Extending Supported Choices
 
-1. Add `generate_mybackend(profile, content_type, topic, **kwargs) → str` in `voice/generator.py`
-2. Add branch in `generate()` dispatch dict
-3. Add to `--backend` choices in `cli.py`
-4. Add to `.env.example`
-5. Add test in `tests/test_core.py`
+A new **model backend** needs an adapter in `voice/generator.py`, dispatch in `generate()`, a CLI `--backend` choice, the Studio provider allowlist/dropdown and relevant configuration and tests. Keep provider failures bounded and ensure no accidental fallback to another cloud service.
 
-## Adding a Content Type
-
-1. Add entry to `CONTENT_TYPES` dict in `content_types/registry.py`
-2. Keys: `label`, `structure` (list), `tone`, `length`
-3. No other changes needed — the generator and CLI pick it up automatically
+A new **content type** belongs in `content_types/registry.py` with `label`, `structure`, `tone` and `length`. The CLI accepts named choices and Studio has an explicit dropdown; update both and their tests. Do not create a separate content-type engine for Studio.
 
 ## Data boundary
 

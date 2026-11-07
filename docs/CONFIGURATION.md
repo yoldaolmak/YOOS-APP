@@ -1,6 +1,6 @@
 # Configuration and first run
 
-Pennovia 0.2.0 alpha is a **local Python command-line toolkit**, not a hosted platform. Corpus analysis runs without a model API key. Draft generation requires an explicitly available backend.
+Pennovia 0.2.0 alpha is a **local Python toolkit with a reusable API, CLI and browser Studio**, not a hosted platform. Corpus analysis needs no model key. Draft generation requires a working, explicitly configured provider.
 
 ## First run
 
@@ -9,6 +9,7 @@ python -m venv .venv
 source .venv/bin/activate
 python -m pip install -e ".[dev]"
 pennovia --version
+pennovia studio --help
 pennovia demo
 python -m ruff check pennovia tests
 python -m pytest -q
@@ -24,11 +25,11 @@ pennovia studio
 
 Open the printed local address in your browser. The UI runs on **127.0.0.1:8765** by default and opens your browser unless you pass `--no-browser`. Use `--port 8766` if the default port is taken. Stop it with Ctrl+C in the terminal. This is not a hosted website or a network-shared service.
 
-The one-panel workflow is **Sources → Profile → Draft → Review → Export**. Supply public HTTPS links, paste one or more writings, or choose local TXT/HTML/PDF files (4 MB each, up to 20 sources per analysis). Each usable sample needs at least 51 words. Save the profile as JSON for reuse or import a saved profile directly. Choose Ollama (local) or a specifically configured remote provider; the default selection is Ollama to avoid unexpected cloud transmission. No model is simulated in the Studio production flow. Draft text is editable, and `Review edited draft` refreshes the heuristic findings.
+The one-panel workflow is **Sources → Profile → Draft → Review → Export**. Studio is a browser UI backed by a bundled loopback-only local server; it is not a public hosting endpoint. Supply public HTTPS links, paste one or more writings, or choose local TXT/HTML/PDF files (4 MB each, up to 20 sources per analysis). Each usable sample needs at least 51 words. Download the profile as JSON for reuse or import a previously saved JSON profile without reanalyzing the source. Choose Ollama (local) or a specifically configured remote provider; the default selection is Ollama to avoid unexpected cloud transmission. No model is simulated in the Studio production flow. Draft text is editable, and `Review edited draft` refreshes the heuristic findings.
 
-Downloads go to your browser's download destination. WordPress **always creates a draft** and asks for confirmation in Studio; use the existing CLI if you deliberately want to publish. Google Drive requires the existing optional dependencies and environment configuration. Browser profile/draft state stays in the current page; refresh closes unsaved work, so download important files before leaving.
+Downloads go to your browser's download destination. WordPress **always creates a draft** and asks for confirmation in Studio; use the existing CLI if you deliberately want to publish. Google Drive requires the existing optional dependencies and environment configuration. Browser profile/draft state is not saved between page loads. Refreshing the page loses unsaved work, so download the profile and draft before leaving.
 
-Studio uses a session token and enforces loopback host/origin checks; it serves only the fixed UI assets and API actions. It does not expose the editor to your network and is not designed to run behind a public reverse proxy. Keep model API keys in the shell environment, not the browser. This is a lightweight local tool, not an independent security sandbox for malicious websites or files.
+Studio uses a session token and enforces loopback host/origin checks; it serves only fixed UI assets and local workflow actions. The browser endpoints are not a supported third-party integration API; use Pennovia's Python functions instead. It does not expose the editor to your network and is not designed to run behind a public reverse proxy. Keep model API keys in the shell environment, not the browser. This is a lightweight local tool, not an independent security sandbox for malicious websites or files.
 
 ## Your own writing
 
@@ -83,7 +84,7 @@ pennovia generate --profile voice.json --type column \
   --topic "A writing subject" --backend openai --out draft.txt
 ```
 
-**Important:** `--backend auto` selects Anthropic → OpenRouter → OpenAI → Ollama according to available environment credentials. If cloud keys exist, auto mode may transmit samples of your writing to a cloud provider. Specify `--backend ollama` for locally hosted inference. Codex is opt-in, not part of auto selection.
+**CLI only:** `--backend auto` selects Anthropic → OpenRouter → OpenAI → Ollama according to available environment credentials. Studio does not use that automatic selection; its provider dropdown starts at local Ollama. If cloud keys exist, auto mode may transmit samples of your writing to a cloud provider. Specify `--backend ollama` for locally hosted inference. Codex is opt-in, not part of auto selection.
 
 ## Export destinations
 
@@ -101,7 +102,8 @@ It creates a **draft** by default. Only explicit `--publish` publishes. Redirect
 
 - **No usable corpus texts:** verify file extensions, text length and skip messages.
 - **Output already exists:** choose a fresh file path or add `--overwrite` deliberately.
-- **No LLM backend available:** start Ollama or configure one supported provider.
+- **Studio draft generation fails:** start Ollama (the default Studio selection) or configure and explicitly select a cloud provider. Studio does not fall back to mock output.
+- **No LLM backend available in the CLI:** start Ollama or configure a supported provider.
 - **Provider library missing:** install the required optional extras.
 - **WordPress export accepts one HTML format:** use `--format html` only.
 

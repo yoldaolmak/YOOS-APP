@@ -6,7 +6,7 @@
 
 **Pennovia is an open-source author voice toolkit.** Give it writing you have permission to use, inspect how you write, and use that profile to guide an AI-assisted draft without surrendering editorial control.
 
-It provides a standalone Python CLI and a local browser Studio. No hosted account, subscription, proprietary runtime, or vendor-specific voice storage is required. Its statistical analysis runs locally; model inference can use Ollama or a configured external provider.
+Pennovia has one reusable **Python Core**, a command-line interface (**CLI**) for automation, and **Studio**, a local single-panel browser interface for writers. No hosted account, subscription, database, or vendor-specific voice storage is required. Writing analysis runs locally; model generation uses Ollama or a separately configured provider.
 
 ## What you can actually do
 
@@ -45,9 +45,13 @@ pennovia studio
 pennovia studio --port 8766 --no-browser
 ```
 
-Studio lets you add public HTTPS article links, paste original writing, or choose TXT/HTML/PDF files; analyze a voice profile; export/import profile JSON; choose a model and draft type; edit and re-review a draft; and download TXT/HTML/PDF or send a **draft** to WordPress / Google Drive. No separate server, account, database or new backend is installed. The UI is a local tool, not a publicly deployed website.
+Studio lets you add public HTTPS article links, paste original writing, or choose TXT/HTML/PDF files; analyze a voice profile; export/import profile JSON; choose a model and draft type; edit and re-review a draft; and download TXT/HTML/PDF or send a **draft** to WordPress / Google Drive. Studio includes a small loopback-only server inside the installed package; there is **no separately deployed service**, account, database or new generation engine. It is not a publicly deployed website.
 
-Profile analysis runs locally (article links are downloaded from their selected sites). Draft generation uses **only the explicitly chosen model provider**, which needs to be configured in the environment; there is no silent mock fallback and no place to type secrets into the browser. Style scores are heuristic, not a guarantee of author-voice fidelity. See [Studio setup and limitations](docs/CONFIGURATION.md#browser-studio).
+Profile analysis runs locally (article URLs are downloaded from their selected sites). In Studio, draft generation uses **only the explicitly chosen model provider**; Ollama is preselected, but must be running to generate. Cloud credentials must be configured outside the browser. Unlike `pennovia demo`, Studio does not silently substitute mock output. Style scores are heuristic, not a guarantee of author-voice fidelity. See [Studio setup and limitations](docs/CONFIGURATION.md#browser-studio).
+
+## Developer integration
+
+Pennovia's **Python API** is the integration surface for other software; Studio's localhost HTTP endpoints are implementation details, **not a supported remote/public API**. The existing CLI and `VoiceProfile` JSON format remain usable without Studio. See [Python API](docs/API.md) and [Architecture](docs/ARCHITECTURE.md).
 
 ## Use your own writing
 
@@ -84,13 +88,13 @@ docker run --rm pennovia --version
 docker run --rm pennovia demo
 ```
 
-Pennovia's image runs a command-line tool, not a web service. A container's generated output is ephemeral unless you mount a suitable volume.
+The Docker image is configured for CLI and offline demo commands. Studio binds to loopback inside its process, so Docker port publishing alone does **not** make Studio accessible from your host; for the desktop browser UI, install and run `pennovia studio` on the host. Container output is ephemeral without a mounted volume.
 
 ## Data and trust boundaries
 
-- Your source files are read locally. Generated voice profiles **may contain verbatim sample sentences** from your corpus. Store them accordingly.
+- Local source files and pasted writing are analyzed on your computer; selected HTTPS article links trigger requests to those sites. Voice profiles **may contain verbatim sample sentences** from your corpus. Store them accordingly.
 - Cloud draft requests transmit selected prompt content, including representative source sentences, to the configured model provider.
-- Optional WordPress and Google Drive exports make network requests only when invoked.
+- Optional WordPress and Google Drive exports make network requests only when invoked. Studio WordPress export is **draft-only**, while the CLI permits explicit `--publish`.
 - Generated facts, quotations and first-person accounts can be incorrect or invented; review them before publishing.
 - Use only writing you have rights or permission to process.
 

@@ -2,7 +2,7 @@
 
 Pennovia 0.2.0 provides a Python API, CLI and an optional local browser Studio. Studio's loopback HTTP adapter is not a maintained external API. The numerical voice scores below are uncalibrated heuristics.
 
-All public functions are importable from `pennovia.*`.
+The Python functions below are the supported integration surface. Use Studio for interactive local author workflows; do not build integrations against its internal loopback HTTP routes.
 
 ## ingestion.reader
 
@@ -82,14 +82,14 @@ from pennovia.voice.generator import generate
 
 content: str = generate(
     profile,
-    content_type="travel_blog",  # or: travel_guide, magazine, news, story, column
+    content_type="travel_blog",  # travel_guide, magazine, news, story, column
     topic="A weekend in Lisbon",
-    backend="auto",              # auto, openai, anthropic, openrouter, ollama, codex
-    model="gpt-4o",              # optional model override
+    backend="ollama",            # or openai, anthropic, openrouter, codex, auto
+    # model="llama3",            # optional: match the chosen provider
 )
 ```
 
-`backend="auto"` tries: Anthropic → OpenRouter → OpenAI → Ollama. The CLI defaults to the `PENNOVIA_BACKEND` environment variable when it is set; an explicit `--backend` takes precedence.
+`backend="auto"` tries: Anthropic → OpenRouter → OpenAI → Ollama, according to environment credentials. The CLI defaults to `PENNOVIA_BACKEND` if set; an explicit `--backend` takes precedence. Studio instead requires a provider selection and initially selects local Ollama. A `model` override must match the backend; Codex CLI does not accept a model override. No live model or calibrated voice fidelity is demonstrated by synthetic-provider tests.
 
 ## audit
 
@@ -154,8 +154,8 @@ Local and Google Drive exports accept `html`, `txt`, or `pdf` (including comma-s
 from pennovia.content_types.registry import list_types, get
 
 types: dict = list_types()
-# {"travel_blog": "Seyahat Blogu / Travel Blog", ...}
+# {"travel_blog": "Travel Blog", "travel_guide": "Travel Guide", ...}
 
 ct: dict = get("travel_guide")
-# {"label": "...", "structure": [...], "tone": "...", "length": "..."}
+# {"label": "Travel Guide", "structure": [...], "tone": "...", "length": "..."}
 ```
