@@ -71,7 +71,9 @@ def _download_source() -> tuple[str, str]:
     if len(response.content) > 3_000_000:
         raise RuntimeError("Gutenberg source exceeds the expected size")
     raw = response.content
-    text = raw.decode("utf-8-sig")
+    # Gutenberg plaintext may use CRLF. Normalize line endings for
+    # chapter boundaries while hashing the original bytes for provenance.
+    text = raw.decode("utf-8-sig").replace("\r\n", "\n").replace("\r", "\n")
     return text, hashlib.sha256(raw).hexdigest()
 
 
