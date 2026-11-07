@@ -6,7 +6,9 @@ from validation.live_model import select_chapters
 
 def _fake_book() -> str:
     headings = ("I", "II", "III", "IV", "V")
-    parts = ["The Innocents Abroad\nMark Twain\n"]
+    parts = ["The Innocents Abroad\nMark Twain\n\n"
+             "   CHAPTER I.\nThis is the table of contents, not body text.\n"
+             "\n    PREFACE\n\nNarrative preface.\n"]
     for chapter in headings:
         parts.append(f"\nCHAPTER {chapter}.\n\n")
         parts.append(("This is independent chapter content with meaningful prose. "
@@ -25,8 +27,8 @@ def test_training_and_holdout_segments_do_not_overlap():
 def test_source_requires_expected_work_and_one_real_heading_per_chapter():
     with pytest.raises(ValueError, match="Mark Twain"):
         select_chapters(_fake_book().replace("Mark Twain", "Unknown"))
-    with pytest.raises(ValueError, match="one body heading"):
-        select_chapters(_fake_book() + "\nCHAPTER III.\n")
+    with pytest.raises(ValueError, match="Missing body heading III"):
+        select_chapters(_fake_book().replace("\nCHAPTER III.\n", "\nUNKNOWN CHAPTER\n"))
 
 
 def test_missing_or_short_chapter_fails_closed():
