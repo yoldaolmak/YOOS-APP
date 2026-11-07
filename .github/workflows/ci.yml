@@ -100,7 +100,7 @@ jobs:
         run: python -m pytest -q tests/test_studio_browser.py
       - name: Save synthetic Studio screenshots
         if: always()
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: studio-desktop-mobile
           path: ${{ runner.temp }}/studio-screenshots/*.png
