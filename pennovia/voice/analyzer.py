@@ -282,20 +282,8 @@ def _sample_sentences(documents: list[list[str]]) -> list[str]:
     return samples
 
 
-def analyze(
-    texts, author_name: str = "unknown", language: str = "auto"
-) -> VoiceProfile:
-    """Extract a profile; explicit language overrides weak auto-detection."""
-    if language not in ("auto", "en", "tr"):
-        raise ValueError("language must be auto, en or tr")
-    all_text = "\n\n".join(texts)
-    lang = _detect_language(all_text) if language == "auto" else language
-    transitions = (
-        TR_TRANSITIONS if lang == "tr"
-        else EN_TRANSITIONS if lang == "en"
-        else TR_TRANSITIONS + EN_TRANSITIONS
-    )
-
+def _collect_sentence_structure(texts):
+    """Keep sentences grouped by document while measuring paragraph rhythm."""
     all_sentences = []
     document_sentences = []
     paragraph_word_counts = []
@@ -312,6 +300,41 @@ def analyze(
                 paragraph_sent_counts.append(len(sents))
                 paragraph_word_counts.append(len(para.split()))
         document_sentences.append(document)
+
+    return (all_sentences, document_sentences,
+            paragraph_word_counts, paragraph_sent_counts)
+
+
+def _signature_phrases(texts) -> list[str]:
+    """Count recurring phrases inside documents, never across their edges."""
+    bigrams = Counter()
+    for text in texts:
+        words = re.findall(r"\b\w+\b", text.lower())
+        bigrams.update(zip(words, words[1:], strict=False))
+    return [
+        f"{a} {b}" for (a, b), c in bigrams.most_common(50)
+        if c >= 3 and len(a) > 3 and len(b) > 3
+        and a not in ("that", "this", "with", "from", "they", "have", "were", "been")
+        and b not in ("that", "this", "with", "from", "they", "have", "were", "been")
+    ][:8]
+
+
+def analyze(
+    texts, author_name: str = "unknown", language: str = "auto"
+) -> VoiceProfile:
+    """Extract a profile; explicit language overrides weak auto-detection."""
+    if language not in ("auto", "en", "tr"):
+        raise ValueError("language must be auto, en or tr")
+    all_text = "\n\n".join(texts)
+    lang = _detect_language(all_text) if language == "auto" else language
+    transitions = (
+        TR_TRANSITIONS if lang == "tr"
+        else EN_TRANSITIONS if lang == "en"
+        else TR_TRANSITIONS + EN_TRANSITIONS
+    )
+
+    (all_sentences, document_sentences,
+     paragraph_word_counts, paragraph_sent_counts) = _collect_sentence_structure(texts)
 
     if not all_sentences:
         return VoiceProfile(author_name=author_name, language=lang)
@@ -355,18 +378,7 @@ def analyze(
     )
     top_transitions = [t for t, _ in found_transitions[:10]]
 
-    # --- Signature 2-grams ---
-    # Do not invent phrase pairs across the boundaries of separate texts.
-    bigrams = Counter()
-    for text in texts:
-        words = re.findall(r"\b\w+\b", text.lower())
-        bigrams.update(zip(words, words[1:], strict=False))
-    signature = [
-        f"{a} {b}" for (a, b), c in bigrams.most_common(50)
-        if c >= 3 and len(a) > 3 and len(b) > 3
-        and a not in ("that", "this", "with", "from", "they", "have", "were", "been")
-        and b not in ("that", "this", "with", "from", "they", "have", "were", "been")
-    ][:8]
+    signature = _signature_phrases(texts)
 
     # --- Sample sentences: preserve rhythm variety across source texts ---
     samples = _sample_sentences(document_sentences)
