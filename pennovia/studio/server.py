@@ -103,85 +103,104 @@ def _review(draft: str, profile: VoiceProfile) -> dict:
     }
 
 
+def _analyze_request(payload: dict) -> dict:
+    language = payload.get("language", "auto")
+    if language not in ("auto", "en", "tr"):
+        raise ValueError("Language must be auto, English or Turkish")
+    texts, warnings = _collect_sources(payload.get("sources"))
+    profile = analyze(
+        texts, author_name=_required_string(payload, "author", limit=120),
+        language=language,
+    )
+    return {**_summary(profile), "accepted": len(texts),
+            "words": profile.total_words, "warnings": warnings}
+
+
+def _validated_profile(payload: dict) -> VoiceProfile:
+    """Use one readiness rule for imported and generated profiles."""
+    profile = VoiceProfile.from_dict(payload.get("profile"))
+    if profile.total_words == 0 or profile.text_count == 0:
+        raise ValueError("Profile has no analyzed writing samples")
+    return profile
+
+
+def _generate_request(payload: dict, profile: VoiceProfile) -> dict:
+    from pennovia.voice.generator import generate
+
+    topic = _required_string(payload, "topic", limit=500)
+    kind = payload.get("content_type")
+    if not isinstance(kind, str) or kind not in list_types():
+        raise ValueError("Select a supported writing type")
+    backend = payload.get("backend")
+    if not isinstance(backend, str) or backend not in _BACKENDS:
+        raise ValueError("Select a supported model provider")
+    model = payload.get("model", "")
+    if not isinstance(model, str) or len(model) > 120:
+        raise ValueError("Invalid model name")
+    if backend == "codex" and model.strip():
+        raise ValueError("Codex CLI does not accept a model override")
+    options = {"model": model.strip()} if model.strip() else {}
+    draft = generate(profile, kind, topic, backend=backend, **options)
+    return {"draft": draft, "review": _review(draft, profile)}
+
+
+def _download_draft(draft: str, title: str, fmt: str) -> tuple[str, bytes, str]:
+    """Produce a download and remove the temporary PDF on either outcome."""
+    from pennovia.exporter.writer import to_html, to_pdf
+
+    if fmt == "txt":
+        data, mime = draft.encode("utf-8"), "text/plain; charset=utf-8"
+    elif fmt == "html":
+        data, mime = to_html(draft, title).encode("utf-8"), "text/html; charset=utf-8"
+    elif fmt == "pdf":
+        path = to_pdf(draft, title)
+        try:
+            data = Path(path).read_bytes()
+        finally:
+            Path(path).unlink(missing_ok=True)
+        mime = "application/pdf"
+    else:
+        raise ValueError("Unsupported download format")
+    return mime, data, fmt
+
+
+def _export_request(payload: dict, draft: str) -> dict | tuple[str, bytes, str]:
+    from pennovia.exporter.writer import save_google_drive, save_wordpress
+
+    destination = payload.get("destination")
+    title = _required_string(payload, "title", limit=200)
+    if destination == "wordpress":
+        return {"url": save_wordpress(draft, title, publish=False),
+                "message": "WordPress draft created"}
+    if destination == "google_drive":
+        fmt = payload.get("format")
+        if fmt not in ("txt", "html", "pdf"):
+            raise ValueError("Unsupported download format")
+        return {"url": save_google_drive(draft, title, fmt),
+                "message": "Saved to Google Drive"}
+    if destination != "download":
+        raise ValueError("Unsupported export destination")
+    return _download_draft(draft, title, payload.get("format"))
+
+
 def _handle_api(path: str, payload: dict) -> dict | tuple[str, bytes, str]:
+    """Dispatch after validating the shared request and profile contracts."""
     if not isinstance(payload, dict):
         raise ValueError("Expected a JSON object")
     if path == "/api/analyze":
-        language = payload.get("language", "auto")
-        if language not in ("auto", "en", "tr"):
-            raise ValueError("Language must be auto, English or Turkish")
-        texts, warnings = _collect_sources(payload.get("sources"))
-        profile = analyze(
-            texts, author_name=_required_string(payload, "author", limit=120),
-            language=language,
-        )
-        return {**_summary(profile), "accepted": len(texts),
-                "words": profile.total_words, "warnings": warnings}
+        return _analyze_request(payload)
     if path == "/api/profile":
-        profile = VoiceProfile.from_dict(payload.get("profile"))
-        if profile.total_words == 0 or profile.text_count == 0:
-            raise ValueError("Profile has no analyzed writing samples")
-        return _summary(profile)
-    if path in ("/api/generate", "/api/review", "/api/export"):
-        profile = VoiceProfile.from_dict(payload.get("profile"))
-        if profile.total_words == 0 or profile.text_count == 0:
-            raise ValueError("Profile has no analyzed writing samples")
-        if path == "/api/generate":
-            from pennovia.voice.generator import generate
+        return _summary(_validated_profile(payload))
+    if path not in ("/api/generate", "/api/review", "/api/export"):
+        raise ValueError("Unknown Studio action")
 
-            topic = _required_string(payload, "topic", limit=500)
-            kind = payload.get("content_type")
-            if not isinstance(kind, str) or kind not in list_types():
-                raise ValueError("Select a supported writing type")
-            backend = payload.get("backend")
-            if not isinstance(backend, str) or backend not in _BACKENDS:
-                raise ValueError("Select a supported model provider")
-            model = payload.get("model", "")
-            if not isinstance(model, str) or len(model) > 120:
-                raise ValueError("Invalid model name")
-            if backend == "codex" and model.strip():
-                raise ValueError("Codex CLI does not accept a model override")
-            options = {"model": model.strip()} if model.strip() else {}
-            draft = generate(profile, kind, topic, backend=backend, **options)
-            return {"draft": draft, "review": _review(draft, profile)}
-        draft = _required_string(payload, "draft", limit=1_000_000)
-        if path == "/api/review":
-            return _review(draft, profile)
-
-        from pennovia.exporter.writer import (
-            save_google_drive, save_wordpress, to_html, to_pdf,
-        )
-
-        destination = payload.get("destination")
-        title = _required_string(payload, "title", limit=200)
-        if destination == "wordpress":
-            return {"url": save_wordpress(draft, title, publish=False),
-                    "message": "WordPress draft created"}
-        if destination == "google_drive":
-            fmt = payload.get("format")
-            if fmt not in ("txt", "html", "pdf"):
-                raise ValueError("Unsupported download format")
-            return {"url": save_google_drive(draft, title, fmt),
-                    "message": "Saved to Google Drive"}
-        if destination != "download":
-            raise ValueError("Unsupported export destination")
-        fmt = payload.get("format")
-        if fmt == "txt":
-            data, mime = draft.encode("utf-8"), "text/plain; charset=utf-8"
-        elif fmt == "html":
-            data, mime = to_html(draft, title).encode("utf-8"), "text/html; charset=utf-8"
-        elif fmt == "pdf":
-            path = to_pdf(draft, title)
-            try:
-                data = Path(path).read_bytes()
-            finally:
-                Path(path).unlink(missing_ok=True)
-            mime = "application/pdf"
-        else:
-            raise ValueError("Unsupported download format")
-        return mime, data, fmt
-    raise ValueError("Unknown Studio action")
-
+    profile = _validated_profile(payload)
+    if path == "/api/generate":
+        return _generate_request(payload, profile)
+    draft = _required_string(payload, "draft", limit=1_000_000)
+    if path == "/api/review":
+        return _review(draft, profile)
+    return _export_request(payload, draft)
 
 class _StudioServer(ThreadingHTTPServer):
     daemon_threads = True
