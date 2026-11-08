@@ -2,6 +2,10 @@
 
 Version **0.2.0 alpha**. GitHub release details are recorded separately in [release notes](release/v0.2.0-alpha.md); the release must pass the live-model and CI gates.
 
+## Code quality — 8 November 2026
+
+- Separate Studio request dispatch from analysis, generation and export handling; isolate corpus sentence grouping and phrase extraction. No public API, output schema or workflow change.
+
 ## State transition hardening — 7 November 2026
 
 - Invalidate stale Studio profiles and reviews when samples or analysis parameters change. Preserve the draft, guard in-flight edits and stale async responses, and confirm identical remote re-submissions.
