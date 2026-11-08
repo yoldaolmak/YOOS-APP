@@ -3,11 +3,11 @@ from pathlib import Path
 
 import pytest
 
+from pennovia.exporter import writer
 from pennovia.studio import server
 from pennovia.voice.analyzer import (
     _collect_sentence_structure, _signature_phrases, analyze,
 )
-from pennovia.exporter import writer
 
 
 def test_sentence_structure_preserves_document_and_paragraph_boundaries():
