@@ -202,6 +202,7 @@ def _handle_api(path: str, payload: dict) -> dict | tuple[str, bytes, str]:
         return _review(draft, profile)
     return _export_request(payload, draft)
 
+
 class _StudioServer(ThreadingHTTPServer):
     daemon_threads = True
     allow_reuse_address = True
